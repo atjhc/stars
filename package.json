@@ -1,0 +1,19 @@
+{
+  "name": "drake",
+  "module": "server.ts",
+  "scripts": {
+    "dev": "bun --hot server.ts"
+  },
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/three": "^0.183.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "three": "^0.183.2"
+  }
+}
