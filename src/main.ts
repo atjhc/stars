@@ -20,7 +20,7 @@ interface Star {
   lum: number;
 }
 
-const MIN_ORBIT_RADIUS = 2;
+const MIN_ORBIT_RADIUS = 0.5;
 const MAX_ORBIT_RADIUS = 100;
 const CLICK_THRESHOLD = 5;
 const ANIM_DURATION = 600;
@@ -375,17 +375,30 @@ function setDropLine(line: THREE.Line, mesh: THREE.Mesh) {
 }
 
 let lastHoveredMesh: THREE.Mesh | null = null;
+let lastTooltipSelection: THREE.Mesh | null = null;
 
 function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
   setDropLine(hoverDropLine, mesh);
 
-  if (lastHoveredMesh !== mesh) {
+  if (lastHoveredMesh !== mesh || lastTooltipSelection !== selectedMesh) {
     lastHoveredMesh = mesh;
+    lastTooltipSelection = selectedMesh;
     const star = mesh.userData as Star;
+
+    let distLine = `From Sol: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)`;
+    if (selectedMesh && selectedMesh !== mesh) {
+      const sel = selectedMesh.userData as Star;
+      const dx = star.x - sel.x;
+      const dy = star.y - sel.y;
+      const dz = star.z - sel.z;
+      const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      distLine += `<br>From ${starDisplayName(sel)}: ${d.toFixed(2)} pc (${(d * 3.262).toFixed(1)} ly)`;
+    }
+
     tooltip.innerHTML = `
       <div class="star-name">${starDisplayName(star)}</div>
       <div class="star-detail">
-        Distance: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)<br>
+        ${distLine}<br>
         Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
         Spectral: ${star.spect || "\u2014"}<br>
         Luminosity: ${star.lum.toFixed(3)} L\u2609
