@@ -2,7 +2,8 @@
   "name": "drake",
   "module": "server.ts",
   "scripts": {
-    "dev": "bun --hot server.ts"
+    "dev": "bun --hot server.ts",
+    "build": "bun run build.ts"
   },
   "type": "module",
   "private": true,

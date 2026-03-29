@@ -7,11 +7,17 @@
 ```sh
 bun install
 bun run dev     # starts dev server with HMR at http://localhost:3000
+bun run build   # builds static site to dist/
 ```
+
+### Deploy
+
+Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deploy.
 
 ### Structure
 
 - `server.ts` — Bun.serve() entry point with HTML imports
+- `build.ts` — Static build script (bundles to dist/)
 - `index.html` — App shell (styles + markup)
 - `src/main.ts` — Three.js scene, camera, interaction logic
 - `src/stars.json` — 300 nearest stars extracted from HYG v4.2 database
