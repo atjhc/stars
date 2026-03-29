@@ -20,6 +20,17 @@ interface Star {
   lum: number;
 }
 
+const MIN_ORBIT_RADIUS = 2;
+const MAX_ORBIT_RADIUS = 100;
+const CLICK_THRESHOLD = 5;
+const ANIM_DURATION = 600;
+const SCALE = 3;
+const MAX_SEARCH_RESULTS = 20;
+
+function starDisplayName(star: Star): string {
+  return star.name === "ID 0" ? "Sol" : star.name;
+}
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   55,
@@ -42,11 +53,10 @@ labelRenderer.domElement.style.zIndex = "10";
 document.body.appendChild(labelRenderer.domElement);
 
 function bvToColor(ci: number): THREE.Color {
-  let t: number;
-  let r: number, g: number, b: number;
   if (ci < -0.4) ci = -0.4;
   if (ci > 2.0) ci = 2.0;
 
+  let t: number, r: number, g: number, b: number;
   if (ci < 0.0) {
     t = (ci + 0.4) / 0.4;
     r = 0.6 + 0.4 * t;
@@ -76,33 +86,37 @@ function bvToColor(ci: number): THREE.Color {
   return new THREE.Color(r, g, b);
 }
 
-function makeGlowTexture(color: THREE.Color): THREE.CanvasTexture {
+// Quantize color index to nearest 0.05 and cache glow textures
+const glowTextureCache = new Map<string, THREE.CanvasTexture>();
+
+function getGlowTexture(color: THREE.Color, ci: number): THREE.CanvasTexture {
+  const key = (Math.round(ci * 20) / 20).toFixed(2);
+  const cached = glowTextureCache.get(key);
+  if (cached) return cached;
+
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
   const cx = size / 2;
+  const r = (color.r * 255) | 0;
+  const g = (color.g * 255) | 0;
+  const b = (color.b * 255) | 0;
 
-  // Bright core
   const core = ctx.createRadialGradient(cx, cx, 0, cx, cx, size * 0.08);
   core.addColorStop(0, `rgba(255,255,255,1)`);
   core.addColorStop(1, `rgba(255,255,255,0)`);
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, size, size);
 
-  // Inner bloom
   const inner = ctx.createRadialGradient(cx, cx, 0, cx, cx, size * 0.25);
-  const r = (color.r * 255) | 0;
-  const g = (color.g * 255) | 0;
-  const b = (color.b * 255) | 0;
   inner.addColorStop(0, `rgba(${r},${g},${b},0.9)`);
   inner.addColorStop(0.3, `rgba(${r},${g},${b},0.4)`);
   inner.addColorStop(1, `rgba(${r},${g},${b},0)`);
   ctx.fillStyle = inner;
   ctx.fillRect(0, 0, size, size);
 
-  // Outer halo
   const outer = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
   outer.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
   outer.addColorStop(0.15, `rgba(${r},${g},${b},0.12)`);
@@ -111,15 +125,17 @@ function makeGlowTexture(color: THREE.Color): THREE.CanvasTexture {
   ctx.fillStyle = outer;
   ctx.fillRect(0, 0, size, size);
 
-  return new THREE.CanvasTexture(canvas);
+  const tex = new THREE.CanvasTexture(canvas);
+  glowTextureCache.set(key, tex);
+  return tex;
 }
 
-const SCALE = 3;
 const starGroup = new THREE.Group();
 scene.add(starGroup);
 
 const starObjects: THREE.Mesh[] = [];
 const starLabels: CSS2DObject[] = [];
+const labelMeshMap = new WeakMap<HTMLElement, THREE.Mesh>();
 let labelsVisible = true;
 let selectedMesh: THREE.Mesh | null = null;
 
@@ -132,6 +148,8 @@ let selectedMesh: THREE.Mesh | null = null;
   );
 
   const geo = new THREE.SphereGeometry(lumSize, 12, 8);
+  geo.computeBoundingSphere();
+  geo.boundingSphere!.radius = Math.max(0.3, lumSize * 3);
   const mat = new THREE.MeshBasicMaterial({ color });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(star.x * SCALE, star.z * SCALE, -star.y * SCALE);
@@ -140,7 +158,7 @@ let selectedMesh: THREE.Mesh | null = null;
   starObjects.push(mesh);
 
   const spriteMat = new THREE.SpriteMaterial({
-    map: makeGlowTexture(color),
+    map: getGlowTexture(color, star.ci),
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -154,47 +172,40 @@ let selectedMesh: THREE.Mesh | null = null;
 
   const labelDiv = document.createElement("div");
   labelDiv.style.cssText = `
-    color: rgba(255,255,255,0.7); font-size: 10px; font-family: 'Helvetica Neue', sans-serif;
+    color: rgba(255,255,255,0.7); font-size: 10px;
     pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
     cursor: pointer;
   `;
-  const displayName = star.name === "ID 0" ? "Sol" : star.name;
-  labelDiv.textContent = displayName;
-  (labelDiv as any)._mesh = mesh;
+  labelDiv.textContent = starDisplayName(star);
+  labelMeshMap.set(labelDiv, mesh);
   labelDiv.setAttribute("data-star-label", "");
   const label = new CSS2DObject(labelDiv);
   label.position.set(0, -(lumSize + 0.06), 0);
   label.center.set(0.5, 0);
-  label.userData.star = star;
   label.userData.mesh = mesh;
   mesh.add(label);
   starLabels.push(label);
 });
 
-// Grid aligned to the galactic plane, fixed at Sol.
-// HYG data uses equatorial coordinates (x=vernal equinox, z=north celestial pole).
-// In our scene: scene_x = eq_x, scene_y = eq_z, scene_z = -eq_y.
 // Galactic north pole in equatorial coords: RA=192.8595deg, Dec=27.1284deg
+// HYG uses equatorial coordinates; scene maps: x=eq_x, y=eq_z, z=-eq_y
 const raGNP = (192.8595 * Math.PI) / 180;
 const decGNP = (27.1284 * Math.PI) / 180;
 const galNorthEq = new THREE.Vector3(
   Math.cos(decGNP) * Math.cos(raGNP),
   Math.sin(decGNP),
   -Math.cos(decGNP) * Math.sin(raGNP),
-);
+).normalize();
 
 const gridHelper = new THREE.GridHelper(60, 30, 0x4466aa, 0x334477);
 gridHelper.material.transparent = true;
 (gridHelper.material as THREE.Material).opacity = 0.5;
-const defaultUp = new THREE.Vector3(0, 1, 0);
-const quat = new THREE.Quaternion().setFromUnitVectors(
-  defaultUp,
-  galNorthEq.normalize(),
+gridHelper.quaternion.setFromUnitVectors(
+  new THREE.Vector3(0, 1, 0),
+  galNorthEq,
 );
-gridHelper.quaternion.copy(quat);
 scene.add(gridHelper);
 
-// Camera orbit controls
 const target = new THREE.Vector3(0, 0, 0);
 let orbitRadius = 18;
 let orbitPhi = 0.4;
@@ -203,7 +214,7 @@ let isDragging = false;
 let isZooming = false;
 let prevMouse = { x: 0, y: 0 };
 
-const galUp = galNorthEq.clone().normalize();
+const galUp = galNorthEq;
 const ref =
   Math.abs(galUp.dot(new THREE.Vector3(1, 0, 0))) < 0.9
     ? new THREE.Vector3(1, 0, 0)
@@ -227,7 +238,6 @@ function updateCamera() {
 }
 updateCamera();
 
-// Perpendicular drop line from hovered star to galactic plane
 const dropLineGeo = new THREE.BufferGeometry().setFromPoints([
   new THREE.Vector3(),
   new THREE.Vector3(),
@@ -246,8 +256,19 @@ scene.add(dropLine);
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const tooltip = document.getElementById("tooltip")!;
+const scratchVec3 = new THREE.Vector3();
 
 let dragDistance = 0;
+
+function meshFromLabel(el: HTMLElement): THREE.Mesh | undefined {
+  const label = el.closest("[data-star-label]") as HTMLElement | null;
+  return label ? labelMeshMap.get(label) : undefined;
+}
+
+function setMouseNDC(vec: THREE.Vector2, clientX: number, clientY: number) {
+  vec.x = (clientX / window.innerWidth) * 2 - 1;
+  vec.y = -(clientY / window.innerHeight) * 2 + 1;
+}
 
 renderer.domElement.addEventListener("mousedown", (e) => {
   if (e.altKey) {
@@ -263,31 +284,30 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 window.addEventListener("mousemove", (e) => {
   const dx = e.clientX - prevMouse.x;
   const dy = e.clientY - prevMouse.y;
-  if (isDragging) {
-    dragDistance += Math.abs(dx) + Math.abs(dy);
-    orbitTheta -= dx * 0.005;
-    orbitPhi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitPhi + dy * 0.005));
-    updateCamera();
-  } else if (isZooming) {
-    dragDistance += Math.abs(dx) + Math.abs(dy);
-    orbitRadius = Math.max(2, Math.min(100, orbitRadius + dy * 0.1));
-    updateCamera();
-  }
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
+
+  if (!isDragging && !isZooming) return;
+  dragDistance += Math.abs(dx) + Math.abs(dy);
+
+  if (isDragging) {
+    orbitTheta -= dx * 0.005;
+    orbitPhi = THREE.MathUtils.clamp(orbitPhi + dy * 0.005, 0.1, Math.PI - 0.1);
+    updateCamera();
+  } else {
+    orbitRadius = THREE.MathUtils.clamp(orbitRadius + dy * 0.1, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS);
+    updateCamera();
+  }
 });
 
 window.addEventListener("mouseup", (e) => {
-  const wasClick = dragDistance < 5;
+  const wasClick = dragDistance < CLICK_THRESHOLD;
   isDragging = false;
   isZooming = false;
 
   if (wasClick) {
-    const clickMouse = new THREE.Vector2(
-      (e.clientX / window.innerWidth) * 2 - 1,
-      -(e.clientY / window.innerHeight) * 2 + 1,
-    );
-    raycaster.setFromCamera(clickMouse, camera);
+    setMouseNDC(mouse, e.clientX, e.clientY);
+    raycaster.setFromCamera(mouse, camera);
     const hits = raycaster.intersectObjects(starObjects);
     if (hits.length > 0) {
       selectStar(hits[0].object as THREE.Mesh);
@@ -298,7 +318,6 @@ window.addEventListener("mouseup", (e) => {
 let animStart: number | null = null;
 let animFrom: THREE.Vector3 | null = null;
 let animTo: THREE.Vector3 | null = null;
-const ANIM_DURATION = 600;
 
 function selectStar(mesh: THREE.Mesh) {
   selectedMesh = mesh;
@@ -327,7 +346,11 @@ renderer.domElement.addEventListener(
   "wheel",
   (e) => {
     e.preventDefault();
-    orbitRadius = Math.max(2, Math.min(100, orbitRadius + e.deltaY * 0.02));
+    orbitRadius = THREE.MathUtils.clamp(
+      orbitRadius + e.deltaY * 0.02,
+      MIN_ORBIT_RADIUS,
+      MAX_ORBIT_RADIUS,
+    );
     updateCamera();
   },
   { passive: false },
@@ -336,16 +359,15 @@ renderer.domElement.addEventListener(
 function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
   const star = mesh.userData as Star;
   const starPos = mesh.position;
-  const planePos = starPos.clone().addScaledVector(galUp, -starPos.dot(galUp));
+  scratchVec3.copy(starPos).addScaledVector(galUp, -starPos.dot(galUp));
   const positions = dropLineGeo.attributes.position as THREE.BufferAttribute;
   positions.setXYZ(0, starPos.x, starPos.y, starPos.z);
-  positions.setXYZ(1, planePos.x, planePos.y, planePos.z);
+  positions.setXYZ(1, scratchVec3.x, scratchVec3.y, scratchVec3.z);
   positions.needsUpdate = true;
   dropLine.visible = true;
 
-  const displayName = star.name === "ID 0" ? "Sol" : star.name;
   tooltip.innerHTML = `
-    <div class="star-name">${displayName}</div>
+    <div class="star-name">${starDisplayName(star)}</div>
     <div class="star-detail">
       Distance: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)<br>
       Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
@@ -365,11 +387,9 @@ function hideHover() {
 
 let hoveredViaLabel = false;
 
-// Hover via raycast on the 3D canvas
 renderer.domElement.addEventListener("mousemove", (e) => {
   if (hoveredViaLabel) return;
-  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  setMouseNDC(mouse, e.clientX, e.clientY);
 
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(starObjects);
@@ -381,37 +401,32 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   }
 });
 
-// Hover via label DOM elements
 labelRenderer.domElement.addEventListener("mouseover", (e) => {
-  const target = (e.target as HTMLElement).closest("[data-star-label]") as HTMLElement | null;
-  if (!target) return;
+  const mesh = meshFromLabel(e.target as HTMLElement);
+  if (!mesh) return;
   hoveredViaLabel = true;
-  const mesh = (target as any)._mesh as THREE.Mesh;
   showHover(mesh, e.clientX, e.clientY);
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
   if (!hoveredViaLabel) return;
-  const target = (e.target as HTMLElement).closest("[data-star-label]") as HTMLElement | null;
-  if (!target) return;
-  const mesh = (target as any)._mesh as THREE.Mesh;
+  const mesh = meshFromLabel(e.target as HTMLElement);
+  if (!mesh) return;
   showHover(mesh, e.clientX, e.clientY);
 });
 
 labelRenderer.domElement.addEventListener("mouseout", (e) => {
-  const target = (e.target as HTMLElement).closest("[data-star-label]") as HTMLElement | null;
-  if (!target) return;
+  const label = (e.target as HTMLElement).closest("[data-star-label]") as HTMLElement | null;
+  if (!label) return;
   const related = (e as MouseEvent).relatedTarget as HTMLElement | null;
-  if (related && target.contains(related)) return;
+  if (related && label.contains(related)) return;
   hoveredViaLabel = false;
   hideHover();
 });
 
 labelRenderer.domElement.addEventListener("click", (e) => {
-  const label = (e.target as HTMLElement).closest("[data-star-label]") as HTMLElement | null;
-  if (!label) return;
-  const mesh = (label as any)._mesh as THREE.Mesh;
-  selectStar(mesh);
+  const mesh = meshFromLabel(e.target as HTMLElement);
+  if (mesh) selectStar(mesh);
 });
 
 window.addEventListener("resize", () => {
@@ -449,10 +464,9 @@ function updateSearchResults(query: string) {
   if (q.length > 0) {
     for (const mesh of starObjects) {
       const star = mesh.userData as Star;
-      const name = star.name === "ID 0" ? "Sol" : star.name;
-      if (name.toLowerCase().includes(q)) {
+      if (starDisplayName(star).toLowerCase().includes(q)) {
         filteredStars.push({ star, mesh });
-        if (filteredStars.length >= 20) break;
+        if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
       }
     }
   }
@@ -464,8 +478,7 @@ function renderSearchResults() {
   searchResults.innerHTML = "";
   filteredStars.forEach((entry, i) => {
     const li = document.createElement("li");
-    const name = entry.star.name === "ID 0" ? "Sol" : entry.star.name;
-    li.textContent = `${name}  (${entry.star.dist.toFixed(1)} pc)`;
+    li.textContent = `${starDisplayName(entry.star)}  (${entry.star.dist.toFixed(1)} pc)`;
     if (i === selectedIndex) li.classList.add("selected");
     li.addEventListener("click", () => selectSearchResult(i));
     searchResults.appendChild(li);
@@ -474,8 +487,7 @@ function renderSearchResults() {
 
 function selectSearchResult(index: number) {
   if (index < 0 || index >= filteredStars.length) return;
-  const { mesh } = filteredStars[index];
-  selectStar(mesh);
+  selectStar(filteredStars[index].mesh);
   closeSearch();
 }
 
@@ -491,6 +503,9 @@ window.addEventListener("keydown", (e) => {
   } else if (e.key === "l") {
     labelsVisible = !labelsVisible;
     updateLabelVisibility();
+    return;
+  } else if (e.key === "g") {
+    gridHelper.visible = !gridHelper.visible;
     return;
   } else {
     return;
