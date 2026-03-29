@@ -24,15 +24,46 @@
   }
   #tooltip .star-name { font-weight: 600; font-size: 13px; }
   #tooltip .star-detail { color: #aaa; font-size: 11px; }
+  #search {
+    position: absolute; top: 16px; right: 16px;
+    display: none; flex-direction: column;
+    background: #000; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2); z-index: 20;
+    width: 260px; overflow: hidden;
+  }
+  #search.active { display: flex; }
+  #search-input {
+    background: transparent; border: none; outline: none;
+    color: #fff; font-size: 14px; padding: 10px 12px;
+    font-family: 'Helvetica Neue', sans-serif;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  #search-input::placeholder { color: #666; }
+  #search-results {
+    max-height: 240px; overflow-y: auto;
+    list-style: none;
+  }
+  #search-results li {
+    padding: 6px 12px; cursor: pointer;
+    font-size: 13px; color: #ccc;
+  }
+  #search-results li.selected {
+    background: rgba(68,102,170,0.4); color: #fff;
+  }
+  #search-results li:hover { background: rgba(255,255,255,0.08); }
 </style>
 </head>
 <body>
 <div id="info">
   <h1>Stellar Neighborhood</h1>
   <div>Stars within ~10 parsecs of Sol</div>
-  <div class="hint">Drag to rotate &middot; ⌥+drag to zoom &middot; Hover for details</div>
+  <div class="hint">Drag to rotate &middot; ⌥+drag to zoom &middot; / search &middot; L labels</div>
 </div>
 <div id="tooltip"></div>
+<div id="search">
+  <input id="search-input" type="text" placeholder="Search stars..." autocomplete="off" />
+  <ul id="search-results"></ul>
+</div>
 <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

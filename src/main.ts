@@ -2,6 +2,11 @@ import * as THREE from "three";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import starsData from "./stars.json";
 
+await new Promise<void>((resolve) => {
+  if (document.readyState !== "loading") resolve();
+  else document.addEventListener("DOMContentLoaded", () => resolve());
+});
+
 interface Star {
   name: string;
   x: number;
@@ -72,30 +77,40 @@ function bvToColor(ci: number): THREE.Color {
 }
 
 function makeGlowTexture(color: THREE.Color): THREE.CanvasTexture {
-  const size = 128;
+  const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
-  const gradient = ctx.createRadialGradient(
-    size / 2,
-    size / 2,
-    0,
-    size / 2,
-    size / 2,
-    size / 2,
-  );
-  gradient.addColorStop(
-    0,
-    `rgba(${(color.r * 255) | 0},${(color.g * 255) | 0},${(color.b * 255) | 0},0.6)`,
-  );
-  gradient.addColorStop(
-    0.3,
-    `rgba(${(color.r * 255) | 0},${(color.g * 255) | 0},${(color.b * 255) | 0},0.15)`,
-  );
-  gradient.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = gradient;
+  const cx = size / 2;
+
+  // Bright core
+  const core = ctx.createRadialGradient(cx, cx, 0, cx, cx, size * 0.08);
+  core.addColorStop(0, `rgba(255,255,255,1)`);
+  core.addColorStop(1, `rgba(255,255,255,0)`);
+  ctx.fillStyle = core;
   ctx.fillRect(0, 0, size, size);
+
+  // Inner bloom
+  const inner = ctx.createRadialGradient(cx, cx, 0, cx, cx, size * 0.25);
+  const r = (color.r * 255) | 0;
+  const g = (color.g * 255) | 0;
+  const b = (color.b * 255) | 0;
+  inner.addColorStop(0, `rgba(${r},${g},${b},0.9)`);
+  inner.addColorStop(0.3, `rgba(${r},${g},${b},0.4)`);
+  inner.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = inner;
+  ctx.fillRect(0, 0, size, size);
+
+  // Outer halo
+  const outer = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+  outer.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
+  outer.addColorStop(0.15, `rgba(${r},${g},${b},0.12)`);
+  outer.addColorStop(0.4, `rgba(${r},${g},${b},0.03)`);
+  outer.addColorStop(1, `rgba(0,0,0,0)`);
+  ctx.fillStyle = outer;
+  ctx.fillRect(0, 0, size, size);
+
   return new THREE.CanvasTexture(canvas);
 }
 
@@ -104,6 +119,9 @@ const starGroup = new THREE.Group();
 scene.add(starGroup);
 
 const starObjects: THREE.Mesh[] = [];
+const starLabels: CSS2DObject[] = [];
+let labelsVisible = true;
+let selectedMesh: THREE.Mesh | null = null;
 
 (starsData as Star[]).forEach((star) => {
   const color = bvToColor(star.ci);
@@ -126,11 +144,11 @@ const starObjects: THREE.Mesh[] = [];
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    opacity: Math.min(1, 0.3 + star.lum * 0.1),
+    opacity: Math.min(1, 0.5 + star.lum * 0.15),
   });
   const sprite = new THREE.Sprite(spriteMat);
   sprite.raycast = () => {};
-  const glowSize = lumSize * 6;
+  const glowSize = Math.max(0.4, lumSize * 10);
   sprite.scale.set(glowSize, glowSize, 1);
   mesh.add(sprite);
 
@@ -148,7 +166,9 @@ const starObjects: THREE.Mesh[] = [];
   label.position.set(0, -(lumSize + 0.06), 0);
   label.center.set(0.5, 0);
   label.userData.star = star;
+  label.userData.mesh = mesh;
   mesh.add(label);
+  starLabels.push(label);
 });
 
 // Grid aligned to the galactic plane, fixed at Sol.
@@ -270,7 +290,7 @@ window.addEventListener("mouseup", (e) => {
     raycaster.setFromCamera(clickMouse, camera);
     const hits = raycaster.intersectObjects(starObjects);
     if (hits.length > 0) {
-      animateTargetTo(hits[0].object.position.clone());
+      selectStar(hits[0].object as THREE.Mesh);
     }
   }
 });
@@ -280,10 +300,18 @@ let animFrom: THREE.Vector3 | null = null;
 let animTo: THREE.Vector3 | null = null;
 const ANIM_DURATION = 600;
 
-function animateTargetTo(dest: THREE.Vector3) {
+function selectStar(mesh: THREE.Mesh) {
+  selectedMesh = mesh;
   animFrom = target.clone();
-  animTo = dest;
+  animTo = mesh.position.clone();
   animStart = performance.now();
+  updateLabelVisibility();
+}
+
+function updateLabelVisibility() {
+  for (const label of starLabels) {
+    label.visible = labelsVisible || label.userData.mesh === selectedMesh;
+  }
 }
 
 function tickAnimation(now: number) {
@@ -379,11 +407,113 @@ labelRenderer.domElement.addEventListener("mouseout", (e) => {
   hideHover();
 });
 
+labelRenderer.domElement.addEventListener("click", (e) => {
+  const label = (e.target as HTMLElement).closest("[data-star-label]") as HTMLElement | null;
+  if (!label) return;
+  const mesh = (label as any)._mesh as THREE.Mesh;
+  selectStar(mesh);
+});
+
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Search
+const searchEl = document.getElementById("search")!;
+const searchInput = document.getElementById("search-input") as HTMLInputElement;
+const searchResults = document.getElementById("search-results")!;
+let searchOpen = false;
+let selectedIndex = 0;
+let filteredStars: { star: Star; mesh: THREE.Mesh }[] = [];
+
+function openSearch() {
+  searchOpen = true;
+  searchEl.classList.add("active");
+  searchInput.value = "";
+  updateSearchResults("");
+  searchInput.focus();
+}
+
+function closeSearch() {
+  searchOpen = false;
+  searchEl.classList.remove("active");
+  searchInput.blur();
+}
+
+function updateSearchResults(query: string) {
+  const q = query.toLowerCase().trim();
+  filteredStars = [];
+  if (q.length > 0) {
+    for (const mesh of starObjects) {
+      const star = mesh.userData as Star;
+      const name = star.name === "ID 0" ? "Sol" : star.name;
+      if (name.toLowerCase().includes(q)) {
+        filteredStars.push({ star, mesh });
+        if (filteredStars.length >= 20) break;
+      }
+    }
+  }
+  selectedIndex = 0;
+  renderSearchResults();
+}
+
+function renderSearchResults() {
+  searchResults.innerHTML = "";
+  filteredStars.forEach((entry, i) => {
+    const li = document.createElement("li");
+    const name = entry.star.name === "ID 0" ? "Sol" : entry.star.name;
+    li.textContent = `${name}  (${entry.star.dist.toFixed(1)} pc)`;
+    if (i === selectedIndex) li.classList.add("selected");
+    li.addEventListener("click", () => selectSearchResult(i));
+    searchResults.appendChild(li);
+  });
+}
+
+function selectSearchResult(index: number) {
+  if (index < 0 || index >= filteredStars.length) return;
+  const { mesh } = filteredStars[index];
+  selectStar(mesh);
+  closeSearch();
+}
+
+window.addEventListener("keydown", (e) => {
+  if (searchOpen) {
+    // handled below
+  } else if (e.target instanceof HTMLInputElement) {
+    return;
+  } else if (e.key === "/") {
+    e.preventDefault();
+    openSearch();
+    return;
+  } else if (e.key === "l") {
+    labelsVisible = !labelsVisible;
+    updateLabelVisibility();
+    return;
+  } else {
+    return;
+  }
+
+  if (e.key === "Escape") {
+    closeSearch();
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    selectedIndex = Math.min(selectedIndex + 1, filteredStars.length - 1);
+    renderSearchResults();
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    selectedIndex = Math.max(selectedIndex - 1, 0);
+    renderSearchResults();
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    selectSearchResult(selectedIndex);
+  }
+});
+
+searchInput.addEventListener("input", () => {
+  updateSearchResults(searchInput.value);
 });
 
 function animate(now: number) {
