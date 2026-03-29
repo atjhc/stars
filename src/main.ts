@@ -86,7 +86,6 @@ function bvToColor(ci: number): THREE.Color {
   return new THREE.Color(r, g, b);
 }
 
-// Quantize color index to nearest 0.05 and cache glow textures
 const glowTextureCache = new Map<string, THREE.CanvasTexture>();
 
 function getGlowTexture(color: THREE.Color, ci: number): THREE.CanvasTexture {
@@ -238,20 +237,25 @@ function updateCamera() {
 }
 updateCamera();
 
-const dropLineGeo = new THREE.BufferGeometry().setFromPoints([
-  new THREE.Vector3(),
-  new THREE.Vector3(),
-]);
-const dropLine = new THREE.Line(
-  dropLineGeo,
-  new THREE.LineBasicMaterial({
-    color: 0x4466aa,
-    transparent: true,
-    opacity: 0.6,
-  }),
-);
-dropLine.visible = false;
-scene.add(dropLine);
+const dropLineMat = new THREE.LineBasicMaterial({
+  color: 0x4466aa,
+  transparent: true,
+  opacity: 0.6,
+});
+
+function createDropLine(): THREE.Line {
+  const geo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(),
+    new THREE.Vector3(),
+  ]);
+  const line = new THREE.Line(geo, dropLineMat);
+  line.visible = false;
+  scene.add(line);
+  return line;
+}
+
+const selectDropLine = createDropLine();
+const hoverDropLine = createDropLine();
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -315,16 +319,17 @@ window.addEventListener("mouseup", (e) => {
   }
 });
 
-let animStart: number | null = null;
-let animFrom: THREE.Vector3 | null = null;
-let animTo: THREE.Vector3 | null = null;
+let animation: { from: THREE.Vector3; to: THREE.Vector3; start: number } | null = null;
 
 function selectStar(mesh: THREE.Mesh) {
   selectedMesh = mesh;
-  animFrom = target.clone();
-  animTo = mesh.position.clone();
-  animStart = performance.now();
+  animation = {
+    from: target.clone(),
+    to: mesh.position.clone(),
+    start: performance.now(),
+  };
   updateLabelVisibility();
+  setDropLine(selectDropLine, mesh);
 }
 
 function updateLabelVisibility() {
@@ -334,12 +339,15 @@ function updateLabelVisibility() {
 }
 
 function tickAnimation(now: number) {
-  if (!animStart || !animFrom || !animTo) return;
-  const t = Math.min(1, (now - animStart) / ANIM_DURATION);
+  if (!animation) return;
+  const t = Math.min(1, (now - animation.start) / ANIM_DURATION);
   const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  target.lerpVectors(animFrom, animTo, ease);
+  target.lerpVectors(animation.from, animation.to, ease);
+  // Slide grid along galactic plane to stay under the target, but keep it on the plane through Sol
+  scratchVec3.copy(target).addScaledVector(galUp, -target.dot(galUp));
+  gridHelper.position.copy(scratchVec3);
   updateCamera();
-  if (t >= 1) animStart = null;
+  if (t >= 1) animation = null;
 }
 
 renderer.domElement.addEventListener(
@@ -356,25 +364,34 @@ renderer.domElement.addEventListener(
   { passive: false },
 );
 
-function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
-  const star = mesh.userData as Star;
+function setDropLine(line: THREE.Line, mesh: THREE.Mesh) {
   const starPos = mesh.position;
   scratchVec3.copy(starPos).addScaledVector(galUp, -starPos.dot(galUp));
-  const positions = dropLineGeo.attributes.position as THREE.BufferAttribute;
+  const positions = line.geometry.attributes.position as THREE.BufferAttribute;
   positions.setXYZ(0, starPos.x, starPos.y, starPos.z);
   positions.setXYZ(1, scratchVec3.x, scratchVec3.y, scratchVec3.z);
   positions.needsUpdate = true;
-  dropLine.visible = true;
+  line.visible = gridHelper.visible;
+}
 
-  tooltip.innerHTML = `
-    <div class="star-name">${starDisplayName(star)}</div>
-    <div class="star-detail">
-      Distance: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)<br>
-      Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
-      Spectral: ${star.spect || "\u2014"}<br>
-      Luminosity: ${star.lum.toFixed(3)} L\u2609
-    </div>
-  `;
+let lastHoveredMesh: THREE.Mesh | null = null;
+
+function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
+  setDropLine(hoverDropLine, mesh);
+
+  if (lastHoveredMesh !== mesh) {
+    lastHoveredMesh = mesh;
+    const star = mesh.userData as Star;
+    tooltip.innerHTML = `
+      <div class="star-name">${starDisplayName(star)}</div>
+      <div class="star-detail">
+        Distance: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)<br>
+        Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
+        Spectral: ${star.spect || "\u2014"}<br>
+        Luminosity: ${star.lum.toFixed(3)} L\u2609
+      </div>
+    `;
+  }
   tooltip.style.display = "block";
   tooltip.style.left = clientX + 16 + "px";
   tooltip.style.top = clientY - 10 + "px";
@@ -382,7 +399,8 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
 
 function hideHover() {
   tooltip.style.display = "none";
-  dropLine.visible = false;
+  hoverDropLine.visible = false;
+  lastHoveredMesh = null;
 }
 
 let hoveredViaLabel = false;
@@ -436,7 +454,6 @@ window.addEventListener("resize", () => {
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Search
 const searchEl = document.getElementById("search")!;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
 const searchResults = document.getElementById("search-results")!;
@@ -493,7 +510,6 @@ function selectSearchResult(index: number) {
 
 window.addEventListener("keydown", (e) => {
   if (searchOpen) {
-    // handled below
   } else if (e.target instanceof HTMLInputElement) {
     return;
   } else if (e.key === "/") {
@@ -506,6 +522,8 @@ window.addEventListener("keydown", (e) => {
     return;
   } else if (e.key === "g") {
     gridHelper.visible = !gridHelper.visible;
+    selectDropLine.visible = gridHelper.visible && selectDropLine.visible;
+    hoverDropLine.visible = gridHelper.visible && hoverDropLine.visible;
     return;
   } else {
     return;
