@@ -196,9 +196,42 @@ const galNorthEq = new THREE.Vector3(
   -Math.cos(decGNP) * Math.sin(raGNP),
 ).normalize();
 
-const gridHelper = new THREE.GridHelper(60, 30, 0x4466aa, 0x334477);
-gridHelper.material.transparent = true;
-(gridHelper.material as THREE.Material).opacity = 0.5;
+const GRID_SIZE = 60;
+const GRID_DIVISIONS = 30;
+const GRID_FADE_RADIUS = 30.0;
+
+const gridShaderMat = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  uniforms: {
+    uCenter: { value: new THREE.Vector3(0, 0, 0) },
+    uFadeRadius: { value: GRID_FADE_RADIUS },
+    uColor: { value: new THREE.Color(0x6699dd) },
+  },
+  vertexShader: `
+    varying vec3 vWorldPos;
+    void main() {
+      vec4 world = modelMatrix * vec4(position, 1.0);
+      vWorldPos = world.xyz;
+      gl_Position = projectionMatrix * viewMatrix * world;
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 uCenter;
+    uniform float uFadeRadius;
+    uniform vec3 uColor;
+    varying vec3 vWorldPos;
+    void main() {
+      float d = distance(vWorldPos, uCenter);
+      float alpha = 1.0 * smoothstep(uFadeRadius, 0.0, d);
+      if (alpha < 0.005) discard;
+      gl_FragColor = vec4(uColor, alpha);
+    }
+  `,
+});
+
+const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_DIVISIONS);
+gridHelper.material = gridShaderMat;
 gridHelper.quaternion.setFromUnitVectors(
   new THREE.Vector3(0, 1, 0),
   galNorthEq,
@@ -241,6 +274,7 @@ const dropLineMat = new THREE.LineBasicMaterial({
   color: 0x4466aa,
   transparent: true,
   opacity: 0.6,
+  depthTest: false,
 });
 
 function createDropLine(): THREE.Line {
@@ -321,6 +355,11 @@ window.addEventListener("mouseup", (e) => {
 
 let animation: { from: THREE.Vector3; to: THREE.Vector3; start: number } | null = null;
 
+function updateGridCenter() {
+  scratchVec3.copy(target).addScaledVector(galUp, -target.dot(galUp));
+  gridShaderMat.uniforms.uCenter.value.copy(scratchVec3);
+}
+
 function selectStar(mesh: THREE.Mesh) {
   selectedMesh = mesh;
   animation = {
@@ -334,7 +373,7 @@ function selectStar(mesh: THREE.Mesh) {
 
 function updateLabelVisibility() {
   for (const label of starLabels) {
-    label.visible = labelsVisible || label.userData.mesh === selectedMesh;
+    label.visible = labelsVisible;
   }
 }
 
@@ -343,9 +382,7 @@ function tickAnimation(now: number) {
   const t = Math.min(1, (now - animation.start) / ANIM_DURATION);
   const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   target.lerpVectors(animation.from, animation.to, ease);
-  // Slide grid along galactic plane to stay under the target, but keep it on the plane through Sol
-  scratchVec3.copy(target).addScaledVector(galUp, -target.dot(galUp));
-  gridHelper.position.copy(scratchVec3);
+  updateGridCenter();
   updateCamera();
   if (t >= 1) animation = null;
 }
