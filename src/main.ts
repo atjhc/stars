@@ -28,10 +28,6 @@ const ANIM_DURATION = 600;
 const SCALE = 3;
 const MAX_SEARCH_RESULTS = 20;
 
-function starDisplayName(star: Star): string {
-  return star.name;
-}
-
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   55,
@@ -176,7 +172,7 @@ let selectedMesh: THREE.Mesh | null = null;
     pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
     cursor: pointer;
   `;
-  labelDiv.textContent = starDisplayName(star);
+  labelDiv.textContent = star.name;
   labelMeshMap.set(labelDiv, mesh);
   labelDiv.setAttribute("data-star-label", "");
   const label = new CSS2DObject(labelDiv);
@@ -370,6 +366,7 @@ function selectStar(mesh: THREE.Mesh) {
   };
   updateLabelVisibility();
   setDropLine(selectDropLine, mesh);
+  lastHoveredMesh = null;
 }
 
 function updateLabelVisibility() {
@@ -413,14 +410,12 @@ function setDropLine(line: THREE.Line, mesh: THREE.Mesh) {
 }
 
 let lastHoveredMesh: THREE.Mesh | null = null;
-let lastTooltipSelection: THREE.Mesh | null = null;
 
 function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
   setDropLine(hoverDropLine, mesh);
 
-  if (lastHoveredMesh !== mesh || lastTooltipSelection !== selectedMesh) {
+  if (lastHoveredMesh !== mesh) {
     lastHoveredMesh = mesh;
-    lastTooltipSelection = selectedMesh;
     const star = mesh.userData as Star;
 
     let distLine = `From Sol: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)`;
@@ -430,7 +425,7 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
       const dy = star.y - sel.y;
       const dz = star.z - sel.z;
       const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      distLine += `<br>From ${starDisplayName(sel)}: ${d.toFixed(2)} pc (${(d * 3.262).toFixed(1)} ly)`;
+      distLine += `<br>From ${sel.name}: ${d.toFixed(2)} pc (${(d * 3.262).toFixed(1)} ly)`;
     }
 
     const aliasLine = star.aliases?.length
@@ -438,7 +433,7 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
       : "";
 
     tooltip.innerHTML = `
-      <div class="star-name">${starDisplayName(star)}</div>
+      <div class="star-name">${star.name}</div>
       ${aliasLine}
       <div class="star-detail">
         ${distLine}<br>
@@ -537,7 +532,7 @@ function updateSearchResults(query: string) {
   if (q.length > 0) {
     for (const mesh of starObjects) {
       const star = mesh.userData as Star;
-      if (starDisplayName(star).toLowerCase().includes(q)) {
+      if (star.name.toLowerCase().includes(q)) {
         filteredStars.push({ star, mesh });
         if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
       }
@@ -551,7 +546,7 @@ function renderSearchResults() {
   searchResults.innerHTML = "";
   filteredStars.forEach((entry, i) => {
     const li = document.createElement("li");
-    li.textContent = `${starDisplayName(entry.star)}  (${entry.star.dist.toFixed(1)} pc)`;
+    li.textContent = `${entry.star.name}  (${entry.star.dist.toFixed(1)} pc)`;
     if (i === selectedIndex) li.classList.add("selected");
     li.addEventListener("click", () => selectSearchResult(i));
     searchResults.appendChild(li);

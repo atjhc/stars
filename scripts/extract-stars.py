@@ -145,104 +145,65 @@ def extract(input_csv: str, output_json: str) -> None:
     def is_multistar(row: dict) -> bool:
         return row.get("base", "").strip() != ""
 
-    def get_name(row: dict) -> str:
-        proper = row.get("proper", "").strip()
-        comp = row.get("comp", "").strip()
+    def get_names(row: dict) -> tuple[str, list[str]]:
+        """Walk the naming hierarchy once, returning (primary_name, aliases)."""
         multi = is_multistar(row)
+        comp = row.get("comp", "").strip()
         base = row.get("base", "").strip()
+        suffix = comp_suffix(row) if multi else ""
+        candidates: list[str] = []
 
+        # Proper name
+        proper = row.get("proper", "").strip()
         if proper:
             if multi and base in dup_proper_systems:
-                return proper + comp_suffix(row)
-            return proper
+                candidates.append(proper + suffix)
+            else:
+                candidates.append(proper)
 
         # Secondary components inherit primary's proper name
         if comp not in ("", "1"):
             primary_id = row.get("comp_primary", "").strip()
-            primary = by_id.get(primary_id)
-            if primary:
-                primary_proper = primary.get("proper", "").strip()
-                if primary_proper:
-                    return primary_proper + comp_suffix(row)
-
-        bf = parse_bf(row.get("bf", ""))
-        if bf:
-            if multi:
-                return bf + comp_suffix(row)
-            return bf
-
-        # Gliese catalog ID (already includes component letter)
-        gl = row.get("gl", "").strip()
-        if gl:
-            return gl
-
-        hip = row.get("hip", "").strip()
-        if hip:
-            return f"HIP {hip}"
-
-        hd = row.get("hd", "").strip()
-        if hd:
-            return f"HD {hd}"
-
-        return f"HYG {row['id']}"
-
-    def get_aliases(row: dict, primary_name: str) -> list[str]:
-        """Collect alternative designations not already used as the primary name."""
-        aliases = []
-        multi = is_multistar(row)
-        suffix = comp_suffix(row) if multi else ""
-
-        # Proper name (if not primary)
-        proper = row.get("proper", "").strip()
-        if proper and proper != primary_name:
-            aliases.append(proper)
-
-        # Inherited proper name for secondaries
-        comp = row.get("comp", "").strip()
-        if comp not in ("", "1"):
-            primary_id = row.get("comp_primary", "").strip()
-            primary = by_id.get(primary_id)
-            if primary:
-                pp = primary.get("proper", "").strip()
+            primary_row = by_id.get(primary_id)
+            if primary_row:
+                pp = primary_row.get("proper", "").strip()
                 if pp:
-                    inherited = pp + COMP_LETTER.get(comp, f" {comp}")
-                    if inherited != primary_name and inherited not in aliases:
-                        aliases.append(inherited)
+                    inherited = pp + comp_suffix(row)
+                    if inherited not in candidates:
+                        candidates.append(inherited)
 
         # Bayer/Flamsteed
         bf = parse_bf(row.get("bf", ""))
         if bf:
             bf_full = bf + suffix if multi else bf
-            if bf_full != primary_name and bf_full not in aliases:
-                aliases.append(bf_full)
+            if bf_full not in candidates:
+                candidates.append(bf_full)
 
-        # Gliese
+        # Gliese (already includes component letter)
         gl = row.get("gl", "").strip()
-        if gl and gl != primary_name:
-            aliases.append(gl)
+        if gl and gl not in candidates:
+            candidates.append(gl)
 
         # HIP
         hip = row.get("hip", "").strip()
         if hip:
-            hip_name = f"HIP {hip}"
-            if hip_name != primary_name:
-                aliases.append(hip_name)
+            candidates.append(f"HIP {hip}")
 
         # HD
         hd = row.get("hd", "").strip()
         if hd:
-            hd_name = f"HD {hd}"
-            if hd_name != primary_name:
-                aliases.append(hd_name)
+            candidates.append(f"HD {hd}")
 
-        return aliases
+        if not candidates:
+            return f"HYG {row['id']}", []
+
+        return candidates[0], candidates[1:]
 
     results = []
     for row in nearest:
         try:
             ci = float(row["ci"]) if row["ci"] else 0.656
-            name = get_name(row)
-            aliases = get_aliases(row, name)
+            name, aliases = get_names(row)
             entry = {
                 "name": name,
                 "x": float(row["x"]),

@@ -1,4 +1,4 @@
-import { readFile, writeFile, cp } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 
 await Bun.build({
   entrypoints: ["./src/main.ts"],
