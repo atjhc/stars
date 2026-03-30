@@ -18,6 +18,7 @@ interface Star {
   ci: number;
   spect: string;
   lum: number;
+  aliases?: string[];
 }
 
 const MIN_ORBIT_RADIUS = 0.5;
@@ -28,7 +29,7 @@ const SCALE = 3;
 const MAX_SEARCH_RESULTS = 20;
 
 function starDisplayName(star: Star): string {
-  return star.name === "ID 0" ? "Sol" : star.name;
+  return star.name;
 }
 
 const scene = new THREE.Scene();
@@ -432,8 +433,13 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
       distLine += `<br>From ${starDisplayName(sel)}: ${d.toFixed(2)} pc (${(d * 3.262).toFixed(1)} ly)`;
     }
 
+    const aliasLine = star.aliases?.length
+      ? `<div class="star-aliases">${star.aliases.join(" · ")}</div>`
+      : "";
+
     tooltip.innerHTML = `
       <div class="star-name">${starDisplayName(star)}</div>
+      ${aliasLine}
       <div class="star-detail">
         ${distLine}<br>
         Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
