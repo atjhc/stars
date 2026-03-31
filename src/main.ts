@@ -170,13 +170,13 @@ let selectedMesh: THREE.Mesh | null = null;
   labelDiv.style.cssText = `
     color: rgba(255,255,255,0.7); font-size: 10px;
     pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
+    margin-top: 10px;
     cursor: pointer;
   `;
   labelDiv.textContent = star.name;
   labelMeshMap.set(labelDiv, mesh);
   labelDiv.setAttribute("data-star-label", "");
   const label = new CSS2DObject(labelDiv);
-  label.position.set(0, -(lumSize + 0.06), 0);
   label.center.set(0.5, 0);
   label.userData.mesh = mesh;
   mesh.add(label);
@@ -419,7 +419,7 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
     const star = mesh.userData as Star;
 
     let distLine = `From Sol: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)`;
-    if (selectedMesh && selectedMesh !== mesh) {
+    if (selectedMesh && selectedMesh !== mesh && (selectedMesh.userData as Star).name !== "Sol") {
       const sel = selectedMesh.userData as Star;
       const dx = star.x - sel.x;
       const dy = star.y - sel.y;
