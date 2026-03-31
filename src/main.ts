@@ -139,15 +139,27 @@ let selectedMesh: THREE.Mesh | null = null;
   const color = bvToColor(star.ci);
 
   const lumSize = Math.max(
-    0.03,
-    Math.min(0.3, 0.04 + 0.06 * Math.log10(Math.max(star.lum, 0.001))),
+    0.005,
+    Math.min(0.05, 0.008 + 0.012 * Math.log10(Math.max(star.lum, 0.001))),
   );
 
   const geo = new THREE.SphereGeometry(lumSize, 12, 8);
-  geo.computeBoundingSphere();
-  geo.boundingSphere!.radius = Math.max(0.3, lumSize * 3);
   const mat = new THREE.MeshBasicMaterial({ color });
   const mesh = new THREE.Mesh(geo, mat);
+
+  // Use an inflated invisible sphere for raycasting so the hitbox covers the halo
+  const hitRadius = Math.max(0.15, lumSize * 5);
+  const hitSphere = new THREE.Sphere(new THREE.Vector3(), hitRadius);
+  mesh.raycast = (raycaster, intersects) => {
+    hitSphere.center.copy(mesh.getWorldPosition(scratchVec3));
+    const intersection = raycaster.ray.intersectSphere(hitSphere, scratchVec3);
+    if (intersection) {
+      const distance = raycaster.ray.origin.distanceTo(intersection);
+      if (distance >= raycaster.near && distance <= raycaster.far) {
+        intersects.push({ distance, point: intersection.clone(), object: mesh });
+      }
+    }
+  };
   mesh.position.set(star.x * SCALE, star.z * SCALE, -star.y * SCALE);
   mesh.userData = star;
   starGroup.add(mesh);
@@ -158,7 +170,7 @@ let selectedMesh: THREE.Mesh | null = null;
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    opacity: Math.min(1, 0.5 + star.lum * 0.15),
+    opacity: Math.min(1, 0.7 + star.lum * 0.2),
   });
   const sprite = new THREE.Sprite(spriteMat);
   sprite.raycast = () => {};
