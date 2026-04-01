@@ -9,8 +9,8 @@ Usage:
       "https://codeberg.org/astronexus/hyg/media/branch/main/data/hyg/CURRENT/hyg_v42.csv.gz"
     gunzip hyg_v42.csv.gz
 
-    # Run the extraction:
-    python3 scripts/extract-stars.py hyg_v42.csv src/stars.json
+    # Run the extraction (with augmentations):
+    python3 scripts/extract-stars.py hyg_v42.csv src/stars.json data/augmentations.json
 
 Data source: https://codeberg.org/astronexus/hyg (CC-BY-SA 4.0)
 
@@ -108,7 +108,12 @@ def parse_bf(bf: str) -> str | None:
     return None
 
 
-def extract(input_csv: str, output_json: str) -> None:
+def extract(input_csv: str, output_json: str, augmentations_path: str | None = None) -> None:
+    augmentations: dict = {}
+    if augmentations_path:
+        with open(augmentations_path) as f:
+            augmentations = json.load(f)
+
     all_stars = []
     with open(input_csv) as f:
         reader = csv.DictReader(f)
@@ -137,6 +142,18 @@ def extract(input_csv: str, output_json: str) -> None:
         propers = [m.get("proper", "").strip() for m in members if m.get("proper", "").strip()]
         if len(propers) != len(set(propers)):
             dup_proper_systems.add(base)
+
+    def get_key(row: dict) -> str:
+        """Stable identifier: Gliese ID, or HIP, or 'Sol'."""
+        gl = row.get("gl", "").strip()
+        if gl:
+            return gl
+        hip = row.get("hip", "").strip()
+        if hip:
+            return f"HIP {hip}"
+        if row.get("proper", "").strip() == "Sol":
+            return "Sol"
+        return f"HYG {row['id']}"
 
     def comp_suffix(row: dict) -> str:
         comp = row.get("comp", "").strip()
@@ -203,8 +220,19 @@ def extract(input_csv: str, output_json: str) -> None:
     for row in nearest:
         try:
             ci = float(row["ci"]) if row["ci"] else 0.656
+            key = get_key(row)
             name, aliases = get_names(row)
-            entry = {
+            aug = augmentations.get(key, {})
+
+            # Augmentation name override replaces the primary name;
+            # move the old name into aliases if it's not already there
+            if aug.get("name"):
+                old_name = name
+                name = aug["name"]
+                if old_name not in aliases and old_name != name:
+                    aliases.insert(0, old_name)
+
+            entry: dict = {
                 "name": name,
                 "x": float(row["x"]),
                 "y": float(row["y"]),
@@ -218,6 +246,10 @@ def extract(input_csv: str, output_json: str) -> None:
             }
             if aliases:
                 entry["aliases"] = aliases
+            if aug.get("wikipedia"):
+                entry["wikipedia"] = aug["wikipedia"]
+            if aug.get("notes"):
+                entry["notes"] = aug["notes"]
             results.append(entry)
         except (ValueError, KeyError):
             continue
@@ -235,7 +267,8 @@ def extract(input_csv: str, output_json: str) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <hyg_v42.csv> <output.json>", file=sys.stderr)
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print(f"Usage: {sys.argv[0]} <hyg_v42.csv> <output.json> [augmentations.json]", file=sys.stderr)
         sys.exit(1)
-    extract(sys.argv[1], sys.argv[2])
+    aug_path = sys.argv[3] if len(sys.argv) == 4 else None
+    extract(sys.argv[1], sys.argv[2], aug_path)

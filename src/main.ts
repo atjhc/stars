@@ -19,6 +19,8 @@ interface Star {
   spect: string;
   lum: number;
   aliases?: string[];
+  wikipedia?: string;
+  notes?: string;
 }
 
 const MIN_ORBIT_RADIUS = 0.5;
@@ -443,6 +445,12 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
     const aliasLine = star.aliases?.length
       ? `<div class="star-aliases">${star.aliases.join(" · ")}</div>`
       : "";
+    const notesLine = star.notes
+      ? `<div class="star-notes">${star.notes}</div>`
+      : "";
+    const wikiLink = star.wikipedia
+      ? `<div class="star-wiki"><a href="${star.wikipedia}" target="_blank">Wikipedia</a></div>`
+      : "";
 
     tooltip.innerHTML = `
       <div class="star-name">${star.name}</div>
@@ -453,6 +461,8 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
         Spectral: ${star.spect || "\u2014"}<br>
         Luminosity: ${star.lum.toFixed(3)} L\u2609
       </div>
+      ${notesLine}
+      ${wikiLink}
     `;
   }
   tooltip.style.display = "block";
@@ -461,15 +471,23 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
 }
 
 function hideHover() {
+  if (hoveredViaTooltip) return;
   tooltip.style.display = "none";
   hoverDropLine.visible = false;
   lastHoveredMesh = null;
 }
 
 let hoveredViaLabel = false;
+let hoveredViaTooltip = false;
+
+tooltip.addEventListener("mouseenter", () => { hoveredViaTooltip = true; });
+tooltip.addEventListener("mouseleave", () => {
+  hoveredViaTooltip = false;
+  hideHover();
+});
 
 renderer.domElement.addEventListener("mousemove", (e) => {
-  if (hoveredViaLabel) return;
+  if (hoveredViaLabel || hoveredViaTooltip) return;
   setMouseNDC(mouse, e.clientX, e.clientY);
 
   raycaster.setFromCamera(mouse, camera);

@@ -20,7 +20,7 @@ Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deplo
 curl -L -o hyg_v42.csv.gz \
   "https://codeberg.org/astronexus/hyg/media/branch/main/data/hyg/CURRENT/hyg_v42.csv.gz"
 gunzip hyg_v42.csv.gz
-python3 scripts/extract-stars.py hyg_v42.csv src/stars.json
+python3 scripts/extract-stars.py hyg_v42.csv src/stars.json data/augmentations.json
 ```
 
 ### Structure
@@ -31,6 +31,7 @@ python3 scripts/extract-stars.py hyg_v42.csv src/stars.json
 - `src/main.ts` — Three.js scene, camera, interaction logic
 - `src/stars.json` — 300 nearest stars extracted from HYG v4.2 database
 - `scripts/extract-stars.py` — Extracts and names stars from the HYG CSV
+- `data/augmentations.json` — Hand-curated overrides: Wikipedia links, name fixes, notes (keyed by Gliese ID)
 
 ### Star naming
 

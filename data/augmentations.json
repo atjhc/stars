@@ -1,0 +1,881 @@
+{
+  "Sol": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sun",
+    "notes": "Our star. Wikipedia article is 'Sun'."
+  },
+  "Gl 551": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Proxima_Centauri",
+    "notes": "Closest star to Sol (1.30 ly). Red dwarf flare star. Hosts Proxima Centauri b, one of the nearest known exoplanets in a habitable zone."
+  },
+  "Gl 559A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Centauri",
+    "notes": "Primary component of Alpha Centauri, the nearest star system. Wikipedia has one article for the whole system. Sun-like G2V star."
+  },
+  "Gl 559B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Centauri",
+    "notes": "Secondary component of Alpha Centauri (K1V). The name 'Toliman' is the IAU-approved name for Alpha Centauri B. Wikipedia covers the whole system in one article."
+  },
+  "Gl 699": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Barnard%27s_Star",
+    "notes": "Second closest star system to Sol (1.82 ly). Fastest known proper motion of any star. Red dwarf. Candidate exoplanet Barnard's Star b announced 2018."
+  },
+  "Gl 406": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Wolf_359",
+    "notes": "One of the nearest stars (2.39 ly). Red dwarf flare star. Famous from Star Trek: The Next Generation."
+  },
+  "Gl 411": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lalande_21185",
+    "notes": "Red dwarf, one of the brightest red dwarfs in the night sky. At 2.55 ly, one of the nearest stars."
+  },
+  "Gl 65A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Luyten_726-8",
+    "name": "Luyten 726-8 A",
+    "notes": "Component A of binary system Luyten 726-8 (Gliese 65). Variable star designation BL Ceti. Wikipedia article is 'Luyten 726-8' (redirected from 'Gliese 65')."
+  },
+  "Gl 65B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Luyten_726-8",
+    "name": "UV Ceti",
+    "notes": "Component B of binary system Luyten 726-8. Variable star designation UV Ceti. Prototype of UV Ceti-type flare stars. Wikipedia covers the whole system."
+  },
+  "Gl 244A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sirius",
+    "notes": "Brightest star in the night sky (apparent magnitude -1.46). A1V main sequence star. Wikipedia covers the whole system."
+  },
+  "Gl 244B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sirius",
+    "name": "Sirius B",
+    "notes": "White dwarf companion of Sirius. First white dwarf discovered. Wikipedia covers both components under 'Sirius'."
+  },
+  "Gl 729": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ross_154",
+    "notes": "Red dwarf flare star in Sagittarius."
+  },
+  "Gl 905": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ross_248",
+    "notes": "Red dwarf in Andromeda. In about 36,000 years will briefly become the closest star to the Sun."
+  },
+  "Gl 144": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Eridani",
+    "name": "Epsilon Eridani",
+    "notes": "One of the nearest Sun-like stars. 'Ran' is the IAU proper name, but the star is far more commonly known as Epsilon Eridani. Has a confirmed Jupiter-like planet and a debris disk."
+  },
+  "Gl 887": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lacaille_9352",
+    "notes": "Red dwarf in Piscis Austrinus. One of the closest stars with a high proper motion. Hosts two candidate super-Earth exoplanets."
+  },
+  "Gl 447": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ross_128",
+    "notes": "Red dwarf in Virgo. Hosts Ross 128 b, one of the nearest temperate Earth-sized exoplanets."
+  },
+  "Gl 866A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/EZ_Aquarii",
+    "name": "EZ Aquarii A",
+    "notes": "Component A of the triple star system EZ Aquarii (Gliese 866 / Luyten 789-6). Wikipedia article is 'EZ Aquarii'."
+  },
+  "Gl 725A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Struve_2398",
+    "notes": "Component A of binary system Struve 2398 (Gliese 725) in Draco. Both components host exoplanets."
+  },
+  "Gl 725B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Struve_2398",
+    "notes": "Component B of binary system Struve 2398 (Gliese 725) in Draco."
+  },
+  "Gl 820A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/61_Cygni",
+    "name": "61 Cygni A",
+    "notes": "Component A of 61 Cygni, a famous binary star. First star to have its distance measured by parallax (Friedrich Bessel, 1838). Wikipedia article is '61 Cygni'."
+  },
+  "Gl 820B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/61_Cygni",
+    "name": "61 Cygni B",
+    "notes": "Component B of 61 Cygni."
+  },
+  "Gl 280A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Procyon",
+    "notes": "Brightest star in Canis Minor and 8th brightest in the night sky. F5IV-V subgiant/main-sequence star."
+  },
+  "Gl 280B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Procyon",
+    "name": "Procyon B",
+    "notes": "White dwarf companion of Procyon. Wikipedia covers the system under 'Procyon'."
+  },
+  "Gl 15A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_34",
+    "notes": "Component A of Groombridge 34, a binary red dwarf system in Andromeda. Has a confirmed super-Earth exoplanet."
+  },
+  "Gl 15B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_34",
+    "name": "Groombridge 34 B",
+    "notes": "Component B of Groombridge 34. Flare star designated GQ Andromedae."
+  },
+  "Gl 845": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Indi",
+    "name": "Epsilon Indi",
+    "notes": "Orange dwarf (K5V) in Indus. Has a confirmed Jupiter-mass planet and a pair of brown dwarf companions (Ba and Bb). High proper motion star."
+  },
+  "GJ 1111": {
+    "wikipedia": "https://en.wikipedia.org/wiki/DX_Cancri",
+    "name": "DX Cancri",
+    "notes": "Red dwarf flare star in Cancer. One of the faintest known nearby stars."
+  },
+  "Gl 71": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Tau_Ceti",
+    "name": "Tau Ceti",
+    "notes": "Sun-like star (G8.5V) in Cetus. One of the nearest single G-type stars. Has a debris disk and candidate planets. Popular target in science fiction."
+  },
+  "Gl 54.1": {
+    "wikipedia": "https://en.wikipedia.org/wiki/YZ_Ceti",
+    "name": "YZ Ceti",
+    "notes": "Red dwarf flare star in Cetus. Hosts three confirmed planets. Possible first detection of a magnetic field from a terrestrial exoplanet (2023)."
+  },
+  "HIP 82724": {
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
+    "name": "36 Ophiuchi A",
+    "notes": "Component A of 36 Ophiuchi triple star system. IAU-approved name is 'Guniibuu' (from Aboriginal Australian Kamilaroi/Euahlayi culture). Also known as GJ 663 A. Wikipedia article is '36 Ophiuchi' covering the whole system."
+  },
+  "Gl 273": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Luyten%27s_Star",
+    "notes": "Red dwarf in Canis Minor. Named after Willem Jacob Luyten. Hosts Luyten b, a potentially habitable super-Earth."
+  },
+  "Gl 191": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kapteyn%27s_Star",
+    "notes": "Red subdwarf with the highest known proper motion of any star prior to Barnard's Star. Believed to originate from the Omega Centauri globular cluster."
+  },
+  "Gl 825": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lacaille_8760",
+    "notes": "Red dwarf in Microscopium. One of the brightest red dwarfs visible in the night sky."
+  },
+  "Gl 860A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kruger_60",
+    "notes": "Component A of Kruger 60, a binary red dwarf system in Cepheus. Wikipedia covers the system under 'Kruger 60'."
+  },
+  "Gl 860B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kruger_60",
+    "name": "Kruger 60 B",
+    "notes": "Component B of Kruger 60. Flare star designated DO Cephei."
+  },
+  "Gl 234A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ross_614",
+    "notes": "Component A of the Ross 614 binary system. Low-mass red dwarf in Monoceros."
+  },
+  "Gl 234B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ross_614",
+    "name": "Ross 614 B",
+    "notes": "Component B of Ross 614."
+  },
+  "HIP 82725": {
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
+    "name": "36 Ophiuchi B",
+    "notes": "Component B of the 36 Ophiuchi triple star system. Also known as GJ 663 B. Wikipedia article is '36 Ophiuchi' covering the whole system."
+  },
+  "Gl 35": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Van_Maanen%27s_Star",
+    "notes": "Closest known solitary white dwarf to the Sun. Third white dwarf discovered (1917). In Pisces."
+  },
+  "GJ 1061": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_1061",
+    "notes": "Red dwarf in Horologium. Hosts three Earth-mass planets; GJ 1061 d is in the habitable zone. Old star (7+ billion years)."
+  },
+  "Gl 628": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Wolf_1061",
+    "notes": "Red dwarf in Ophiuchus. Hosts three confirmed planets; Wolf 1061c was one of the nearest known potentially habitable exoplanets at time of discovery."
+  },
+  "Gl 473A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Wolf_424",
+    "name": "Wolf 424 A",
+    "notes": "Component A of Wolf 424, a binary red dwarf system in Virgo. Both components are near the hydrogen-burning limit."
+  },
+  "Gl 473B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Wolf_424",
+    "name": "Wolf 424 B",
+    "notes": "Component B of Wolf 424."
+  },
+  "Gl 1": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_1",
+    "notes": "Red dwarf in Sculptor. The first entry in the Gliese Catalogue of Nearby Stars."
+  },
+  "GJ 3522": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_3522",
+    "notes": "Nearby triple star system (two spectroscopic binary components plus an outer companion). Also known as G 41-14."
+  },
+  "Gl 83.1": {
+    "wikipedia": "https://en.wikipedia.org/wiki/TZ_Arietis",
+    "name": "TZ Arietis",
+    "notes": "Red dwarf flare star in Aries. Very high flare activity. Three candidate planets reported (2019)."
+  },
+  "GJ 3618": {
+    "wikipedia": "https://en.wikipedia.org/wiki/DENIS_J1048%E2%88%923956",
+    "name": "DENIS J1048-3956",
+    "notes": "Ultra-cool red dwarf in Antlia. One of the smallest and dimmest known stars near the Sun. Also designated GJ 3618."
+  },
+  "GJ 3622": {
+    "wikipedia": "https://en.wikipedia.org/wiki/LHS_292",
+    "name": "LHS 292",
+    "notes": "Red dwarf in Sextans. Also designated GJ 3622. One of the faintest nearby stars."
+  },
+  "Gl 687": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_687",
+    "notes": "Red dwarf in Draco. Hosts a Neptune-mass planet (Gliese 687 b) discovered in 2014."
+  },
+  "Gl 674": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_674",
+    "notes": "Red dwarf in Ara with an exoplanetary companion. Flare star."
+  },
+  "Gl 440": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_440",
+    "notes": "White dwarf (DQ type) in Musca. Also known as LAWD 37 / LP 145-141. Fourth closest white dwarf to the Sun. Remnant of a massive B-type star."
+  },
+  "Gl 876": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_876",
+    "notes": "Red dwarf in Aquarius with four confirmed exoplanets. First red dwarf confirmed to have a planet (Gliese 876 b, 1998). System exhibits rare Laplace resonance."
+  },
+  "GJ 1002": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_1002",
+    "notes": "Red dwarf in Cetus. Hosts two Earth-mass planets in the habitable zone, discovered 2022."
+  },
+  "GJ 1245A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_1245",
+    "notes": "Component A of triple red dwarf system in Cygnus. Both A and B are flare stars (collectively V1581 Cygni)."
+  },
+  "GJ 1245B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_1245",
+    "notes": "Component B of the GJ 1245 triple system."
+  },
+  "Gl 412A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_412",
+    "name": "Lalande 21258 A",
+    "notes": "Component A of the Gliese 412 binary system in Ursa Major. Also known as Lalande 21258."
+  },
+  "Gl 412B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_412",
+    "name": "WX Ursae Majoris",
+    "notes": "Component B of Gliese 412. Flare star designated WX Ursae Majoris."
+  },
+  "Gl 380": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_1618",
+    "name": "Groombridge 1618",
+    "notes": "Red dwarf in Ursa Major. One of the nearest K-type stars. Possible unconfirmed planetary companion."
+  },
+  "Gl 388": {
+    "wikipedia": "https://en.wikipedia.org/wiki/AD_Leonis",
+    "name": "AD Leonis",
+    "notes": "Red dwarf flare star in Leo. One of the most active flare stars known, with emissions detected across the electromagnetic spectrum."
+  },
+  "Gl 832": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_832",
+    "notes": "Red dwarf in Grus. Hosts one confirmed Jupiter-mass planet (Gliese 832 b)."
+  },
+  "Gl 166A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
+    "name": "40 Eridani A",
+    "notes": "Primary of the 40 Eridani triple system. 'Keid' is the IAU-approved name for component A, but '40 Eridani' is more commonly used. Wikipedia article is '40 Eridani'. The system includes a white dwarf (B) and a red dwarf (C)."
+  },
+  "Gl 166B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
+    "name": "40 Eridani B",
+    "notes": "White dwarf component of 40 Eridani. First white dwarf discovered (1910). Often cited as the location of Vulcan in Star Trek."
+  },
+  "Gl 166C": {
+    "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
+    "name": "40 Eridani C",
+    "notes": "Red dwarf component of 40 Eridani. Flare star designated DY Eridani."
+  },
+  "GJ 1005A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_1005",
+    "notes": "Component A of a red dwarf binary system in Cetus."
+  },
+  "Gl 682": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_682",
+    "notes": "Red dwarf in Scorpius. Two candidate habitable-zone planets were reported in 2014 but not confirmed."
+  },
+  "Gl 702A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/70_Ophiuchi",
+    "name": "70 Ophiuchi A",
+    "notes": "Primary of the 70 Ophiuchi binary system. Orange dwarf (K0V). One of the first confirmed gravitationally-bound binary stars (William Herschel). Wikipedia article is '70 Ophiuchi'."
+  },
+  "Gl 702B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/70_Ophiuchi",
+    "name": "70 Ophiuchi B",
+    "notes": "Component B of 70 Ophiuchi (K4V). Highly elliptical 88-year orbit."
+  },
+  "Gl 873": {
+    "wikipedia": "https://en.wikipedia.org/wiki/EV_Lacertae",
+    "name": "EV Lacertae",
+    "notes": "Red dwarf flare star in Lacerta. Young star (~300 Myr) with a magnetic field much stronger than the Sun's. Capable of extremely powerful flares."
+  },
+  "Gl 768": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Altair",
+    "notes": "12th brightest star in the night sky. A7V main sequence star. Rapid rotator (flattened shape confirmed by interferometry). Part of the Summer Triangle asterism."
+  },
+  "GJ 1116A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/EI_Cancri",
+    "name": "EI Cancri A",
+    "notes": "Component A of the EI Cancri (GJ 1116 / G 9-38) binary system in Cancer. Near the bottom of the main sequence. Extremely high flare rate (~5 per hour). Wikipedia article title is 'EI Cancri'."
+  },
+  "GJ 1116B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/EI_Cancri",
+    "name": "EI Cancri B",
+    "notes": "Component B of the EI Cancri binary. Ultra-cool dwarf (spectral type M7V)."
+  },
+  "HIP 67593": {
+    "wikipedia": "https://en.wikipedia.org/wiki/SCR_1845%E2%88%926357",
+    "name": "SCR 1845-6357",
+    "notes": "Red dwarf with a T-dwarf brown dwarf companion, in the southern sky. Discovered by the SuperCOSMOS-RECONS survey."
+  },
+  "Gl 445": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_445",
+    "notes": "Red dwarf in Camelopardalis. Voyager 1 will pass within 1.6 ly of this star in ~40,000 years. Rapidly approaching the Sun."
+  },
+  "GJ 3379": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_3379",
+    "notes": "Red dwarf in Orion. Also known as Giclas 99-49. Nearest star in the Orion constellation."
+  },
+  "Gl 526": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_526",
+    "notes": "Red dwarf in Bootes. Also known as Wolf 498 / Lalande 25372."
+  },
+  "Gl 169.1A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Stein_2051",
+    "name": "Stein 2051 A",
+    "notes": "Red dwarf component A of Stein 2051, a binary system in Camelopardalis. Wikipedia article is 'Stein 2051'. Nearest known separate red dwarf + white dwarf binary."
+  },
+  "Gl 169.1B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Stein_2051",
+    "name": "Stein 2051 B",
+    "notes": "White dwarf component B of Stein 2051. In 2017, gravitational lensing of background starlight was observed, allowing direct mass measurement."
+  },
+  "HIP 58910": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Comae_Berenices",
+    "notes": "Solar-type star (F9.5V) in Coma Berenices. Slightly brighter and more massive than the Sun. At 30 ly it is further than the input data suggests; distance may differ depending on catalog."
+  },
+  "HIP 33226": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_251",
+    "name": "Gliese 251",
+    "notes": "Red dwarf in Gemini. Also known as Wolf 294 / HD 265866. Nearest star in Gemini. Hosts a confirmed super-Earth (Gliese 251 b) and a second planet in the habitable zone confirmed in 2025."
+  },
+  "HIP 83609": {
+    "notes": "No dedicated Wikipedia article found. SIMBAD lists it as SAO 208385. May have uncertain parallax; listed at 5.6 ly in input data but SIMBAD suggests a much larger distance. Possibly a data error in the input catalog."
+  },
+  "Gl 205": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_205",
+    "notes": "Red dwarf in Orion. No confirmed planets."
+  },
+  "Gl 754": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_754",
+    "notes": "Red dwarf in Telescopium."
+  },
+  "HIP 103039": {
+    "wikipedia": "https://en.wikipedia.org/wiki/LP_816-60",
+    "name": "LP 816-60",
+    "notes": "Red dwarf (M4) in Capricornus."
+  },
+  "Gl 644B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
+    "name": "V1054 Ophiuchi B",
+    "notes": "Part of the V1054 Ophiuchi / Wolf 630 quintuple star system in Ophiuchus. Wikipedia article is 'V1054 Ophiuchi'. All five components are red dwarfs."
+  },
+  "Gl 644C": {
+    "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
+    "name": "V1054 Ophiuchi C",
+    "notes": "Part of the V1054 Ophiuchi quintuple system."
+  },
+  "Gl 229": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_229",
+    "notes": "Red dwarf in Lepus. Host of Gliese 229B, the first confirmed brown dwarf orbiting a star (discovered 1995). Gliese 229B was later found to itself be a binary brown dwarf (resolved 2024)."
+  },
+  "Gl 764": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sigma_Draconis",
+    "name": "Sigma Draconis",
+    "notes": "'Alsafi' is the IAU-approved name, but the star is more commonly known as Sigma Draconis. Sun-like K0V star. Wikipedia article title is 'Sigma Draconis'."
+  },
+  "Gl 251": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_251",
+    "notes": "Red dwarf in Gemini. Also known as Wolf 294 / HD 265866. Hosts a confirmed super-Earth."
+  },
+  "Gl 338A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/ADS_7251",
+    "name": "ADS 7251 A",
+    "notes": "Component A of the Gliese 338 / ADS 7251 binary system. Two near-identical red dwarfs. Component B hosts a planet. Wikipedia article title is 'ADS 7251'."
+  },
+  "Gl 213": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ross_47",
+    "name": "Ross 47",
+    "notes": "Red dwarf in Orion. BY Draconis variable (V1352 Orionis). Nearest star in Orion."
+  },
+  "Gl 693": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_693",
+    "notes": "Red dwarf."
+  },
+  "Gl 570A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_570",
+    "notes": "Primary of the Gliese 570 quaternary system (also known as 33 G. Librae). Orange dwarf with two red dwarf companions (B and C) and a T-dwarf brown dwarf (D). The brown dwarf was one of the coolest known at discovery."
+  },
+  "Gl 752A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_752",
+    "name": "Wolf 1055",
+    "notes": "Component A of the Gliese 752 binary system in Aquila. Also known as Wolf 1055."
+  },
+  "Gl 752B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/VB_10",
+    "name": "VB 10",
+    "notes": "Van Biesbroeck's star. Historically the least luminous and least massive known star (from 1944 until surpassed). Has its own Wikipedia article at 'VB 10'."
+  },
+  "Gl 300": {
+    "notes": "No dedicated Wikipedia article found. Faint red dwarf."
+  },
+  "Gl 570B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_570",
+    "notes": "Red dwarf, part of Gliese 570 quaternary system. Forms close binary with component C. Covered in system article."
+  },
+  "Gl 588": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_588",
+    "notes": "Red dwarf in Lupus with very stable light flux."
+  },
+  "Gl 663A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
+    "notes": "Wikipedia uses '36 Ophiuchi'. Triple system of K dwarfs. Component A named Guniibuu (Kamilaroi/Euahlayi Aboriginal name for robin red-breast). All three components in one article."
+  },
+  "Gl 34B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Cassiopeiae",
+    "notes": "K7V secondary of Eta Cassiopeiae. Covered in system article with component A."
+  },
+  "Gl 34A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Cassiopeiae",
+    "notes": "Wikipedia uses Eta Cassiopeiae. G0V star similar to Sun. Named Achird (matching data). 472-year binary orbit. Both components in one article."
+  },
+  "Gl 285": {
+    "wikipedia": "https://en.wikipedia.org/wiki/YZ_Canis_Minoris",
+    "name": "YZ Canis Minoris",
+    "notes": "Wikipedia uses YZ Canis Minoris. Powerful flare star, roughly three times the size of Jupiter."
+  },
+  "Gl 664": {
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
+    "notes": "Component C of 36 Ophiuchi (also known as 30 Scorpii). Covered in the 36 Ophiuchi system article."
+  },
+  "Gl 661A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Furuhjelm_46",
+    "name": "HD 155876",
+    "notes": "Wikipedia title is HD 155876 (redirected from Furuhjelm 46). Binary of two similar red dwarfs in Hercules. Nearest true star system in Hercules. Both components in one article."
+  },
+  "Gl 908": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_908",
+    "notes": "BY Draconis variable (BR Piscium) in Pisces. Metal-deficient red dwarf."
+  },
+  "Gl 663B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
+    "notes": "Component B of 36 Ophiuchi. Near-identical K dwarf to component A. Covered in system article."
+  },
+  "Gl 783A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HR_7703",
+    "name": "HR 7703",
+    "notes": "Wikipedia uses HR 7703. Binary in Sagittarius. Approaching Sun at 129 km/s, closest approach in 41,100 years at 6.7 ly. Both components in one article."
+  },
+  "Gl 139": {
+    "wikipedia": "https://en.wikipedia.org/wiki/82_G._Eridani",
+    "notes": "Wikipedia uses '82 G. Eridani' (matching display name). G6V star with 3 confirmed super-Earths. High-velocity Population II star, possibly very old. Dust disk detected."
+  },
+  "Gl 783B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HR_7703",
+    "notes": "Secondary of HR 7703 system. Covered in system article."
+  },
+  "Gl 555": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_555",
+    "name": "HN Librae",
+    "notes": "Wikipedia uses HN Librae as the primary name. Red dwarf in Libra with a super-Earth in habitable zone."
+  },
+  "Gl 780": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Pavonis",
+    "name": "Delta Pavonis",
+    "notes": "Wikipedia uses Delta Pavonis. G8 IV subgiant (evolving off main sequence). Identified as 'Best SETI target' by Turnbull & Tarter. Metal-rich."
+  },
+  "GJ 3323": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_3323",
+    "notes": "Red dwarf in Eridanus with 2 detected planets (2017). Passed within 7.3 ly of Sun ~104,000 years ago."
+  },
+  "GJ 1221": {
+    "wikipedia": "https://en.wikipedia.org/wiki/G_240-72",
+    "name": "G 240-72",
+    "notes": "Wikipedia uses G 240-72. White dwarf (DQP9.0) in Draco. 7th closest white dwarf. Massive at 0.81 solar masses. Cooling age 5.69 Gyr."
+  },
+  "Gl 896A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/EQ_Pegasi",
+    "name": "EQ Pegasi",
+    "notes": "Wikipedia uses EQ Pegasi. Binary of two red dwarf flare stars. Primary has one known exoplanet. Subject of 1998 alien signal hoax. Both components in one article."
+  },
+  "Gl 644A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
+    "notes": "Primary component of V1054 Ophiuchi (Wolf 630) quintuple system. Covered in system article."
+  },
+  "Gl 784": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_784",
+    "notes": "Red dwarf in Telescopium. Young (~0.85 Gyr). Will approach to 11.4 ly in ~121,700 years."
+  },
+  "GJ 1128": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_1128",
+    "notes": "Red dwarf in Carina with a prominent 5-year starspot cycle comparable to the Sun's. Distance recognized in 2005."
+  },
+  "Gl 581": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_581",
+    "notes": "Famous exoplanet host in Libra. 3 confirmed planets (b, c, e), 2 disputed (d, g). One of oldest, least active M dwarfs known. Subject of intense habitability debate."
+  },
+  "Gl 896B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/EQ_Pegasi",
+    "notes": "Secondary of EQ Pegasi. M6Ve flare star. Covered in system article."
+  },
+  "Gl 268": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_268",
+    "notes": "Binary red dwarf system in Auriga. Variable star designation QY Aurigae. Flare star discovered 1975."
+  },
+  "Gl 661B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Furuhjelm_46",
+    "notes": "Secondary of HD 155876 (Gliese 661). Covered in system article."
+  },
+  "Gl 338B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/ADS_7251",
+    "notes": "Component B of ADS 7251. Hosts an exoplanet discovered 2020. Covered in system article."
+  },
+  "Gl 223.2": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_223.2",
+    "name": "LP 658-2",
+    "notes": "Wikipedia title is LP 658-2 but URL is Gliese_223.2. White dwarf in Orion. 8th closest white dwarf."
+  },
+  "Gl 625": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_625",
+    "notes": "Red dwarf in Draco with a super-Earth (GJ 625 b) near the inner edge of the habitable zone, detected 2017 by HARPS-N."
+  },
+  "Gl 892": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HD_219134",
+    "name": "HD 219134",
+    "notes": "Wikipedia uses HD 219134. K3V star in Cassiopeia with 5+ known planets, including 2 transiting rocky super-Earths. Naked-eye star (mag 5.57). Very old (~11 Gyr)."
+  },
+  "Gl 408": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_408",
+    "notes": "Red dwarf in Leo."
+  },
+  "Gl 566B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Bo%C3%B6tis",
+    "notes": "Secondary of Xi Bootis. Covered in system article."
+  },
+  "Gl 829": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_829",
+    "notes": "Double-lined spectroscopic binary of two red dwarfs in Pegasus. Also known as Ross 775. High proper motion."
+  },
+  "Gl 566A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Bo%C3%B6tis",
+    "name": "Xi Bootis",
+    "notes": "Wikipedia uses Xi Bootis (Xi Bo\u00f6tis). Nearest visible star in Bootes. BY Draconis variable. Young system (~200 Myr). Both components in one article."
+  },
+  "Gl 643": {
+    "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
+    "notes": "Part of the V1054 Ophiuchi/Wolf 630 quintuple system. Separated ~465 AU from the V1054 Ophiuchi AB pair. Covered in the V1054 Ophiuchi article."
+  },
+  "Gl 299": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_299",
+    "notes": "Red dwarf in Cancer."
+  },
+  "Gl 402": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_402",
+    "name": "EE Leonis",
+    "notes": "Wikipedia title redirects to EE Leonis. BY Draconis variable in Leo. Also known as Wolf 358."
+  },
+  "HIP 85605": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HIP_85605",
+    "notes": "WARNING: Originally thought to be nearby (16-22 ly) but Gaia DR2 showed it is actually ~1,730 ly away. Distance in dataset may be based on erroneous Hipparcos parallax."
+  },
+  "Gl 667A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_667",
+    "notes": "Triple star system in Scorpius. K3V primary. All three components covered in one article. Component C has confirmed super-Earths including Cc in habitable zone."
+  },
+  "Gl 880": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_880",
+    "notes": "Red dwarf in Pegasus. Earlier planet candidate likely spurious (stellar activity artifact)."
+  },
+  "Gl 293": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_293",
+    "notes": "White dwarf in Volans. Nearest star in that constellation. 12th nearest white dwarf. Cooling age ~2.65 Gyr."
+  },
+  "Gl 667B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_667",
+    "notes": "Secondary of Gliese 667. Orbits A with 42-year period at ~12.6 AU. Covered in system article."
+  },
+  "Gl 667C": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_667",
+    "notes": "M1.5 red dwarf orbiting ~230 AU from AB pair. Hosts 2 confirmed super-Earths (Cb, Cc) with Cc in habitable zone. Covered in system article."
+  },
+  "Gl 809": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_809",
+    "notes": "Red dwarf in Cepheus."
+  },
+  "Gl 393": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_393",
+    "notes": "Red dwarf in Sextans with an exoplanet. Chromospherically inactive, possibly ~10 Gyr old."
+  },
+  "Gl 105A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_105",
+    "notes": "Triple system in Cetus. Component A is K-type (HD 16160). Display name '268 G. Cet' is less common than Gliese 105. All three components in one article."
+  },
+  "Gl 105B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_105",
+    "notes": "BY Draconis variable (BX Ceti). ~1200 AU from A. Covered in system article."
+  },
+  "GJ 3991": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_3991",
+    "notes": "Binary in Hercules: red dwarf + white dwarf in tight 14.71-day orbit. Also known as G 203-47."
+  },
+  "Gl 33": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HD_4628",
+    "name": "HD 4628",
+    "notes": "Wikipedia titles the article HD 4628. K2.5V main-sequence star in Pisces, mag 5.7, just visible to naked eye. Display name '96 G. Psc' is less standard than HD 4628."
+  },
+  "Gl 19": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Hydri",
+    "name": "Beta Hydri",
+    "notes": "Brightest star in Hydrus at mag 2.8. G2 IV subgiant, a preview of the Sun's future. One of the oldest nearby stars (6-7.5 Gyr)."
+  },
+  "Gl 68": {
+    "wikipedia": "https://en.wikipedia.org/wiki/107_Piscium",
+    "name": "107 Piscium",
+    "notes": "K1V star in Pisces, ~6 Gyr old. Mag 5.14-5.26, visible to naked eye."
+  },
+  "Gl 53A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Cassiopeiae",
+    "name": "Mu Cassiopeiae A",
+    "notes": "Binary system. High-velocity star moving at 167 km/s through the galaxy. G5V subdwarf primary. One of first high-velocity stars identified. System article covers both A and B."
+  },
+  "Gl 53B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Cassiopeiae",
+    "name": "Mu Cassiopeiae B",
+    "notes": "Secondary component of Mu Cassiopeiae binary. Covered in same system article."
+  },
+  "Gl 879": {
+    "wikipedia": "https://en.wikipedia.org/wiki/TW_Piscis_Austrini",
+    "name": "TW Piscis Austrini",
+    "notes": "Also known as Fomalhaut B. K-type star gravitationally bound to Fomalhaut despite 0.91 ly separation."
+  },
+  "Gl 514": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_514",
+    "notes": "M-type star in Virgo. Has super-Earth Gliese 514 b on eccentric 140-day orbit partially in habitable zone (discovered 2022)."
+  },
+  "Gl 721": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Vega",
+    "notes": "5th brightest star in the night sky (mag 0.03). Key calibration star. Former and future pole star (~13,700 CE). Has circumstellar debris disk. Rapid rotator at 236 km/s."
+  },
+  "Gl 673": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_673",
+    "notes": "K7V orange dwarf in Ophiuchus. In the 'sweet spot' between solar analogs and M dwarfs for habitability studies."
+  },
+  "Gl 881": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Fomalhaut",
+    "notes": "One of the brightest stars in the sky. Famous debris disk. Fomalhaut b was thought to be an exoplanet but is now understood as collision debris. Triple system with TW PsA and LP 876-10."
+  },
+  "Gl 915": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Van_Maanen_2",
+    "name": "Van Maanen 2",
+    "notes": "Closest known solitary white dwarf. Third white dwarf ever identified (after 40 Eri B and Sirius B). DZ8 spectral class, prototype for DZ white dwarfs."
+  },
+  "Gl 66B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/P_Eridani",
+    "name": "p Eridani B",
+    "notes": "Component B of p Eridani binary. K2V, 0.76 solar masses. 394-year orbital period. Single article covers both components."
+  },
+  "Gl 66A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/P_Eridani",
+    "name": "p Eridani A",
+    "notes": "Component A of p Eridani binary. K2V, 0.77 solar masses. Two nearly identical stars."
+  },
+  "Gl 623": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_623",
+    "notes": "Binary red dwarf in Hercules, 1.9 AU separation. Imaged by Hubble's Faint Object Camera in 1994."
+  },
+  "Gl 713A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Chi_Draconis",
+    "name": "Chi Draconis",
+    "notes": "Mag 3.6 binary. F7V primary + ~K0V secondary. System article covers both components."
+  },
+  "Gl 178": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Pi3_Orionis",
+    "name": "Pi3 Orionis",
+    "notes": "Wikipedia article title is Pi3 Orionis. IAU-approved name is Tabit (current display name). F6V at mag 3.16 in Orion's club. Spectral anchor point."
+  },
+  "Gl 686": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_686",
+    "notes": "Red dwarf M1V in Hercules with one known super-Earth on 15.5-day orbit."
+  },
+  "Gl 54": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_54",
+    "notes": "Binary red dwarf system in Tucana with ~1 year orbital period. Nearest neighbors are Zeta Tucanae (3.1 ly) and Beta Hydri (5.1 ly)."
+  },
+  "GJ 1151": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_1151",
+    "notes": "Red dwarf in Ursa Major. Notable for 2020 detection of radio emissions consistent with star-planet magnetic interaction. Confirmed planet GJ 1151 c on 390-day orbit."
+  },
+  "Gl 695A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Herculis",
+    "name": "Mu Herculis A",
+    "notes": "Quadruple star system. G5 IV subgiant primary expanding toward giant phase. Parameters determined via asteroseismology. System article covers all components."
+  },
+  "Gl 695B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Herculis",
+    "name": "Mu Herculis B",
+    "notes": "M4V red dwarf companion in the Mu Herculis quadruple system. Part of Mu2 Herculis pair with component C (~43-year orbit)."
+  },
+  "Gl 695C": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Herculis",
+    "name": "Mu Herculis C",
+    "notes": "Part of Mu2 Herculis pair (B+C, ~43-year period). Covered in same system article."
+  },
+  "Gl 486": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_486",
+    "notes": "Red dwarf in Virgo, formally named Gar (display name matches). Hosts rocky super-Earth Gliese 486 b studied by JWST; dayside ~865 K, likely no atmosphere."
+  },
+  "Gl 475": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Canum_Venaticorum",
+    "name": "Beta Canum Venaticorum",
+    "notes": "Wikipedia article title is Beta Canum Venaticorum. IAU proper name Chara (current display name). G0V solar analog, spectral anchor point. Name means 'joy' (Greek) or 'beloved' (Latin)."
+  },
+  "Gl 506": {
+    "wikipedia": "https://en.wikipedia.org/wiki/61_Virginis",
+    "name": "61 Virginis",
+    "notes": "G7V solar twin in Virgo with three confirmed super-Earth/Neptune exoplanets, all within Venus-distance. Near-solar composition."
+  },
+  "Gl 17": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Tucanae",
+    "name": "Zeta Tucanae",
+    "notes": "F9.5V solar-type star at mag 4.20. Has debris disk detected in infrared. ~5.3 Gyr old."
+  },
+  "Gl 877": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_877",
+    "notes": "Red dwarf M3V in Octans; nearest star in that constellation. ~14x more luminous than Proxima Centauri."
+  },
+  "Gl 867A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_867",
+    "notes": "Quadruple system in Aquarius. Gl 867A (FK Aqr) is a spectroscopic binary with strongest known dipolar magnetic field for its mass class (as of 2024)."
+  },
+  "Gl 867B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_867",
+    "notes": "Gl 867B (FL Aqr) is a close 1.8-day binary. Companion may be a brown dwarf (~61 Jupiter masses). Covered in same system article."
+  },
+  "Gl 222A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Chi1_Orionis",
+    "name": "Chi1 Orionis",
+    "notes": "G0V star at the tip of Orion's club. Candidate Ursa Major Moving Group member. RS CVn variable."
+  },
+  "Gl 250A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_250",
+    "notes": "K3.5V star in Monoceros. Binary with M2.5V companion. System article covers both A and B."
+  },
+  "Gl 250B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_250",
+    "notes": "M2.5V companion in the Gliese 250 system. Covered in same article."
+  },
+  "Gl 791.2": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HU_Delphini",
+    "name": "HU Delphini",
+    "notes": "Binary red dwarf in Delphinus with 538.6-day period. Primary is fully convective at 23.7% solar mass."
+  },
+  "GJ 2069B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/GJ_2069",
+    "notes": "Part of GJ 2069 quintuple system (CU Cancri + CV Cancri) in Cancer. All five stars are red dwarfs. Member of Castor Moving Group. Note: Wikipedia says 54 ly which may conflict with catalog parallax."
+  },
+  "Gl 666A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/41_G._Arae",
+    "name": "41 G. Arae A",
+    "notes": "Primary of hierarchical triple in Ara. G8V, also HD 156274. System article covers all components."
+  },
+  "Gl 666B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/41_G._Arae",
+    "name": "41 G. Arae B",
+    "notes": "Close binary of two red dwarfs (Ba+Bb) in the 41 G. Arae triple. Covered in same article."
+  },
+  "Gl 465": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ross_695",
+    "name": "Ross 695",
+    "notes": "Wikipedia article titled Ross 695. M2V red dwarf; nearest star in Corvus. No planets detected."
+  },
+  "Gl 433": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_433",
+    "notes": "Red dwarf M2V in Hydra with three exoplanets. Gliese 433 d in optimistic habitable zone. Gliese 433 c is nearest/widest/coldest Neptune-like detected (as of 2020)."
+  },
+  "Gl 785": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HD_192310",
+    "name": "HD 192310",
+    "notes": "Wikipedia article titled HD 192310 (5 G. Capricorni). K-type star in Capricornus with two Neptune-sized exoplanets."
+  },
+  "Gl 216A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Leporis",
+    "name": "Gamma Leporis A",
+    "notes": "F6V star in Lepus at mag 3.59. Ursa Major Moving Group member. High-priority Terrestrial Planet Finder target. Binary with AK Leporis."
+  },
+  "Gl 216B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Leporis",
+    "name": "Gamma Leporis B",
+    "notes": "AK Leporis, BY Dra variable at mag 6.28. 95 arcsec from primary, visible in binoculars. Covered in same article."
+  },
+  "Gl 357": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_357",
+    "notes": "M-type star in Hydra with three exoplanets. Gliese 357 d is a super-Earth in the habitable zone. JWST found no clear atmospheric molecules on planet b."
+  },
+  "Gl 150": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Eridani",
+    "name": "Delta Eridani",
+    "notes": "Wikipedia article titled Delta Eridani. IAU name Rana (current display name). Mag 3.54, 5th brightest in Eridanus. Name means 'frog' from a historical misattribution."
+  },
+  "Gl 451A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_1830",
+    "notes": "Famous high proper motion star ('Flying Star'). Once held the record before Kapteyn's Star and Barnard's Star. G/K subdwarf."
+  },
+  "Gl 451B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_1830",
+    "notes": "Companion to Groombridge 1830. Covered in same article."
+  },
+  "Gl 849": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_849",
+    "notes": "M3.5V red dwarf in Aquarius with two gas giant companions. First long-period Jupiter-like planet around a red dwarf discovered here (2006)."
+  },
+  "Gl 502": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Comae_Berenices",
+    "name": "Beta Comae Berenices",
+    "notes": "G0V solar-type star at mag 4.3 in Coma Berenices. Spectral anchor point. Actually brighter than Alpha Comae Berenices despite Bayer designation."
+  },
+  "Gl 137": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kappa1_Ceti",
+    "name": "Kappa1 Ceti",
+    "notes": "Young (300-400 Myr) G5V star. BY Dra variable with 9-day rotation. Excellent match for the young Sun at a key epoch in Earth's past."
+  },
+  "Gl 442A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HD_102365",
+    "name": "HD 102365",
+    "notes": "Wikipedia article titled HD 102365 (66 G. Centauri). Ancient G-type star (11-13 Gyr). Previously reported planet likely a false positive (2025 study)."
+  },
+  "Gl 442B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HD_102365",
+    "notes": "Companion in the HD 102365 binary. Covered in same article."
+  },
+  "Gl 827": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Pavonis",
+    "name": "Gamma Pavonis",
+    "notes": "F9V solar-type star in Pavo at mag 4.22. Ranked 14th on TPF-C's top 100 targets for rocky habitable-zone planets."
+  },
+  "Gl 176": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_176",
+    "notes": "Red dwarf in Taurus (nearest star in constellation). Hosts super-Earth Gliese 176 b orbiting inside the star's inner magnetosphere."
+  },
+  "Gl 432A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HR_4458",
+    "name": "HD 100623",
+    "notes": "Wikipedia article titled HR 4458 (HD 100623, 20 Crateris). K0V star in Hydra, ~5 Gyr old. Binary system."
+  },
+  "Gl 432B": {
+    "wikipedia": "https://en.wikipedia.org/wiki/HR_4458",
+    "notes": "Companion in HD 100623 system. Covered in same article."
+  },
+  "Gl 434": {
+    "wikipedia": "https://en.wikipedia.org/wiki/61_Ursae_Majoris",
+    "name": "61 Ursae Majoris",
+    "notes": "G8V solar-type star in Ursa Major at mag 5.35. ~2 Gyr old, 93% solar mass."
+  },
+  "Gl 569A": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gliese_569",
+    "notes": "Flare star in Bootes orbited by a pair of brown dwarfs (Gliese 569 Ba/Bb in 2.4-year orbit). Complex hierarchical system."
+  }
+}
