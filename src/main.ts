@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import starsData from "./stars.json";
 
 await new Promise<void>((resolve) => {
@@ -51,82 +55,54 @@ labelRenderer.domElement.style.pointerEvents = "none";
 labelRenderer.domElement.style.zIndex = "10";
 document.body.appendChild(labelRenderer.domElement);
 
-function bvToColor(ci: number): THREE.Color {
-  if (ci < -0.4) ci = -0.4;
-  if (ci > 2.0) ci = 2.0;
+// Star shader material — procedural multi-layer glow
+const starVertexShader = `
+  attribute vec3 starColor;
+  attribute float starBrightness;
 
-  let t: number, r: number, g: number, b: number;
-  if (ci < 0.0) {
-    t = (ci + 0.4) / 0.4;
-    r = 0.6 + 0.4 * t;
-    g = 0.7 + 0.3 * t;
-    b = 1.0;
-  } else if (ci < 0.4) {
-    t = ci / 0.4;
-    r = 1.0;
-    g = 1.0 - 0.1 * t;
-    b = 1.0 - 0.2 * t;
-  } else if (ci < 0.8) {
-    t = (ci - 0.4) / 0.4;
-    r = 1.0;
-    g = 0.9 - 0.2 * t;
-    b = 0.8 - 0.4 * t;
-  } else if (ci < 1.4) {
-    t = (ci - 0.8) / 0.6;
-    r = 1.0;
-    g = 0.7 - 0.3 * t;
-    b = 0.4 - 0.2 * t;
-  } else {
-    t = (ci - 1.4) / 0.6;
-    r = 1.0 - 0.2 * t;
-    g = 0.4 - 0.2 * t;
-    b = 0.2 - 0.1 * t;
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vBrightness;
+
+  void main() {
+    vUv = uv;
+    vColor = starColor;
+    vBrightness = starBrightness;
+
+    // Billboard: always face camera
+    vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+    mvCenter.xy += position.xy;
+    gl_Position = projectionMatrix * mvCenter;
   }
-  return new THREE.Color(r, g, b);
-}
+`;
 
-const glowTextureCache = new Map<string, THREE.CanvasTexture>();
+const starFragmentShader = `
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vBrightness;
 
-function getGlowTexture(color: THREE.Color, ci: number): THREE.CanvasTexture {
-  const key = (Math.round(ci * 20) / 20).toFixed(2);
-  const cached = glowTextureCache.get(key);
-  if (cached) return cached;
+  void main() {
+    vec2 uv = (vUv - 0.5) * 2.0;
+    float d = length(uv);
+    if (d > 1.0) discard;
 
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const cx = size / 2;
-  const r = (color.r * 255) | 0;
-  const g = (color.g * 255) | 0;
-  const b = (color.b * 255) | 0;
+    // Multi-layer glow
+    float core = exp(-d * d * 30.0);
+    float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
+    float outerGlow = exp(-d * 4.0) * 0.3;
 
-  const core = ctx.createRadialGradient(cx, cx, 0, cx, cx, size * 0.08);
-  core.addColorStop(0, `rgba(255,255,255,1)`);
-  core.addColorStop(1, `rgba(255,255,255,0)`);
-  ctx.fillStyle = core;
-  ctx.fillRect(0, 0, size, size);
+    float intensity = (core + halo * 0.4 + outerGlow) * vBrightness;
 
-  const inner = ctx.createRadialGradient(cx, cx, 0, cx, cx, size * 0.25);
-  inner.addColorStop(0, `rgba(${r},${g},${b},0.9)`);
-  inner.addColorStop(0.3, `rgba(${r},${g},${b},0.4)`);
-  inner.addColorStop(1, `rgba(${r},${g},${b},0)`);
-  ctx.fillStyle = inner;
-  ctx.fillRect(0, 0, size, size);
+    // Core desaturates toward white; color shows in the halo
+    vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, core * vBrightness));
 
-  const outer = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
-  outer.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
-  outer.addColorStop(0.15, `rgba(${r},${g},${b},0.12)`);
-  outer.addColorStop(0.4, `rgba(${r},${g},${b},0.03)`);
-  outer.addColorStop(1, `rgba(0,0,0,0)`);
-  ctx.fillStyle = outer;
-  ctx.fillRect(0, 0, size, size);
+    gl_FragColor = vec4(color * intensity, intensity);
+  }
+`;
 
-  const tex = new THREE.CanvasTexture(canvas);
-  glowTextureCache.set(key, tex);
-  return tex;
-}
+const BLOOM_LAYER = 1;
+const bloomLayer = new THREE.Layers();
+bloomLayer.set(BLOOM_LAYER);
 
 const starGroup = new THREE.Group();
 scene.add(starGroup);
@@ -137,20 +113,58 @@ const labelMeshMap = new WeakMap<HTMLElement, THREE.Mesh>();
 let labelsVisible = true;
 let selectedMesh: THREE.Mesh | null = null;
 
+// B-V color index to RGB (Ballesteros temperature + Helland RGB)
+function bvToColor(ci: number): THREE.Color {
+  if (ci < -0.4) ci = -0.4;
+  if (ci > 2.0) ci = 2.0;
+  const temp = 4600.0 * (1.0 / (0.92 * ci + 1.7) + 1.0 / (0.92 * ci + 0.62));
+  const t = temp / 100.0;
+
+  let r: number, g: number, b: number;
+  if (t <= 66) { r = 1.0; } else { r = Math.min(1, 329.698727446 * Math.pow(t - 60, -0.1332047592) / 255); }
+  if (t <= 66) { g = Math.min(1, Math.max(0, (99.4708025861 * Math.log(t) - 161.1195681661) / 255)); }
+  else { g = Math.min(1, 288.1221695283 * Math.pow(t - 60, -0.0755148492) / 255); }
+  if (t >= 66) { b = 1.0; } else if (t <= 19) { b = 0.0; }
+  else { b = Math.min(1, Math.max(0, (138.5177312231 * Math.log(t - 10) - 305.0447927307) / 255)); }
+
+  return new THREE.Color(r, g, b);
+}
+
+// Shared quad geometry for all star billboards
+const starQuadGeo = new THREE.PlaneGeometry(1, 1);
+
 (starsData as Star[]).forEach((star) => {
   const color = bvToColor(star.ci);
 
-  const lumSize = Math.max(
-    0.005,
-    Math.min(0.05, 0.008 + 0.012 * Math.log10(Math.max(star.lum, 0.001))),
-  );
+  // Billboard size based on luminosity (log scale)
+  const quadSize = Math.max(0.4, 0.3 + 0.2 * Math.log10(Math.max(star.lum, 0.001)));
+  // Brightness multiplier for the shader
+  const brightness = Math.min(2.0, 0.5 + 0.3 * Math.log10(Math.max(star.lum, 0.001)));
 
-  const geo = new THREE.SphereGeometry(lumSize, 12, 8);
-  const mat = new THREE.MeshBasicMaterial({ color });
+  // Per-star shader material with attributes baked as uniforms
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: starVertexShader,
+    fragmentShader: starFragmentShader,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: true,
+  });
+
+  // Set per-instance attributes via geometry attributes
+  const geo = starQuadGeo.clone();
+  geo.setAttribute("starColor", new THREE.Float32BufferAttribute(
+    [color.r, color.g, color.b, color.r, color.g, color.b,
+     color.r, color.g, color.b, color.r, color.g, color.b], 3));
+  geo.setAttribute("starBrightness", new THREE.Float32BufferAttribute(
+    [brightness, brightness, brightness, brightness], 1));
+
   const mesh = new THREE.Mesh(geo, mat);
+  mesh.scale.set(quadSize, quadSize, 1);
+  mesh.layers.enable(BLOOM_LAYER);
 
-  // Use an inflated invisible sphere for raycasting so the hitbox covers the halo
-  const hitRadius = Math.max(0.15, lumSize * 5);
+  // Hitbox for raycasting — covers the visible glow area
+  const hitRadius = quadSize * 0.4;
   const hitSphere = new THREE.Sphere(new THREE.Vector3(), hitRadius);
   mesh.raycast = (raycaster, intersects) => {
     hitSphere.center.copy(mesh.getWorldPosition(scratchVec3));
@@ -166,19 +180,6 @@ let selectedMesh: THREE.Mesh | null = null;
   mesh.userData = star;
   starGroup.add(mesh);
   starObjects.push(mesh);
-
-  const spriteMat = new THREE.SpriteMaterial({
-    map: getGlowTexture(color, star.ci),
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    opacity: Math.min(1, 0.7 + star.lum * 0.2),
-  });
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.raycast = () => {};
-  const glowSize = Math.max(0.4, lumSize * 10);
-  sprite.scale.set(glowSize, glowSize, 1);
-  mesh.add(sprite);
 
   const labelDiv = document.createElement("div");
   labelDiv.style.cssText = `
@@ -601,6 +602,7 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
 });
 
@@ -703,10 +705,22 @@ searchInput.addEventListener("input", () => {
 selectedMesh = starObjects[0];
 updateDetailPanel();
 
+// Bloom post-processing
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.8,  // strength
+  0.3,  // radius
+  0.2,  // threshold
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
 function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
-  renderer.render(scene, camera);
+  composer.render();
   labelRenderer.render(scene, camera);
 }
 animate(performance.now());
