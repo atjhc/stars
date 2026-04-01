@@ -319,6 +319,28 @@ function setMouseNDC(vec: THREE.Vector2, clientX: number, clientY: number) {
   vec.y = -(clientY / window.innerHeight) * 2 + 1;
 }
 
+const ORBIT_SENSITIVITY = 0.005;
+
+function applyOrbitDrag(dx: number, dy: number) {
+  dragDistance += Math.abs(dx) + Math.abs(dy);
+  orbitTheta += dx * ORBIT_SENSITIVITY;
+  orbitPhi = THREE.MathUtils.clamp(
+    orbitPhi - dy * ORBIT_SENSITIVITY,
+    0.1,
+    Math.PI - 0.1,
+  );
+  updateCamera();
+}
+
+function trySelectAt(clientX: number, clientY: number) {
+  setMouseNDC(mouse, clientX, clientY);
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(starObjects);
+  if (hits.length > 0) {
+    selectStar(hits[0].object as THREE.Mesh);
+  }
+}
+
 // Mouse controls
 renderer.domElement.addEventListener("mousedown", (e) => {
   if (e.altKey) {
@@ -338,31 +360,21 @@ window.addEventListener("mousemove", (e) => {
   prevMouse.y = e.clientY;
 
   if (!isDragging && !isZooming) return;
-  dragDistance += Math.abs(dx) + Math.abs(dy);
 
   if (isDragging) {
-    orbitTheta -= dx * 0.005;
-    orbitPhi = THREE.MathUtils.clamp(orbitPhi + dy * 0.005, 0.1, Math.PI - 0.1);
-    updateCamera();
+    applyOrbitDrag(dx, dy);
   } else {
+    dragDistance += Math.abs(dx) + Math.abs(dy);
     orbitRadius = THREE.MathUtils.clamp(orbitRadius + dy * 0.1, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS);
     updateCamera();
   }
 });
 
 window.addEventListener("mouseup", (e) => {
-  const wasClick = dragDistance < CLICK_THRESHOLD;
+  const wasClick = isDragging && dragDistance < CLICK_THRESHOLD;
   isDragging = false;
   isZooming = false;
-
-  if (wasClick) {
-    setMouseNDC(mouse, e.clientX, e.clientY);
-    raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects(starObjects);
-    if (hits.length > 0) {
-      selectStar(hits[0].object as THREE.Mesh);
-    }
-  }
+  if (wasClick) trySelectAt(e.clientX, e.clientY);
 });
 
 // Touch controls
@@ -390,19 +402,15 @@ renderer.domElement.addEventListener("touchmove", (e) => {
   if (e.touches.length === 1 && isDragging) {
     const dx = e.touches[0].clientX - prevMouse.x;
     const dy = e.touches[0].clientY - prevMouse.y;
-    dragDistance += Math.abs(dx) + Math.abs(dy);
     prevMouse.x = e.touches[0].clientX;
     prevMouse.y = e.touches[0].clientY;
-    orbitTheta -= dx * 0.005;
-    orbitPhi = THREE.MathUtils.clamp(orbitPhi + dy * 0.005, 0.1, Math.PI - 0.1);
-    updateCamera();
+    applyOrbitDrag(dx, dy);
   } else if (e.touches.length === 2) {
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const scale = touchStartDist / dist;
     orbitRadius = THREE.MathUtils.clamp(
-      touchStartRadius * scale,
+      touchStartRadius * (touchStartDist / dist),
       MIN_ORBIT_RADIUS,
       MAX_ORBIT_RADIUS,
     );
@@ -411,17 +419,14 @@ renderer.domElement.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 renderer.domElement.addEventListener("touchend", (e) => {
-  if (e.touches.length === 0 && isDragging && dragDistance < CLICK_THRESHOLD) {
-    const touch = e.changedTouches[0];
-    setMouseNDC(mouse, touch.clientX, touch.clientY);
-    raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects(starObjects);
-    if (hits.length > 0) {
-      selectStar(hits[0].object as THREE.Mesh);
-    }
-  }
+  e.preventDefault();
+  const wasClick = isDragging && dragDistance < CLICK_THRESHOLD;
   isDragging = false;
-});
+  if (wasClick && e.changedTouches.length > 0) {
+    const touch = e.changedTouches[0];
+    trySelectAt(touch.clientX, touch.clientY);
+  }
+}, { passive: false });
 
 let animation: { from: THREE.Vector3; to: THREE.Vector3; start: number } | null = null;
 
@@ -542,10 +547,15 @@ function updateDetailPanel() {
   detail.classList.add("active");
 }
 
+// Track last input type so hover works on hybrid devices but not after touch
+let lastInputWasTouch = false;
 let hoveredViaLabel = false;
 
+window.addEventListener("touchstart", () => { lastInputWasTouch = true; }, { capture: true });
+window.addEventListener("mousemove", () => { lastInputWasTouch = false; }, { capture: true });
+
 renderer.domElement.addEventListener("mousemove", (e) => {
-  if (hoveredViaLabel) return;
+  if (hoveredViaLabel || lastInputWasTouch) return;
   setMouseNDC(mouse, e.clientX, e.clientY);
 
   raycaster.setFromCamera(mouse, camera);
@@ -559,6 +569,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 });
 
 labelRenderer.domElement.addEventListener("mouseover", (e) => {
+  if (lastInputWasTouch) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoveredViaLabel = true;
@@ -687,6 +698,10 @@ window.addEventListener("keydown", (e) => {
 searchInput.addEventListener("input", () => {
   updateSearchResults(searchInput.value);
 });
+
+// Select Sol on load
+selectedMesh = starObjects[0];
+updateDetailPanel();
 
 function animate(now: number) {
   requestAnimationFrame(animate);
