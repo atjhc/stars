@@ -319,6 +319,7 @@ function setMouseNDC(vec: THREE.Vector2, clientX: number, clientY: number) {
   vec.y = -(clientY / window.innerHeight) * 2 + 1;
 }
 
+// Mouse controls
 renderer.domElement.addEventListener("mousedown", (e) => {
   if (e.altKey) {
     isZooming = true;
@@ -362,6 +363,64 @@ window.addEventListener("mouseup", (e) => {
       selectStar(hits[0].object as THREE.Mesh);
     }
   }
+});
+
+// Touch controls
+let touchStartDist = 0;
+let touchStartRadius = 0;
+
+renderer.domElement.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    isDragging = true;
+    prevMouse.x = e.touches[0].clientX;
+    prevMouse.y = e.touches[0].clientY;
+    dragDistance = 0;
+  } else if (e.touches.length === 2) {
+    isDragging = false;
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    touchStartDist = Math.sqrt(dx * dx + dy * dy);
+    touchStartRadius = orbitRadius;
+  }
+}, { passive: false });
+
+renderer.domElement.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  if (e.touches.length === 1 && isDragging) {
+    const dx = e.touches[0].clientX - prevMouse.x;
+    const dy = e.touches[0].clientY - prevMouse.y;
+    dragDistance += Math.abs(dx) + Math.abs(dy);
+    prevMouse.x = e.touches[0].clientX;
+    prevMouse.y = e.touches[0].clientY;
+    orbitTheta -= dx * 0.005;
+    orbitPhi = THREE.MathUtils.clamp(orbitPhi + dy * 0.005, 0.1, Math.PI - 0.1);
+    updateCamera();
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const scale = touchStartDist / dist;
+    orbitRadius = THREE.MathUtils.clamp(
+      touchStartRadius * scale,
+      MIN_ORBIT_RADIUS,
+      MAX_ORBIT_RADIUS,
+    );
+    updateCamera();
+  }
+}, { passive: false });
+
+renderer.domElement.addEventListener("touchend", (e) => {
+  if (e.touches.length === 0 && isDragging && dragDistance < CLICK_THRESHOLD) {
+    const touch = e.changedTouches[0];
+    setMouseNDC(mouse, touch.clientX, touch.clientY);
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(starObjects);
+    if (hits.length > 0) {
+      selectStar(hits[0].object as THREE.Mesh);
+    }
+  }
+  isDragging = false;
 });
 
 let animation: { from: THREE.Vector3; to: THREE.Vector3; start: number } | null = null;
