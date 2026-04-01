@@ -381,6 +381,7 @@ function selectStar(mesh: THREE.Mesh) {
   updateLabelVisibility();
   setDropLine(selectDropLine, mesh);
   lastHoveredMesh = null;
+  updateDetailPanel();
 }
 
 function updateLabelVisibility() {
@@ -424,6 +425,7 @@ function setDropLine(line: THREE.Line, mesh: THREE.Mesh) {
 }
 
 let lastHoveredMesh: THREE.Mesh | null = null;
+const detail = document.getElementById("detail")!;
 
 function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
   setDropLine(hoverDropLine, mesh);
@@ -431,38 +433,9 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
   if (lastHoveredMesh !== mesh) {
     lastHoveredMesh = mesh;
     const star = mesh.userData as Star;
-
-    let distLine = `From Sol: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)`;
-    if (selectedMesh && selectedMesh !== mesh && (selectedMesh.userData as Star).name !== "Sol") {
-      const sel = selectedMesh.userData as Star;
-      const dx = star.x - sel.x;
-      const dy = star.y - sel.y;
-      const dz = star.z - sel.z;
-      const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      distLine += `<br>From ${sel.name}: ${d.toFixed(2)} pc (${(d * 3.262).toFixed(1)} ly)`;
-    }
-
-    const aliasLine = star.aliases?.length
-      ? `<div class="star-aliases">${star.aliases.join(" · ")}</div>`
-      : "";
-    const notesLine = star.notes
-      ? `<div class="star-notes">${star.notes}</div>`
-      : "";
-    const wikiLink = star.wikipedia
-      ? `<div class="star-wiki"><a href="${star.wikipedia}" target="_blank">Wikipedia</a></div>`
-      : "";
-
     tooltip.innerHTML = `
       <div class="star-name">${star.name}</div>
-      ${aliasLine}
-      <div class="star-detail">
-        ${distLine}<br>
-        Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
-        Spectral: ${star.spect || "\u2014"}<br>
-        Luminosity: ${star.lum.toFixed(3)} L\u2609
-      </div>
-      ${notesLine}
-      ${wikiLink}
+      <div class="star-dist">${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)</div>
     `;
   }
   tooltip.style.display = "block";
@@ -471,23 +444,49 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
 }
 
 function hideHover() {
-  if (hoveredViaTooltip) return;
   tooltip.style.display = "none";
   hoverDropLine.visible = false;
   lastHoveredMesh = null;
 }
 
-let hoveredViaLabel = false;
-let hoveredViaTooltip = false;
+function updateDetailPanel() {
+  if (!selectedMesh) {
+    detail.classList.remove("active");
+    return;
+  }
+  const star = selectedMesh.userData as Star;
 
-tooltip.addEventListener("mouseenter", () => { hoveredViaTooltip = true; });
-tooltip.addEventListener("mouseleave", () => {
-  hoveredViaTooltip = false;
-  hideHover();
-});
+  let distLine = `From Sol: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)`;
+
+  const aliasLine = star.aliases?.length
+    ? `<div class="star-aliases">${star.aliases.join(" · ")}</div>`
+    : "";
+  const notesLine = star.notes
+    ? `<div class="star-notes">${star.notes}</div>`
+    : "";
+  const wikiLink = star.wikipedia
+    ? `<div class="star-wiki"><a href="${star.wikipedia}" target="_blank">Wikipedia \u2197</a></div>`
+    : "";
+
+  detail.innerHTML = `
+    <div class="star-name">${star.name}</div>
+    ${aliasLine}
+    <div class="star-detail">
+      ${distLine}<br>
+      Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
+      Spectral: ${star.spect || "\u2014"}<br>
+      Luminosity: ${star.lum.toFixed(3)} L\u2609
+    </div>
+    ${notesLine}
+    ${wikiLink}
+  `;
+  detail.classList.add("active");
+}
+
+let hoveredViaLabel = false;
 
 renderer.domElement.addEventListener("mousemove", (e) => {
-  if (hoveredViaLabel || hoveredViaTooltip) return;
+  if (hoveredViaLabel) return;
   setMouseNDC(mouse, e.clientX, e.clientY);
 
   raycaster.setFromCamera(mouse, camera);
