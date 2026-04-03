@@ -61,6 +61,7 @@ document.body.appendChild(labelRenderer.domElement);
 const starVertexShader = `
   attribute vec3 starColor;
   attribute float starBrightness;
+  uniform float uHighlight;
 
   varying vec2 vUv;
   varying vec3 vColor;
@@ -69,7 +70,7 @@ const starVertexShader = `
   void main() {
     vUv = uv;
     vColor = starColor;
-    vBrightness = starBrightness;
+    vBrightness = starBrightness * uHighlight;
 
     // Billboard: always face camera
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
@@ -112,6 +113,7 @@ scene.add(starGroup);
 const starObjects: THREE.Mesh[] = [];
 const starLabels: CSS2DObject[] = [];
 const labelMeshMap = new WeakMap<HTMLElement, THREE.Mesh>();
+const meshLabelMap = new WeakMap<THREE.Mesh, HTMLElement>();
 let labelsVisible = true;
 let selectedMesh: THREE.Mesh | null = null;
 
@@ -145,6 +147,7 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
 
   // Per-star shader material with attributes baked as uniforms
   const mat = new THREE.ShaderMaterial({
+    uniforms: { uHighlight: { value: 1.0 } },
     vertexShader: starVertexShader,
     fragmentShader: starFragmentShader,
     transparent: true,
@@ -165,11 +168,12 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   mesh.scale.set(quadSize, quadSize, 1);
   mesh.layers.enable(BLOOM_LAYER);
 
-  // Hitbox for raycasting — covers the visible glow area
-  const hitRadius = quadSize * 0.4;
-  const hitSphere = new THREE.Sphere(new THREE.Vector3(), hitRadius);
+  const HIT_SCREEN_FRACTION = 0.02;
+  const hitSphere = new THREE.Sphere();
   mesh.raycast = (raycaster, intersects) => {
     hitSphere.center.copy(mesh.getWorldPosition(scratchVec3));
+    const camDist = hitSphere.center.distanceTo(raycaster.ray.origin);
+    hitSphere.radius = camDist * HIT_SCREEN_FRACTION;
     const intersection = raycaster.ray.intersectSphere(hitSphere, scratchVec3);
     if (intersection) {
       const distance = raycaster.ray.origin.distanceTo(intersection);
@@ -192,6 +196,7 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   `;
   labelDiv.textContent = star.name;
   labelMeshMap.set(labelDiv, mesh);
+  meshLabelMap.set(mesh, labelDiv);
   labelDiv.setAttribute("data-star-label", "");
   labelDiv.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -292,30 +297,20 @@ function updateCamera() {
 }
 updateCamera();
 
-const dropLineMat = new THREE.LineBasicMaterial({
-  color: 0x4466aa,
-  transparent: true,
-  opacity: 0.6,
-  depthTest: false,
-});
+const HIGHLIGHT_BOOST = 1.6;
 
-function createDropLine(): THREE.Line {
-  const geo = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(),
-    new THREE.Vector3(),
-  ]);
-  const line = new THREE.Line(geo, dropLineMat);
-  line.visible = false;
-  scene.add(line);
-  return line;
+function highlightStar(mesh: THREE.Mesh) {
+  (mesh.material as THREE.ShaderMaterial).uniforms.uHighlight.value = HIGHLIGHT_BOOST;
+  meshLabelMap.get(mesh)?.classList.add("highlight");
 }
 
-const selectDropLine = createDropLine();
-const hoverDropLine = createDropLine();
+function unhighlightStar(mesh: THREE.Mesh) {
+  (mesh.material as THREE.ShaderMaterial).uniforms.uHighlight.value = 1.0;
+  meshLabelMap.get(mesh)?.classList.remove("highlight");
+}
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-const tooltip = document.getElementById("tooltip")!;
 const scratchVec3 = new THREE.Vector3();
 
 let dragDistance = 0;
@@ -447,14 +442,15 @@ function updateGridCenter() {
 }
 
 function selectStar(mesh: THREE.Mesh) {
+  if (selectedMesh) unhighlightStar(selectedMesh);
   selectedMesh = mesh;
+  highlightStar(mesh);
   animation = {
     from: target.clone(),
     to: mesh.position.clone(),
     start: performance.now(),
   };
   updateLabelVisibility();
-  setDropLine(selectDropLine, mesh);
   lastHoveredMesh = null;
   updateDetailPanel();
 }
@@ -487,38 +483,18 @@ function onWheel(e: WheelEvent) {
 renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
 labelRenderer.domElement.addEventListener("wheel", onWheel, { passive: false });
 
-function setDropLine(line: THREE.Line, mesh: THREE.Mesh) {
-  const starPos = mesh.position;
-  scratchVec3.copy(starPos).addScaledVector(galUp, -starPos.dot(galUp));
-  const positions = line.geometry.attributes.position as THREE.BufferAttribute;
-  positions.setXYZ(0, starPos.x, starPos.y, starPos.z);
-  positions.setXYZ(1, scratchVec3.x, scratchVec3.y, scratchVec3.z);
-  positions.needsUpdate = true;
-  line.visible = gridHelper.visible;
-}
-
 let lastHoveredMesh: THREE.Mesh | null = null;
 const detail = document.getElementById("detail")!;
 
-function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
-  setDropLine(hoverDropLine, mesh);
-
-  if (lastHoveredMesh !== mesh) {
-    lastHoveredMesh = mesh;
-    const star = mesh.userData as Star;
-    tooltip.innerHTML = `
-      <div class="star-name">${star.name}</div>
-      <div class="star-dist">${(star.dist * 3.262).toFixed(1)} ly (${star.dist.toFixed(2)} pc)</div>
-    `;
-  }
-  tooltip.style.display = "block";
-  tooltip.style.left = clientX + 16 + "px";
-  tooltip.style.top = clientY - 10 + "px";
+function showHover(mesh: THREE.Mesh) {
+  if (lastHoveredMesh === mesh) return;
+  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) unhighlightStar(lastHoveredMesh);
+  lastHoveredMesh = mesh;
+  if (mesh !== selectedMesh) highlightStar(mesh);
 }
 
 function hideHover() {
-  tooltip.style.display = "none";
-  hoverDropLine.visible = false;
+  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) unhighlightStar(lastHoveredMesh);
   lastHoveredMesh = null;
 }
 
@@ -571,7 +547,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   const intersects = raycaster.intersectObjects(starObjects);
 
   if (intersects.length > 0) {
-    showHover(intersects[0].object as THREE.Mesh, e.clientX, e.clientY);
+    showHover(intersects[0].object as THREE.Mesh);
   } else {
     hideHover();
   }
@@ -582,14 +558,14 @@ labelRenderer.domElement.addEventListener("mouseover", (e) => {
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoveredViaLabel = true;
-  showHover(mesh, e.clientX, e.clientY);
+  showHover(mesh);
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
   if (!hoveredViaLabel) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
-  showHover(mesh, e.clientX, e.clientY);
+  showHover(mesh);
 });
 
 labelRenderer.domElement.addEventListener("mouseout", (e) => {
@@ -684,8 +660,6 @@ window.addEventListener("keydown", (e) => {
     return;
   } else if (e.key === "g") {
     gridHelper.visible = !gridHelper.visible;
-    selectDropLine.visible = gridHelper.visible && selectDropLine.visible;
-    hoverDropLine.visible = gridHelper.visible && hoverDropLine.visible;
     return;
   } else {
     return;
@@ -713,6 +687,7 @@ searchInput.addEventListener("input", () => {
 
 // Select Sol on load
 selectedMesh = starObjects[0];
+highlightStar(selectedMesh);
 updateDetailPanel();
 
 // Bloom post-processing
