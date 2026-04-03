@@ -53,6 +53,8 @@ labelRenderer.domElement.style.position = "absolute";
 labelRenderer.domElement.style.top = "0";
 labelRenderer.domElement.style.pointerEvents = "none";
 labelRenderer.domElement.style.zIndex = "10";
+labelRenderer.domElement.style.userSelect = "none";
+labelRenderer.domElement.style.webkitUserSelect = "none";
 document.body.appendChild(labelRenderer.domElement);
 
 // Star shader material — procedural multi-layer glow
@@ -185,12 +187,20 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   labelDiv.style.cssText = `
     color: rgba(255,255,255,0.7); font-size: 10px;
     pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
-    margin-top: 10px;
+    margin-top: 10px; user-select: none;
     cursor: pointer;
   `;
   labelDiv.textContent = star.name;
   labelMeshMap.set(labelDiv, mesh);
   labelDiv.setAttribute("data-star-label", "");
+  labelDiv.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    // Forward to drag system so camera rotation works from labels
+    isDragging = true;
+    prevMouse.x = e.clientX;
+    prevMouse.y = e.clientY;
+    dragDistance = 0;
+  });
   const label = new CSS2DObject(labelDiv);
   label.center.set(0.5, 0);
   label.userData.mesh = mesh;
@@ -411,7 +421,7 @@ renderer.domElement.addEventListener("touchmove", (e) => {
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     orbitRadius = THREE.MathUtils.clamp(
-      touchStartRadius * (touchStartDist / dist),
+      touchStartRadius * Math.pow(touchStartDist / dist, 2.0),
       MIN_ORBIT_RADIUS,
       MAX_ORBIT_RADIUS,
     );
@@ -465,19 +475,17 @@ function tickAnimation(now: number) {
   if (t >= 1) animation = null;
 }
 
-renderer.domElement.addEventListener(
-  "wheel",
-  (e) => {
-    e.preventDefault();
-    orbitRadius = THREE.MathUtils.clamp(
-      orbitRadius + e.deltaY * 0.02,
-      MIN_ORBIT_RADIUS,
-      MAX_ORBIT_RADIUS,
-    );
-    updateCamera();
-  },
-  { passive: false },
-);
+function onWheel(e: WheelEvent) {
+  e.preventDefault();
+  orbitRadius = THREE.MathUtils.clamp(
+    orbitRadius + e.deltaY * 0.02,
+    MIN_ORBIT_RADIUS,
+    MAX_ORBIT_RADIUS,
+  );
+  updateCamera();
+}
+renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+labelRenderer.domElement.addEventListener("wheel", onWheel, { passive: false });
 
 function setDropLine(line: THREE.Line, mesh: THREE.Mesh) {
   const starPos = mesh.position;
@@ -593,9 +601,11 @@ labelRenderer.domElement.addEventListener("mouseout", (e) => {
   hideHover();
 });
 
-labelRenderer.domElement.addEventListener("click", (e) => {
-  const mesh = meshFromLabel(e.target as HTMLElement);
-  if (mesh) selectStar(mesh);
+labelRenderer.domElement.addEventListener("mouseup", (e) => {
+  if (dragDistance < CLICK_THRESHOLD) {
+    const mesh = meshFromLabel(e.target as HTMLElement);
+    if (mesh) selectStar(mesh);
+  }
 });
 
 window.addEventListener("resize", () => {
