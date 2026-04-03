@@ -500,7 +500,7 @@ function showHover(mesh: THREE.Mesh, clientX: number, clientY: number) {
     const star = mesh.userData as Star;
     tooltip.innerHTML = `
       <div class="star-name">${star.name}</div>
-      <div class="star-dist">${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)</div>
+      <div class="star-dist">${(star.dist * 3.262).toFixed(1)} ly (${star.dist.toFixed(2)} pc)</div>
     `;
   }
   tooltip.style.display = "block";
@@ -521,7 +521,7 @@ function updateDetailPanel() {
   }
   const star = selectedMesh.userData as Star;
 
-  let distLine = `From Sol: ${star.dist.toFixed(2)} pc (${(star.dist * 3.262).toFixed(1)} ly)`;
+  let distLine = `From Sol: ${(star.dist * 3.262).toFixed(1)} ly (${star.dist.toFixed(2)} pc)`;
 
   const aliasLine = star.aliases?.length
     ? `<div class="star-aliases">${star.aliases.join(" · ")}</div>`
@@ -647,7 +647,7 @@ function renderSearchResults() {
   searchResults.innerHTML = "";
   filteredStars.forEach((entry, i) => {
     const li = document.createElement("li");
-    li.textContent = `${entry.star.name}  (${entry.star.dist.toFixed(1)} pc)`;
+    li.textContent = `${entry.star.name}  (${(entry.star.dist * 3.262).toFixed(1)} ly)`;
     if (i === selectedIndex) li.classList.add("selected");
     li.addEventListener("click", () => selectSearchResult(i));
     searchResults.appendChild(li);
