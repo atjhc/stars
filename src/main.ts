@@ -74,7 +74,10 @@ const starVertexShader = `
 
     // Billboard: always face camera
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-    mvCenter.xy += position.xy;
+    // Logarithmic scaling: grows slowly when close, preserves presence when far
+    float dist = -mvCenter.z;
+    float scale = clamp(log(1.0 + dist * 0.5) * 0.2, 0.05, 0.3);
+    mvCenter.xy += position.xy * scale;
     gl_Position = projectionMatrix * mvCenter;
   }
 `;
@@ -131,6 +134,13 @@ function bvToColor(ci: number): THREE.Color {
   if (t >= 66) { b = 1.0; } else if (t <= 19) { b = 0.0; }
   else { b = Math.min(1, Math.max(0, (138.5177312231 * Math.log(t - 10) - 305.0447927307) / 255)); }
 
+  // Exaggerate saturation so color differences are visible
+  const avg = (r + g + b) / 3;
+  const sat = 1.8;
+  r = Math.min(1, Math.max(0, avg + (r - avg) * sat));
+  g = Math.min(1, Math.max(0, avg + (g - avg) * sat));
+  b = Math.min(1, Math.max(0, avg + (b - avg) * sat));
+
   return new THREE.Color(r, g, b);
 }
 
@@ -141,9 +151,9 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   const color = bvToColor(star.ci);
 
   // Billboard size based on luminosity (log scale)
-  const quadSize = Math.max(0.4, 0.3 + 0.2 * Math.log10(Math.max(star.lum, 0.001)));
+  const quadSize = 0.4;
   // Brightness multiplier for the shader
-  const brightness = Math.min(2.0, 0.5 + 0.3 * Math.log10(Math.max(star.lum, 0.001)));
+  const brightness = Math.max(0.6, Math.min(2.0, 0.7 + 0.3 * Math.log10(Math.max(star.lum, 0.001))));
 
   // Per-star shader material with attributes baked as uniforms
   const mat = new THREE.ShaderMaterial({
@@ -191,7 +201,7 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   labelDiv.style.cssText = `
     color: rgba(255,255,255,0.7); font-size: 10px;
     pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
-    margin-top: 10px; user-select: none;
+    margin-top: 16px; user-select: none;
     cursor: pointer;
   `;
   labelDiv.textContent = star.name;
@@ -297,7 +307,7 @@ function updateCamera() {
 }
 updateCamera();
 
-const HIGHLIGHT_BOOST = 1.6;
+const HIGHLIGHT_BOOST = 1.25;
 
 function highlightStar(mesh: THREE.Mesh) {
   (mesh.material as THREE.ShaderMaterial).uniforms.uHighlight.value = HIGHLIGHT_BOOST;
@@ -702,9 +712,27 @@ const bloomPass = new UnrealBloomPass(
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
 
+const labelFadeNear = 5;
+const labelFadeFar = 40;
+
+function updateLabelOpacity() {
+  for (const mesh of starObjects) {
+    const label = meshLabelMap.get(mesh);
+    if (!label) continue;
+    if (mesh === lastHoveredMesh || mesh === selectedMesh) {
+      label.style.opacity = "1";
+      continue;
+    }
+    const dist = mesh.position.distanceTo(camera.position);
+    const opacity = 1.0 - THREE.MathUtils.smoothstep(dist, labelFadeNear, labelFadeFar);
+    label.style.opacity = String(Math.max(0.1, opacity));
+  }
+}
+
 function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
+  updateLabelOpacity();
   composer.render();
   labelRenderer.render(scene, camera);
 }
