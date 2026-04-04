@@ -498,7 +498,7 @@
   "Gl 664": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
     "notes": "Component C of 36 Ophiuchi (also known as 30 Scorpii). Covered in the 36 Ophiuchi system article.",
-    "system": "36 Ophiuchi"
+    "system": "Guniibuu"
   },
   "Gl 661A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Furuhjelm_46",
@@ -1019,5 +1019,17 @@
   },
   "Gl 283B": {
     "system": "Gliese 283"
+  },
+  "GJ 3192": {
+    "system": "LTT 1445",
+    "name": "LTT 1445 A",
+    "wikipedia": "https://en.wikipedia.org/wiki/LTT_1445",
+    "notes": "Primary of the LTT 1445 triple system. Hosts at least 2 confirmed rocky exoplanets (Ab and Ac), making it one of the closest transiting exoplanet systems known (22.4 ly)."
+  },
+  "GJ 3193B": {
+    "system": "LTT 1445",
+    "name": "LTT 1445 BC",
+    "wikipedia": "https://en.wikipedia.org/wiki/LTT_1445",
+    "notes": "Unresolved binary pair (B+C) in the LTT 1445 triple system. B and C orbit each other every ~36 years, while the BC pair orbits A at ~34 AU separation."
   }
 }

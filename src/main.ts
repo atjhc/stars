@@ -537,20 +537,6 @@ function updateGridCenter() {
   gridShaderMat.uniforms.uCenter.value.copy(scratchVec3);
 }
 
-function selectStar(mesh: THREE.Mesh) {
-  if (selectedMesh) unhighlightStar(selectedMesh);
-  selectedMesh = mesh;
-  highlightStar(mesh);
-  animation = {
-    from: target.clone(),
-    to: mesh.position.clone(),
-    start: performance.now(),
-  };
-  updateLabelVisibility();
-  lastHoveredMesh = null;
-  updateDetailPanel();
-}
-
 function updateLabelVisibility() {
   for (const label of starLabels) {
     label.visible = labelsVisible;
@@ -583,6 +569,18 @@ let lastHoveredMesh: THREE.Mesh | null = null;
 let selectedSystem: SystemGroup | null = null;
 let hoveredSystem: SystemGroup | null = null;
 const detail = document.getElementById("detail")!;
+
+function formatDist(pc: number): string {
+  return `${(pc * 3.262).toFixed(1)} ly (${pc.toFixed(2)} pc)`;
+}
+
+function renderWikiLink(url: string | undefined): string {
+  return url ? `<div class="star-wiki"><a href="${url}" target="_blank">Wikipedia \u2197</a></div>` : "";
+}
+
+function renderNotes(text: string | undefined): string {
+  return text ? `<div class="star-notes">${text}</div>` : "";
+}
 
 function showSystemMembers(group: SystemGroup) {
   const el = group.label.element as HTMLElement;
@@ -627,19 +625,28 @@ function selectSystem(group: SystemGroup) {
 }
 
 function updateSystemDetailPanel(group: SystemGroup) {
-  const members = group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes;
-  const avgDist = members.reduce((s, m) => s + (m.userData as Star).dist, 0) / members.length;
-  const rows = members.map((m) => {
+  const allMembers = group.meshes;
+  const avgDist = allMembers.reduce((s, m) => s + (m.userData as Star).dist, 0) / allMembers.length;
+
+  const wikiUrls = new Set<string>();
+  const notes: string[] = [];
+  const rows: string[] = [];
+  for (const m of allMembers) {
     const s = m.userData as Star;
-    return `<div class="system-member-row">${s.name} — ${(s.dist * 3.262).toFixed(1)} ly</div>`;
-  }).join("");
+    const spect = s.spect ? `<span class="member-spect">${s.spect}</span>` : "";
+    rows.push(`<div class="system-member-row">${s.name} — ${formatDist(s.dist)} ${spect}</div>`);
+    if (s.wikipedia) wikiUrls.add(s.wikipedia);
+    if (s.notes) notes.push(`<strong>${s.name}:</strong> ${s.notes}`);
+  }
 
   detail.innerHTML = `
     <div class="star-name">${group.name}</div>
     <div class="star-detail">
-      Distance: ${(avgDist * 3.262).toFixed(1)} ly (${avgDist.toFixed(2)} pc)
+      Distance: ${formatDist(avgDist)}
     </div>
-    <div class="system-member-list">${rows}</div>
+    <div class="system-member-list">${rows.join("")}</div>
+    ${notes.length > 0 ? `<div class="star-notes">${notes.join("<br>")}</div>` : ""}
+    ${renderWikiLink([...wikiUrls][0])}
   `;
   detail.classList.add("active");
 }
@@ -671,29 +678,21 @@ function updateDetailPanel() {
   }
   const star = selectedMesh.userData as Star;
 
-  let distLine = `From Sol: ${(star.dist * 3.262).toFixed(1)} ly (${star.dist.toFixed(2)} pc)`;
-
   const aliasLine = star.aliases?.length
     ? `<div class="star-aliases">${star.aliases.join(" · ")}</div>`
-    : "";
-  const notesLine = star.notes
-    ? `<div class="star-notes">${star.notes}</div>`
-    : "";
-  const wikiLink = star.wikipedia
-    ? `<div class="star-wiki"><a href="${star.wikipedia}" target="_blank">Wikipedia \u2197</a></div>`
     : "";
 
   detail.innerHTML = `
     <div class="star-name">${star.name}</div>
     ${aliasLine}
     <div class="star-detail">
-      ${distLine}<br>
+      From Sol: ${formatDist(star.dist)}<br>
       Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
       Spectral: ${star.spect || "\u2014"}<br>
       Luminosity: ${star.lum.toFixed(3)} L\u2609
     </div>
-    ${notesLine}
-    ${wikiLink}
+    ${renderNotes(star.notes)}
+    ${renderWikiLink(star.wikipedia)}
   `;
   detail.classList.add("active");
 }
@@ -825,16 +824,28 @@ function closeSearch() {
   searchInput.blur();
 }
 
+function starMatchesQuery(star: Star, q: string): boolean {
+  if (star.name.toLowerCase().includes(q)) return true;
+  if (star.system?.toLowerCase().includes(q)) return true;
+  if (star.aliases?.some((a) => a.toLowerCase().includes(q))) return true;
+  return false;
+}
+
 function updateSearchResults(query: string) {
   const q = query.toLowerCase().trim();
   filteredStars = [];
   if (q.length > 0) {
+    const seenSystems = new Set<string>();
     for (const mesh of starObjects) {
       const star = mesh.userData as Star;
-      if (star.name.toLowerCase().includes(q)) {
-        filteredStars.push({ star, mesh });
-        if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
+      if (!starMatchesQuery(star, q)) continue;
+      // Deduplicate system members — show system once
+      if (star.system) {
+        if (seenSystems.has(star.system)) continue;
+        seenSystems.add(star.system);
       }
+      filteredStars.push({ star, mesh });
+      if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
     }
   }
   selectedIndex = 0;
@@ -845,7 +856,12 @@ function renderSearchResults() {
   searchResults.innerHTML = "";
   filteredStars.forEach((entry, i) => {
     const li = document.createElement("li");
-    li.textContent = `${entry.star.name}  (${(entry.star.dist * 3.262).toFixed(1)} ly)`;
+    const displayName = entry.star.system || entry.star.name;
+    const sys = meshToSystem.get(entry.mesh);
+    const dist = sys
+      ? sys.meshes.reduce((s, m) => s + (m.userData as Star).dist, 0) / sys.meshes.length
+      : entry.star.dist;
+    li.textContent = `${displayName}  (${formatDist(dist)})`;
     if (i === selectedIndex) li.classList.add("selected");
     li.addEventListener("click", () => selectSearchResult(i));
     searchResults.appendChild(li);
