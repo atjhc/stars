@@ -25,6 +25,7 @@ interface Star {
   aliases?: string[];
   wikipedia?: string;
   notes?: string;
+  system?: string;
 }
 
 const MIN_ORBIT_RADIUS = 0.5;
@@ -201,7 +202,7 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   labelDiv.style.cssText = `
     color: rgba(255,255,255,0.7); font-size: 10px;
     pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
-    margin-top: 16px; user-select: none;
+    margin-top: 16px; user-select: none; text-align: center;
     cursor: pointer;
   `;
   labelDiv.textContent = star.name;
@@ -222,6 +223,85 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   mesh.add(label);
   starLabels.push(label);
 });
+
+// System labels: shown when members are close on screen, replacing individual labels
+interface SystemGroup {
+  name: string;
+  meshes: THREE.Mesh[];
+  label: CSS2DObject;
+  anchor: THREE.Object3D;
+  centroid: THREE.Vector3;
+  collapsedMembers: THREE.Mesh[];
+}
+
+const systemGroups: SystemGroup[] = [];
+const meshToSystem = new Map<THREE.Mesh, SystemGroup>();
+
+{
+  const systemMap = new Map<string, THREE.Mesh[]>();
+  for (const mesh of starObjects) {
+    const star = mesh.userData as Star;
+    if (star.system) {
+      if (!systemMap.has(star.system)) systemMap.set(star.system, []);
+      systemMap.get(star.system)!.push(mesh);
+    }
+  }
+
+  for (const [name, meshes] of systemMap) {
+    if (meshes.length < 2) continue;
+    const labelDiv = document.createElement("div");
+    labelDiv.style.cssText = `
+      color: rgba(255,255,255,0.7); font-size: 10px;
+      pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
+      margin-top: 16px; user-select: none; cursor: pointer; text-align: center;
+    `;
+    const memberNames = meshes.map((m) => (m.userData as Star).name);
+    const membersHtml = `<div class="system-members">${memberNames.join(" · ")}</div>`;
+    labelDiv.innerHTML = `<div>${name}</div>`;
+    labelDiv.setAttribute("data-star-label", "");
+    labelDiv.setAttribute("data-system-label", "");
+    labelDiv.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      isDragging = true;
+      prevMouse.x = e.clientX;
+      prevMouse.y = e.clientY;
+      dragDistance = 0;
+    });
+
+    const anchor = new THREE.Object3D();
+    scene.add(anchor);
+    const label = new CSS2DObject(labelDiv);
+    label.center.set(0.5, 0);
+    label.visible = false;
+    anchor.add(label);
+
+    const centroid = new THREE.Vector3();
+    for (const m of meshes) centroid.add(m.position);
+    centroid.divideScalar(meshes.length);
+
+    const group: SystemGroup = { name, meshes, label, anchor, centroid, collapsedMembers: [] };
+    systemGroups.push(group);
+    for (const m of meshes) meshToSystem.set(m, group);
+
+    // Hover/click events for system label
+    labelDiv.addEventListener("mouseenter", () => {
+      if (selectedSystem !== group) {
+        hoveredSystem = group;
+        showSystemMembers(group);
+      }
+    });
+    labelDiv.addEventListener("mouseleave", () => {
+      if (hoveredSystem === group && selectedSystem !== group) {
+        hoveredSystem = null;
+        hideSystemMembers(group);
+      }
+    });
+    labelDiv.addEventListener("mouseup", () => {
+      if (dragDistance >= CLICK_THRESHOLD) return;
+      selectSystem(group);
+    });
+  }
+}
 
 // Galactic north pole in equatorial coords: RA=192.8595deg, Dec=27.1284deg
 // HYG uses equatorial coordinates; scene maps: x=eq_x, y=eq_z, z=-eq_y
@@ -353,7 +433,13 @@ function trySelectAt(clientX: number, clientY: number) {
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(starObjects);
   if (hits.length > 0) {
-    selectStar(hits[0].object as THREE.Mesh);
+    const mesh = hits[0].object as THREE.Mesh;
+    const sys = meshToSystem.get(mesh);
+    if (sys) {
+      selectSystem(sys);
+    } else {
+      selectStar(mesh);
+    }
   }
 }
 
@@ -494,7 +580,23 @@ renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
 labelRenderer.domElement.addEventListener("wheel", onWheel, { passive: false });
 
 let lastHoveredMesh: THREE.Mesh | null = null;
+let selectedSystem: SystemGroup | null = null;
+let hoveredSystem: SystemGroup | null = null;
 const detail = document.getElementById("detail")!;
+
+function showSystemMembers(group: SystemGroup) {
+  const el = group.label.element as HTMLElement;
+  const members = group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes;
+  const names = members.map((m) => (m.userData as Star).name);
+  el.innerHTML = `<div>${group.name}</div><div class="system-members">${names.join(" · ")}</div>`;
+  el.classList.add("highlight");
+}
+
+function hideSystemMembers(group: SystemGroup) {
+  const el = group.label.element as HTMLElement;
+  el.innerHTML = `<div>${group.name}</div>`;
+  el.classList.remove("highlight");
+}
 
 function showHover(mesh: THREE.Mesh) {
   if (lastHoveredMesh === mesh) return;
@@ -508,7 +610,61 @@ function hideHover() {
   lastHoveredMesh = null;
 }
 
+function selectSystem(group: SystemGroup) {
+  if (selectedMesh) unhighlightStar(selectedMesh);
+  selectedMesh = null;
+  if (selectedSystem && selectedSystem !== group) hideSystemMembers(selectedSystem);
+  selectedSystem = group;
+  showSystemMembers(group);
+
+  animation = {
+    from: target.clone(),
+    to: group.centroid.clone(),
+    start: performance.now(),
+  };
+  lastHoveredMesh = null;
+  updateDetailPanel();
+}
+
+function updateSystemDetailPanel(group: SystemGroup) {
+  const members = group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes;
+  const avgDist = members.reduce((s, m) => s + (m.userData as Star).dist, 0) / members.length;
+  const rows = members.map((m) => {
+    const s = m.userData as Star;
+    return `<div class="system-member-row">${s.name} — ${(s.dist * 3.262).toFixed(1)} ly</div>`;
+  }).join("");
+
+  detail.innerHTML = `
+    <div class="star-name">${group.name}</div>
+    <div class="star-detail">
+      Distance: ${(avgDist * 3.262).toFixed(1)} ly (${avgDist.toFixed(2)} pc)
+    </div>
+    <div class="system-member-list">${rows}</div>
+  `;
+  detail.classList.add("active");
+}
+
+function selectStar(mesh: THREE.Mesh) {
+  if (selectedMesh) unhighlightStar(selectedMesh);
+  if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
+  selectedMesh = mesh;
+  highlightStar(mesh);
+  animation = {
+    from: target.clone(),
+    to: mesh.position.clone(),
+    start: performance.now(),
+  };
+  updateLabelVisibility();
+  lastHoveredMesh = null;
+  updateDetailPanel();
+}
+
 function updateDetailPanel() {
+  if (selectedSystem) {
+    updateSystemDetailPanel(selectedSystem);
+    return;
+  }
+
   if (!selectedMesh) {
     detail.classList.remove("active");
     return;
@@ -557,9 +713,28 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   const intersects = raycaster.intersectObjects(starObjects);
 
   if (intersects.length > 0) {
-    showHover(intersects[0].object as THREE.Mesh);
+    const mesh = intersects[0].object as THREE.Mesh;
+    const sys = meshToSystem.get(mesh);
+    if (sys) {
+      hideHover();
+      if (hoveredSystem !== sys && selectedSystem !== sys) {
+        if (hoveredSystem && hoveredSystem !== selectedSystem) hideSystemMembers(hoveredSystem);
+        hoveredSystem = sys;
+        showSystemMembers(sys);
+      }
+    } else {
+      if (hoveredSystem && hoveredSystem !== selectedSystem) {
+        hideSystemMembers(hoveredSystem);
+        hoveredSystem = null;
+      }
+      showHover(mesh);
+    }
   } else {
     hideHover();
+    if (hoveredSystem && hoveredSystem !== selectedSystem) {
+      hideSystemMembers(hoveredSystem);
+      hoveredSystem = null;
+    }
   }
 });
 
@@ -568,14 +743,32 @@ labelRenderer.domElement.addEventListener("mouseover", (e) => {
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoveredViaLabel = true;
-  showHover(mesh);
+  const sys = meshToSystem.get(mesh);
+  if (sys) {
+    if (hoveredSystem !== sys && selectedSystem !== sys) {
+      if (hoveredSystem && hoveredSystem !== selectedSystem) hideSystemMembers(hoveredSystem);
+      hoveredSystem = sys;
+      showSystemMembers(sys);
+    }
+  } else {
+    showHover(mesh);
+  }
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
   if (!hoveredViaLabel) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
-  showHover(mesh);
+  const sys = meshToSystem.get(mesh);
+  if (sys) {
+    if (hoveredSystem !== sys && selectedSystem !== sys) {
+      if (hoveredSystem && hoveredSystem !== selectedSystem) hideSystemMembers(hoveredSystem);
+      hoveredSystem = sys;
+      showSystemMembers(sys);
+    }
+  } else {
+    showHover(mesh);
+  }
 });
 
 labelRenderer.domElement.addEventListener("mouseout", (e) => {
@@ -585,12 +778,21 @@ labelRenderer.domElement.addEventListener("mouseout", (e) => {
   if (related && label.contains(related)) return;
   hoveredViaLabel = false;
   hideHover();
+  if (hoveredSystem && hoveredSystem !== selectedSystem) {
+    hideSystemMembers(hoveredSystem);
+    hoveredSystem = null;
+  }
 });
 
 labelRenderer.domElement.addEventListener("mouseup", (e) => {
-  if (dragDistance < CLICK_THRESHOLD) {
-    const mesh = meshFromLabel(e.target as HTMLElement);
-    if (mesh) selectStar(mesh);
+  if (dragDistance >= CLICK_THRESHOLD) return;
+  const mesh = meshFromLabel(e.target as HTMLElement);
+  if (!mesh) return;
+  const sys = meshToSystem.get(mesh);
+  if (sys) {
+    selectSystem(sys);
+  } else {
+    selectStar(mesh);
   }
 });
 
@@ -652,7 +854,13 @@ function renderSearchResults() {
 
 function selectSearchResult(index: number) {
   if (index < 0 || index >= filteredStars.length) return;
-  selectStar(filteredStars[index].mesh);
+  const mesh = filteredStars[index].mesh;
+  const sys = meshToSystem.get(mesh);
+  if (sys) {
+    selectSystem(sys);
+  } else {
+    selectStar(mesh);
+  }
   closeSearch();
 }
 
@@ -712,27 +920,122 @@ const bloomPass = new UnrealBloomPass(
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
 
-const labelFadeNear = 5;
-const labelFadeFar = 40;
+const LABEL_FADE_NEAR = 5;
+const LABEL_FADE_FAR = 40;
+const COLLAPSE_PX = 45;
 
-function updateLabelOpacity() {
-  for (const mesh of starObjects) {
-    const label = meshLabelMap.get(mesh);
-    if (!label) continue;
-    if (mesh === lastHoveredMesh || mesh === selectedMesh) {
-      label.style.opacity = "1";
-      continue;
+const projVec = new THREE.Vector3();
+function projectToScreen(pos: THREE.Vector3): { x: number; y: number } {
+  projVec.copy(pos).project(camera);
+  return {
+    x: (projVec.x * 0.5 + 0.5) * window.innerWidth,
+    y: (-projVec.y * 0.5 + 0.5) * window.innerHeight,
+  };
+}
+
+// Per-frame: which meshes are currently collapsed into a system label
+const currentCollapsed = new Set<THREE.Mesh>();
+
+function updateLabels() {
+  if (!labelsVisible) return;
+
+  currentCollapsed.clear();
+
+  // Dynamic screen-space clustering within each system
+  for (const group of systemGroups) {
+    const n = group.meshes.length;
+    const screens = group.meshes.map((m) => projectToScreen(m.position));
+
+    // Single-linkage clustering by screen distance
+    const parent = group.meshes.map((_, i) => i);
+    function find(i: number): number { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
+    function union(a: number, b: number) { parent[find(a)] = find(b); }
+
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const dx = screens[i].x - screens[j].x;
+        const dy = screens[i].y - screens[j].y;
+        if (Math.sqrt(dx * dx + dy * dy) < COLLAPSE_PX) {
+          union(i, j);
+        }
+      }
     }
-    const dist = mesh.position.distanceTo(camera.position);
-    const opacity = 1.0 - THREE.MathUtils.smoothstep(dist, labelFadeNear, labelFadeFar);
-    label.style.opacity = String(Math.max(0.1, opacity));
+
+    // Find the largest cluster with 2+ members
+    const clusters = new Map<number, number[]>();
+    for (let i = 0; i < n; i++) {
+      const root = find(i);
+      if (!clusters.has(root)) clusters.set(root, []);
+      clusters.get(root)!.push(i);
+    }
+
+    let bestCluster: number[] | null = null;
+    for (const indices of clusters.values()) {
+      if (indices.length >= 2 && (!bestCluster || indices.length > bestCluster.length)) {
+        bestCluster = indices;
+      }
+    }
+
+    if (bestCluster) {
+      const collapsed = bestCluster.map((i) => group.meshes[i]);
+      group.collapsedMembers = collapsed;
+
+      // Position anchor at centroid of collapsed members
+      group.anchor.position.set(0, 0, 0);
+      for (const m of collapsed) group.anchor.position.add(m.position);
+      group.anchor.position.divideScalar(collapsed.length);
+
+      group.label.visible = true;
+      const dist = group.anchor.position.distanceTo(camera.position);
+      const opacity = 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
+      const zIndex = Math.round(10000 - dist * 100);
+      const el = group.label.element as HTMLElement;
+      el.style.opacity = String(Math.max(0.1, opacity));
+      el.style.zIndex = String(zIndex);
+
+      for (const m of collapsed) currentCollapsed.add(m);
+
+      // Update hover text if this system is being hovered or selected
+      if (hoveredSystem === group || selectedSystem === group) {
+        showSystemMembers(group);
+      }
+    } else {
+      group.collapsedMembers = [];
+      group.label.visible = false;
+
+      if (hoveredSystem === group) {
+        hoveredSystem = null;
+      }
+    }
+  }
+
+  // Update individual star labels
+  for (const mesh of starObjects) {
+    const div = meshLabelMap.get(mesh);
+    if (!div) continue;
+
+    const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh;
+    const collapsed = currentCollapsed.has(mesh) && !isHighlighted;
+    div.style.visibility = collapsed ? "hidden" : "visible";
+    if (collapsed) continue;
+
+    const camDist = mesh.position.distanceTo(camera.position);
+    const zIndex = Math.round(10000 - camDist * 100);
+    div.style.zIndex = String(zIndex);
+
+    if (isHighlighted) {
+      div.style.opacity = "1";
+    } else {
+      const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
+      div.style.opacity = String(Math.max(0.1, opacity));
+    }
   }
 }
 
 function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
-  updateLabelOpacity();
+  updateLabels();
   composer.render();
   labelRenderer.render(scene, camera);
 }

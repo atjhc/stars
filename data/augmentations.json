@@ -5,15 +5,18 @@
   },
   "Gl 551": {
     "wikipedia": "https://en.wikipedia.org/wiki/Proxima_Centauri",
-    "notes": "Closest star to Sol (1.30 ly). Red dwarf flare star. Hosts Proxima Centauri b, one of the nearest known exoplanets in a habitable zone."
+    "notes": "Closest star to Sol (1.30 ly). Red dwarf flare star. Hosts Proxima Centauri b, one of the nearest known exoplanets in a habitable zone.",
+    "system": "Alpha Centauri"
   },
   "Gl 559A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Centauri",
-    "notes": "Primary component of Alpha Centauri, the nearest star system. Wikipedia has one article for the whole system. Sun-like G2V star."
+    "notes": "Primary component of Alpha Centauri, the nearest star system. Wikipedia has one article for the whole system. Sun-like G2V star.",
+    "system": "Alpha Centauri"
   },
   "Gl 559B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Centauri",
-    "notes": "Secondary component of Alpha Centauri (K1V). The name 'Toliman' is the IAU-approved name for Alpha Centauri B. Wikipedia covers the whole system in one article."
+    "notes": "Secondary component of Alpha Centauri (K1V). The name 'Toliman' is the IAU-approved name for Alpha Centauri B. Wikipedia covers the whole system in one article.",
+    "system": "Alpha Centauri"
   },
   "Gl 699": {
     "wikipedia": "https://en.wikipedia.org/wiki/Barnard%27s_Star",
@@ -30,21 +33,25 @@
   "Gl 65A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Luyten_726-8",
     "name": "Luyten 726-8 A",
-    "notes": "Component A of binary system Luyten 726-8 (Gliese 65). Variable star designation BL Ceti. Wikipedia article is 'Luyten 726-8' (redirected from 'Gliese 65')."
+    "notes": "Component A of binary system Luyten 726-8 (Gliese 65). Variable star designation BL Ceti. Wikipedia article is 'Luyten 726-8' (redirected from 'Gliese 65').",
+    "system": "Luyten 726-8"
   },
   "Gl 65B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Luyten_726-8",
     "name": "UV Ceti",
-    "notes": "Component B of binary system Luyten 726-8. Variable star designation UV Ceti. Prototype of UV Ceti-type flare stars. Wikipedia covers the whole system."
+    "notes": "Component B of binary system Luyten 726-8. Variable star designation UV Ceti. Prototype of UV Ceti-type flare stars. Wikipedia covers the whole system.",
+    "system": "Luyten 726-8"
   },
   "Gl 244A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Sirius",
-    "notes": "Brightest star in the night sky (apparent magnitude -1.46). A1V main sequence star. Wikipedia covers the whole system."
+    "notes": "Brightest star in the night sky (apparent magnitude -1.46). A1V main sequence star. Wikipedia covers the whole system.",
+    "system": "Sirius"
   },
   "Gl 244B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Sirius",
     "name": "Sirius B",
-    "notes": "White dwarf companion of Sirius. First white dwarf discovered. Wikipedia covers both components under 'Sirius'."
+    "notes": "White dwarf companion of Sirius. First white dwarf discovered. Wikipedia covers both components under 'Sirius'.",
+    "system": "Sirius"
   },
   "Gl 729": {
     "wikipedia": "https://en.wikipedia.org/wiki/Ross_154",
@@ -70,43 +77,52 @@
   "Gl 866A": {
     "wikipedia": "https://en.wikipedia.org/wiki/EZ_Aquarii",
     "name": "EZ Aquarii A",
-    "notes": "Component A of the triple star system EZ Aquarii (Gliese 866 / Luyten 789-6). Wikipedia article is 'EZ Aquarii'."
+    "notes": "Component A of the triple star system EZ Aquarii (Gliese 866 / Luyten 789-6). Wikipedia article is 'EZ Aquarii'.",
+    "system": "EZ Aquarii"
   },
   "Gl 725A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Struve_2398",
-    "notes": "Component A of binary system Struve 2398 (Gliese 725) in Draco. Both components host exoplanets."
+    "notes": "Component A of binary system Struve 2398 (Gliese 725) in Draco. Both components host exoplanets.",
+    "system": "Struve 2398"
   },
   "Gl 725B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Struve_2398",
-    "notes": "Component B of binary system Struve 2398 (Gliese 725) in Draco."
+    "notes": "Component B of binary system Struve 2398 (Gliese 725) in Draco.",
+    "system": "Struve 2398"
   },
   "Gl 820A": {
     "wikipedia": "https://en.wikipedia.org/wiki/61_Cygni",
     "name": "61 Cygni A",
-    "notes": "Component A of 61 Cygni, a famous binary star. First star to have its distance measured by parallax (Friedrich Bessel, 1838). Wikipedia article is '61 Cygni'."
+    "notes": "Component A of 61 Cygni, a famous binary star. First star to have its distance measured by parallax (Friedrich Bessel, 1838). Wikipedia article is '61 Cygni'.",
+    "system": "61 Cygni"
   },
   "Gl 820B": {
     "wikipedia": "https://en.wikipedia.org/wiki/61_Cygni",
     "name": "61 Cygni B",
-    "notes": "Component B of 61 Cygni."
+    "notes": "Component B of 61 Cygni.",
+    "system": "61 Cygni"
   },
   "Gl 280A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Procyon",
-    "notes": "Brightest star in Canis Minor and 8th brightest in the night sky. F5IV-V subgiant/main-sequence star."
+    "notes": "Brightest star in Canis Minor and 8th brightest in the night sky. F5IV-V subgiant/main-sequence star.",
+    "system": "Procyon"
   },
   "Gl 280B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Procyon",
     "name": "Procyon B",
-    "notes": "White dwarf companion of Procyon. Wikipedia covers the system under 'Procyon'."
+    "notes": "White dwarf companion of Procyon. Wikipedia covers the system under 'Procyon'.",
+    "system": "Procyon"
   },
   "Gl 15A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_34",
-    "notes": "Component A of Groombridge 34, a binary red dwarf system in Andromeda. Has a confirmed super-Earth exoplanet."
+    "notes": "Component A of Groombridge 34, a binary red dwarf system in Andromeda. Has a confirmed super-Earth exoplanet.",
+    "system": "Groombridge 34"
   },
   "Gl 15B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_34",
     "name": "Groombridge 34 B",
-    "notes": "Component B of Groombridge 34. Flare star designated GQ Andromedae."
+    "notes": "Component B of Groombridge 34. Flare star designated GQ Andromedae.",
+    "system": "Groombridge 34"
   },
   "Gl 845": {
     "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Indi",
@@ -131,7 +147,8 @@
   "HIP 82724": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
     "name": "36 Ophiuchi A",
-    "notes": "Component A of 36 Ophiuchi triple star system. IAU-approved name is 'Guniibuu' (from Aboriginal Australian Kamilaroi/Euahlayi culture). Also known as GJ 663 A. Wikipedia article is '36 Ophiuchi' covering the whole system."
+    "notes": "Component A of 36 Ophiuchi triple star system. IAU-approved name is 'Guniibuu' (from Aboriginal Australian Kamilaroi/Euahlayi culture). Also known as GJ 663 A. Wikipedia article is '36 Ophiuchi' covering the whole system.",
+    "system": "36 Ophiuchi"
   },
   "Gl 273": {
     "wikipedia": "https://en.wikipedia.org/wiki/Luyten%27s_Star",
@@ -147,26 +164,31 @@
   },
   "Gl 860A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Kruger_60",
-    "notes": "Component A of Kruger 60, a binary red dwarf system in Cepheus. Wikipedia covers the system under 'Kruger 60'."
+    "notes": "Component A of Kruger 60, a binary red dwarf system in Cepheus. Wikipedia covers the system under 'Kruger 60'.",
+    "system": "Kruger 60"
   },
   "Gl 860B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Kruger_60",
     "name": "Kruger 60 B",
-    "notes": "Component B of Kruger 60. Flare star designated DO Cephei."
+    "notes": "Component B of Kruger 60. Flare star designated DO Cephei.",
+    "system": "Kruger 60"
   },
   "Gl 234A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Ross_614",
-    "notes": "Component A of the Ross 614 binary system. Low-mass red dwarf in Monoceros."
+    "notes": "Component A of the Ross 614 binary system. Low-mass red dwarf in Monoceros.",
+    "system": "Ross 614"
   },
   "Gl 234B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Ross_614",
     "name": "Ross 614 B",
-    "notes": "Component B of Ross 614."
+    "notes": "Component B of Ross 614.",
+    "system": "Ross 614"
   },
   "HIP 82725": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
     "name": "36 Ophiuchi B",
-    "notes": "Component B of the 36 Ophiuchi triple star system. Also known as GJ 663 B. Wikipedia article is '36 Ophiuchi' covering the whole system."
+    "notes": "Component B of the 36 Ophiuchi triple star system. Also known as GJ 663 B. Wikipedia article is '36 Ophiuchi' covering the whole system.",
+    "system": "36 Ophiuchi"
   },
   "Gl 35": {
     "wikipedia": "https://en.wikipedia.org/wiki/Van_Maanen%27s_Star",
@@ -183,12 +205,14 @@
   "Gl 473A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Wolf_424",
     "name": "Wolf 424 A",
-    "notes": "Component A of Wolf 424, a binary red dwarf system in Virgo. Both components are near the hydrogen-burning limit."
+    "notes": "Component A of Wolf 424, a binary red dwarf system in Virgo. Both components are near the hydrogen-burning limit.",
+    "system": "Wolf 424"
   },
   "Gl 473B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Wolf_424",
     "name": "Wolf 424 B",
-    "notes": "Component B of Wolf 424."
+    "notes": "Component B of Wolf 424.",
+    "system": "Wolf 424"
   },
   "Gl 1": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_1",
@@ -235,21 +259,25 @@
   },
   "GJ 1245A": {
     "wikipedia": "https://en.wikipedia.org/wiki/GJ_1245",
-    "notes": "Component A of triple red dwarf system in Cygnus. Both A and B are flare stars (collectively V1581 Cygni)."
+    "notes": "Component A of triple red dwarf system in Cygnus. Both A and B are flare stars (collectively V1581 Cygni).",
+    "system": "GJ 1245"
   },
   "GJ 1245B": {
     "wikipedia": "https://en.wikipedia.org/wiki/GJ_1245",
-    "notes": "Component B of the GJ 1245 triple system."
+    "notes": "Component B of the GJ 1245 triple system.",
+    "system": "GJ 1245"
   },
   "Gl 412A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_412",
     "name": "Lalande 21258 A",
-    "notes": "Component A of the Gliese 412 binary system in Ursa Major. Also known as Lalande 21258."
+    "notes": "Component A of the Gliese 412 binary system in Ursa Major. Also known as Lalande 21258.",
+    "system": "Gliese 412"
   },
   "Gl 412B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_412",
     "name": "WX Ursae Majoris",
-    "notes": "Component B of Gliese 412. Flare star designated WX Ursae Majoris."
+    "notes": "Component B of Gliese 412. Flare star designated WX Ursae Majoris.",
+    "system": "Gliese 412"
   },
   "Gl 380": {
     "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_1618",
@@ -268,17 +296,20 @@
   "Gl 166A": {
     "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
     "name": "40 Eridani A",
-    "notes": "Primary of the 40 Eridani triple system. 'Keid' is the IAU-approved name for component A, but '40 Eridani' is more commonly used. Wikipedia article is '40 Eridani'. The system includes a white dwarf (B) and a red dwarf (C)."
+    "notes": "Primary of the 40 Eridani triple system. 'Keid' is the IAU-approved name for component A, but '40 Eridani' is more commonly used. Wikipedia article is '40 Eridani'. The system includes a white dwarf (B) and a red dwarf (C).",
+    "system": "40 Eridani"
   },
   "Gl 166B": {
     "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
     "name": "40 Eridani B",
-    "notes": "White dwarf component of 40 Eridani. First white dwarf discovered (1910). Often cited as the location of Vulcan in Star Trek."
+    "notes": "White dwarf component of 40 Eridani. First white dwarf discovered (1910). Often cited as the location of Vulcan in Star Trek.",
+    "system": "40 Eridani"
   },
   "Gl 166C": {
     "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
     "name": "40 Eridani C",
-    "notes": "Red dwarf component of 40 Eridani. Flare star designated DY Eridani."
+    "notes": "Red dwarf component of 40 Eridani. Flare star designated DY Eridani.",
+    "system": "40 Eridani"
   },
   "GJ 1005A": {
     "wikipedia": "https://en.wikipedia.org/wiki/GJ_1005",
@@ -291,12 +322,14 @@
   "Gl 702A": {
     "wikipedia": "https://en.wikipedia.org/wiki/70_Ophiuchi",
     "name": "70 Ophiuchi A",
-    "notes": "Primary of the 70 Ophiuchi binary system. Orange dwarf (K0V). One of the first confirmed gravitationally-bound binary stars (William Herschel). Wikipedia article is '70 Ophiuchi'."
+    "notes": "Primary of the 70 Ophiuchi binary system. Orange dwarf (K0V). One of the first confirmed gravitationally-bound binary stars (William Herschel). Wikipedia article is '70 Ophiuchi'.",
+    "system": "70 Ophiuchi"
   },
   "Gl 702B": {
     "wikipedia": "https://en.wikipedia.org/wiki/70_Ophiuchi",
     "name": "70 Ophiuchi B",
-    "notes": "Component B of 70 Ophiuchi (K4V). Highly elliptical 88-year orbit."
+    "notes": "Component B of 70 Ophiuchi (K4V). Highly elliptical 88-year orbit.",
+    "system": "70 Ophiuchi"
   },
   "Gl 873": {
     "wikipedia": "https://en.wikipedia.org/wiki/EV_Lacertae",
@@ -310,12 +343,14 @@
   "GJ 1116A": {
     "wikipedia": "https://en.wikipedia.org/wiki/EI_Cancri",
     "name": "EI Cancri A",
-    "notes": "Component A of the EI Cancri (GJ 1116 / G 9-38) binary system in Cancer. Near the bottom of the main sequence. Extremely high flare rate (~5 per hour). Wikipedia article title is 'EI Cancri'."
+    "notes": "Component A of the EI Cancri (GJ 1116 / G 9-38) binary system in Cancer. Near the bottom of the main sequence. Extremely high flare rate (~5 per hour). Wikipedia article title is 'EI Cancri'.",
+    "system": "EI Cancri"
   },
   "GJ 1116B": {
     "wikipedia": "https://en.wikipedia.org/wiki/EI_Cancri",
     "name": "EI Cancri B",
-    "notes": "Component B of the EI Cancri binary. Ultra-cool dwarf (spectral type M7V)."
+    "notes": "Component B of the EI Cancri binary. Ultra-cool dwarf (spectral type M7V).",
+    "system": "EI Cancri"
   },
   "HIP 67593": {
     "wikipedia": "https://en.wikipedia.org/wiki/SCR_1845%E2%88%926357",
@@ -337,12 +372,14 @@
   "Gl 169.1A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Stein_2051",
     "name": "Stein 2051 A",
-    "notes": "Red dwarf component A of Stein 2051, a binary system in Camelopardalis. Wikipedia article is 'Stein 2051'. Nearest known separate red dwarf + white dwarf binary."
+    "notes": "Red dwarf component A of Stein 2051, a binary system in Camelopardalis. Wikipedia article is 'Stein 2051'. Nearest known separate red dwarf + white dwarf binary.",
+    "system": "Stein 2051"
   },
   "Gl 169.1B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Stein_2051",
     "name": "Stein 2051 B",
-    "notes": "White dwarf component B of Stein 2051. In 2017, gravitational lensing of background starlight was observed, allowing direct mass measurement."
+    "notes": "White dwarf component B of Stein 2051. In 2017, gravitational lensing of background starlight was observed, allowing direct mass measurement.",
+    "system": "Stein 2051"
   },
   "HIP 58910": {
     "wikipedia": "https://en.wikipedia.org/wiki/Beta_Comae_Berenices",
@@ -372,12 +409,14 @@
   "Gl 644B": {
     "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
     "name": "V1054 Ophiuchi B",
-    "notes": "Part of the V1054 Ophiuchi / Wolf 630 quintuple star system in Ophiuchus. Wikipedia article is 'V1054 Ophiuchi'. All five components are red dwarfs."
+    "notes": "Part of the V1054 Ophiuchi / Wolf 630 quintuple star system in Ophiuchus. Wikipedia article is 'V1054 Ophiuchi'. All five components are red dwarfs.",
+    "system": "V1054 Ophiuchi"
   },
   "Gl 644C": {
     "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
     "name": "V1054 Ophiuchi C",
-    "notes": "Part of the V1054 Ophiuchi quintuple system."
+    "notes": "Part of the V1054 Ophiuchi quintuple system.",
+    "system": "V1054 Ophiuchi"
   },
   "Gl 229": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_229",
@@ -395,7 +434,8 @@
   "Gl 338A": {
     "wikipedia": "https://en.wikipedia.org/wiki/ADS_7251",
     "name": "ADS 7251 A",
-    "notes": "Component A of the Gliese 338 / ADS 7251 binary system. Two near-identical red dwarfs. Component B hosts a planet. Wikipedia article title is 'ADS 7251'."
+    "notes": "Component A of the Gliese 338 / ADS 7251 binary system. Two near-identical red dwarfs. Component B hosts a planet. Wikipedia article title is 'ADS 7251'.",
+    "system": "Gliese 338"
   },
   "Gl 213": {
     "wikipedia": "https://en.wikipedia.org/wiki/Ross_47",
@@ -408,24 +448,28 @@
   },
   "Gl 570A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_570",
-    "notes": "Primary of the Gliese 570 quaternary system (also known as 33 G. Librae). Orange dwarf with two red dwarf companions (B and C) and a T-dwarf brown dwarf (D). The brown dwarf was one of the coolest known at discovery."
+    "notes": "Primary of the Gliese 570 quaternary system (also known as 33 G. Librae). Orange dwarf with two red dwarf companions (B and C) and a T-dwarf brown dwarf (D). The brown dwarf was one of the coolest known at discovery.",
+    "system": "Gliese 570"
   },
   "Gl 752A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_752",
     "name": "Wolf 1055",
-    "notes": "Component A of the Gliese 752 binary system in Aquila. Also known as Wolf 1055."
+    "notes": "Component A of the Gliese 752 binary system in Aquila. Also known as Wolf 1055.",
+    "system": "Gliese 752"
   },
   "Gl 752B": {
     "wikipedia": "https://en.wikipedia.org/wiki/VB_10",
     "name": "VB 10",
-    "notes": "Van Biesbroeck's star. Historically the least luminous and least massive known star (from 1944 until surpassed). Has its own Wikipedia article at 'VB 10'."
+    "notes": "Van Biesbroeck's star. Historically the least luminous and least massive known star (from 1944 until surpassed). Has its own Wikipedia article at 'VB 10'.",
+    "system": "Gliese 752"
   },
   "Gl 300": {
     "notes": "No dedicated Wikipedia article found. Faint red dwarf."
   },
   "Gl 570B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_570",
-    "notes": "Red dwarf, part of Gliese 570 quaternary system. Forms close binary with component C. Covered in system article."
+    "notes": "Red dwarf, part of Gliese 570 quaternary system. Forms close binary with component C. Covered in system article.",
+    "system": "Gliese 570"
   },
   "Gl 588": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_588",
@@ -433,15 +477,18 @@
   },
   "Gl 663A": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Wikipedia uses '36 Ophiuchi'. Triple system of K dwarfs. Component A named Guniibuu (Kamilaroi/Euahlayi Aboriginal name for robin red-breast). All three components in one article."
+    "notes": "Wikipedia uses '36 Ophiuchi'. Triple system of K dwarfs. Component A named Guniibuu (Kamilaroi/Euahlayi Aboriginal name for robin red-breast). All three components in one article.",
+    "system": "Guniibuu"
   },
   "Gl 34B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Eta_Cassiopeiae",
-    "notes": "K7V secondary of Eta Cassiopeiae. Covered in system article with component A."
+    "notes": "K7V secondary of Eta Cassiopeiae. Covered in system article with component A.",
+    "system": "Eta Cassiopeiae"
   },
   "Gl 34A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Eta_Cassiopeiae",
-    "notes": "Wikipedia uses Eta Cassiopeiae. G0V star similar to Sun. Named Achird (matching data). 472-year binary orbit. Both components in one article."
+    "notes": "Wikipedia uses Eta Cassiopeiae. G0V star similar to Sun. Named Achird (matching data). 472-year binary orbit. Both components in one article.",
+    "system": "Eta Cassiopeiae"
   },
   "Gl 285": {
     "wikipedia": "https://en.wikipedia.org/wiki/YZ_Canis_Minoris",
@@ -450,12 +497,14 @@
   },
   "Gl 664": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Component C of 36 Ophiuchi (also known as 30 Scorpii). Covered in the 36 Ophiuchi system article."
+    "notes": "Component C of 36 Ophiuchi (also known as 30 Scorpii). Covered in the 36 Ophiuchi system article.",
+    "system": "36 Ophiuchi"
   },
   "Gl 661A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Furuhjelm_46",
     "name": "HD 155876",
-    "notes": "Wikipedia title is HD 155876 (redirected from Furuhjelm 46). Binary of two similar red dwarfs in Hercules. Nearest true star system in Hercules. Both components in one article."
+    "notes": "Wikipedia title is HD 155876 (redirected from Furuhjelm 46). Binary of two similar red dwarfs in Hercules. Nearest true star system in Hercules. Both components in one article.",
+    "system": "Gliese 661"
   },
   "Gl 908": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_908",
@@ -463,12 +512,14 @@
   },
   "Gl 663B": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Component B of 36 Ophiuchi. Near-identical K dwarf to component A. Covered in system article."
+    "notes": "Component B of 36 Ophiuchi. Near-identical K dwarf to component A. Covered in system article.",
+    "system": "Guniibuu"
   },
   "Gl 783A": {
     "wikipedia": "https://en.wikipedia.org/wiki/HR_7703",
     "name": "HR 7703",
-    "notes": "Wikipedia uses HR 7703. Binary in Sagittarius. Approaching Sun at 129 km/s, closest approach in 41,100 years at 6.7 ly. Both components in one article."
+    "notes": "Wikipedia uses HR 7703. Binary in Sagittarius. Approaching Sun at 129 km/s, closest approach in 41,100 years at 6.7 ly. Both components in one article.",
+    "system": "HR 7703"
   },
   "Gl 139": {
     "wikipedia": "https://en.wikipedia.org/wiki/82_G._Eridani",
@@ -476,7 +527,8 @@
   },
   "Gl 783B": {
     "wikipedia": "https://en.wikipedia.org/wiki/HR_7703",
-    "notes": "Secondary of HR 7703 system. Covered in system article."
+    "notes": "Secondary of HR 7703 system. Covered in system article.",
+    "system": "HR 7703"
   },
   "Gl 555": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_555",
@@ -500,11 +552,13 @@
   "Gl 896A": {
     "wikipedia": "https://en.wikipedia.org/wiki/EQ_Pegasi",
     "name": "EQ Pegasi",
-    "notes": "Wikipedia uses EQ Pegasi. Binary of two red dwarf flare stars. Primary has one known exoplanet. Subject of 1998 alien signal hoax. Both components in one article."
+    "notes": "Wikipedia uses EQ Pegasi. Binary of two red dwarf flare stars. Primary has one known exoplanet. Subject of 1998 alien signal hoax. Both components in one article.",
+    "system": "EQ Pegasi"
   },
   "Gl 644A": {
     "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
-    "notes": "Primary component of V1054 Ophiuchi (Wolf 630) quintuple system. Covered in system article."
+    "notes": "Primary component of V1054 Ophiuchi (Wolf 630) quintuple system. Covered in system article.",
+    "system": "V1054 Ophiuchi"
   },
   "Gl 784": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_784",
@@ -520,7 +574,8 @@
   },
   "Gl 896B": {
     "wikipedia": "https://en.wikipedia.org/wiki/EQ_Pegasi",
-    "notes": "Secondary of EQ Pegasi. M6Ve flare star. Covered in system article."
+    "notes": "Secondary of EQ Pegasi. M6Ve flare star. Covered in system article.",
+    "system": "EQ Pegasi"
   },
   "Gl 268": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_268",
@@ -528,11 +583,13 @@
   },
   "Gl 661B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Furuhjelm_46",
-    "notes": "Secondary of HD 155876 (Gliese 661). Covered in system article."
+    "notes": "Secondary of HD 155876 (Gliese 661). Covered in system article.",
+    "system": "Gliese 661"
   },
   "Gl 338B": {
     "wikipedia": "https://en.wikipedia.org/wiki/ADS_7251",
-    "notes": "Component B of ADS 7251. Hosts an exoplanet discovered 2020. Covered in system article."
+    "notes": "Component B of ADS 7251. Hosts an exoplanet discovered 2020. Covered in system article.",
+    "system": "Gliese 338"
   },
   "Gl 223.2": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_223.2",
@@ -554,7 +611,8 @@
   },
   "Gl 566B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Xi_Bo%C3%B6tis",
-    "notes": "Secondary of Xi Bootis. Covered in system article."
+    "notes": "Secondary of Xi Bootis. Covered in system article.",
+    "system": "Xi Bootis"
   },
   "Gl 829": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_829",
@@ -563,7 +621,8 @@
   "Gl 566A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Xi_Bo%C3%B6tis",
     "name": "Xi Bootis",
-    "notes": "Wikipedia uses Xi Bootis (Xi Bo\u00f6tis). Nearest visible star in Bootes. BY Draconis variable. Young system (~200 Myr). Both components in one article."
+    "notes": "Wikipedia uses Xi Bootis (Xi Bo\u00f6tis). Nearest visible star in Bootes. BY Draconis variable. Young system (~200 Myr). Both components in one article.",
+    "system": "Xi Bootis"
   },
   "Gl 643": {
     "wikipedia": "https://en.wikipedia.org/wiki/V1054_Ophiuchi",
@@ -584,7 +643,8 @@
   },
   "Gl 667A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_667",
-    "notes": "Triple star system in Scorpius. K3V primary. All three components covered in one article. Component C has confirmed super-Earths including Cc in habitable zone."
+    "notes": "Triple star system in Scorpius. K3V primary. All three components covered in one article. Component C has confirmed super-Earths including Cc in habitable zone.",
+    "system": "Gliese 667"
   },
   "Gl 880": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_880",
@@ -596,11 +656,13 @@
   },
   "Gl 667B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_667",
-    "notes": "Secondary of Gliese 667. Orbits A with 42-year period at ~12.6 AU. Covered in system article."
+    "notes": "Secondary of Gliese 667. Orbits A with 42-year period at ~12.6 AU. Covered in system article.",
+    "system": "Gliese 667"
   },
   "Gl 667C": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_667",
-    "notes": "M1.5 red dwarf orbiting ~230 AU from AB pair. Hosts 2 confirmed super-Earths (Cb, Cc) with Cc in habitable zone. Covered in system article."
+    "notes": "M1.5 red dwarf orbiting ~230 AU from AB pair. Hosts 2 confirmed super-Earths (Cb, Cc) with Cc in habitable zone. Covered in system article.",
+    "system": "Gliese 667"
   },
   "Gl 809": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_809",
@@ -612,11 +674,13 @@
   },
   "Gl 105A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_105",
-    "notes": "Triple system in Cetus. Component A is K-type (HD 16160). Display name '268 G. Cet' is less common than Gliese 105. All three components in one article."
+    "notes": "Triple system in Cetus. Component A is K-type (HD 16160). Display name '268 G. Cet' is less common than Gliese 105. All three components in one article.",
+    "system": "268 G. Ceti"
   },
   "Gl 105B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_105",
-    "notes": "BY Draconis variable (BX Ceti). ~1200 AU from A. Covered in system article."
+    "notes": "BY Draconis variable (BX Ceti). ~1200 AU from A. Covered in system article.",
+    "system": "268 G. Ceti"
   },
   "GJ 3991": {
     "wikipedia": "https://en.wikipedia.org/wiki/GJ_3991",
@@ -640,12 +704,14 @@
   "Gl 53A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Mu_Cassiopeiae",
     "name": "Mu Cassiopeiae A",
-    "notes": "Binary system. High-velocity star moving at 167 km/s through the galaxy. G5V subdwarf primary. One of first high-velocity stars identified. System article covers both A and B."
+    "notes": "Binary system. High-velocity star moving at 167 km/s through the galaxy. G5V subdwarf primary. One of first high-velocity stars identified. System article covers both A and B.",
+    "system": "Mu Cassiopeiae"
   },
   "Gl 53B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Mu_Cassiopeiae",
     "name": "Mu Cassiopeiae B",
-    "notes": "Secondary component of Mu Cassiopeiae binary. Covered in same system article."
+    "notes": "Secondary component of Mu Cassiopeiae binary. Covered in same system article.",
+    "system": "Mu Cassiopeiae"
   },
   "Gl 879": {
     "wikipedia": "https://en.wikipedia.org/wiki/TW_Piscis_Austrini",
@@ -676,12 +742,14 @@
   "Gl 66B": {
     "wikipedia": "https://en.wikipedia.org/wiki/P_Eridani",
     "name": "p Eridani B",
-    "notes": "Component B of p Eridani binary. K2V, 0.76 solar masses. 394-year orbital period. Single article covers both components."
+    "notes": "Component B of p Eridani binary. K2V, 0.76 solar masses. 394-year orbital period. Single article covers both components.",
+    "system": "p Eridani"
   },
   "Gl 66A": {
     "wikipedia": "https://en.wikipedia.org/wiki/P_Eridani",
     "name": "p Eridani A",
-    "notes": "Component A of p Eridani binary. K2V, 0.77 solar masses. Two nearly identical stars."
+    "notes": "Component A of p Eridani binary. K2V, 0.77 solar masses. Two nearly identical stars.",
+    "system": "p Eridani"
   },
   "Gl 623": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_623",
@@ -712,17 +780,20 @@
   "Gl 695A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Mu_Herculis",
     "name": "Mu Herculis A",
-    "notes": "Quadruple star system. G5 IV subgiant primary expanding toward giant phase. Parameters determined via asteroseismology. System article covers all components."
+    "notes": "Quadruple star system. G5 IV subgiant primary expanding toward giant phase. Parameters determined via asteroseismology. System article covers all components.",
+    "system": "Mu Herculis"
   },
   "Gl 695B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Mu_Herculis",
     "name": "Mu Herculis B",
-    "notes": "M4V red dwarf companion in the Mu Herculis quadruple system. Part of Mu2 Herculis pair with component C (~43-year orbit)."
+    "notes": "M4V red dwarf companion in the Mu Herculis quadruple system. Part of Mu2 Herculis pair with component C (~43-year orbit).",
+    "system": "Mu Herculis"
   },
   "Gl 695C": {
     "wikipedia": "https://en.wikipedia.org/wiki/Mu_Herculis",
     "name": "Mu Herculis C",
-    "notes": "Part of Mu2 Herculis pair (B+C, ~43-year period). Covered in same system article."
+    "notes": "Part of Mu2 Herculis pair (B+C, ~43-year period). Covered in same system article.",
+    "system": "Mu Herculis"
   },
   "Gl 486": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_486",
@@ -749,11 +820,13 @@
   },
   "Gl 867A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_867",
-    "notes": "Quadruple system in Aquarius. Gl 867A (FK Aqr) is a spectroscopic binary with strongest known dipolar magnetic field for its mass class (as of 2024)."
+    "notes": "Quadruple system in Aquarius. Gl 867A (FK Aqr) is a spectroscopic binary with strongest known dipolar magnetic field for its mass class (as of 2024).",
+    "system": "Gliese 867"
   },
   "Gl 867B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_867",
-    "notes": "Gl 867B (FL Aqr) is a close 1.8-day binary. Companion may be a brown dwarf (~61 Jupiter masses). Covered in same system article."
+    "notes": "Gl 867B (FL Aqr) is a close 1.8-day binary. Companion may be a brown dwarf (~61 Jupiter masses). Covered in same system article.",
+    "system": "Gliese 867"
   },
   "Gl 222A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Chi1_Orionis",
@@ -762,11 +835,13 @@
   },
   "Gl 250A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_250",
-    "notes": "K3.5V star in Monoceros. Binary with M2.5V companion. System article covers both A and B."
+    "notes": "K3.5V star in Monoceros. Binary with M2.5V companion. System article covers both A and B.",
+    "system": "Gliese 250"
   },
   "Gl 250B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_250",
-    "notes": "M2.5V companion in the Gliese 250 system. Covered in same article."
+    "notes": "M2.5V companion in the Gliese 250 system. Covered in same article.",
+    "system": "Gliese 250"
   },
   "Gl 791.2": {
     "wikipedia": "https://en.wikipedia.org/wiki/HU_Delphini",
@@ -780,12 +855,14 @@
   "Gl 666A": {
     "wikipedia": "https://en.wikipedia.org/wiki/41_G._Arae",
     "name": "41 G. Arae A",
-    "notes": "Primary of hierarchical triple in Ara. G8V, also HD 156274. System article covers all components."
+    "notes": "Primary of hierarchical triple in Ara. G8V, also HD 156274. System article covers all components.",
+    "system": "41 G. Arae"
   },
   "Gl 666B": {
     "wikipedia": "https://en.wikipedia.org/wiki/41_G._Arae",
     "name": "41 G. Arae B",
-    "notes": "Close binary of two red dwarfs (Ba+Bb) in the 41 G. Arae triple. Covered in same article."
+    "notes": "Close binary of two red dwarfs (Ba+Bb) in the 41 G. Arae triple. Covered in same article.",
+    "system": "41 G. Arae"
   },
   "Gl 465": {
     "wikipedia": "https://en.wikipedia.org/wiki/Ross_695",
@@ -804,12 +881,14 @@
   "Gl 216A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Leporis",
     "name": "Gamma Leporis A",
-    "notes": "F6V star in Lepus at mag 3.59. Ursa Major Moving Group member. High-priority Terrestrial Planet Finder target. Binary with AK Leporis."
+    "notes": "F6V star in Lepus at mag 3.59. Ursa Major Moving Group member. High-priority Terrestrial Planet Finder target. Binary with AK Leporis.",
+    "system": "Gamma Leporis"
   },
   "Gl 216B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Leporis",
     "name": "Gamma Leporis B",
-    "notes": "AK Leporis, BY Dra variable at mag 6.28. 95 arcsec from primary, visible in binoculars. Covered in same article."
+    "notes": "AK Leporis, BY Dra variable at mag 6.28. 95 arcsec from primary, visible in binoculars. Covered in same article.",
+    "system": "Gamma Leporis"
   },
   "Gl 357": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_357",
@@ -822,11 +901,13 @@
   },
   "Gl 451A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_1830",
-    "notes": "Famous high proper motion star ('Flying Star'). Once held the record before Kapteyn's Star and Barnard's Star. G/K subdwarf."
+    "notes": "Famous high proper motion star ('Flying Star'). Once held the record before Kapteyn's Star and Barnard's Star. G/K subdwarf.",
+    "system": "Groombridge 1830"
   },
   "Gl 451B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_1830",
-    "notes": "Companion to Groombridge 1830. Covered in same article."
+    "notes": "Companion to Groombridge 1830. Covered in same article.",
+    "system": "Groombridge 1830"
   },
   "Gl 849": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_849",
@@ -845,11 +926,13 @@
   "Gl 442A": {
     "wikipedia": "https://en.wikipedia.org/wiki/HD_102365",
     "name": "HD 102365",
-    "notes": "Wikipedia article titled HD 102365 (66 G. Centauri). Ancient G-type star (11-13 Gyr). Previously reported planet likely a false positive (2025 study)."
+    "notes": "Wikipedia article titled HD 102365 (66 G. Centauri). Ancient G-type star (11-13 Gyr). Previously reported planet likely a false positive (2025 study).",
+    "system": "Gliese 442"
   },
   "Gl 442B": {
     "wikipedia": "https://en.wikipedia.org/wiki/HD_102365",
-    "notes": "Companion in the HD 102365 binary. Covered in same article."
+    "notes": "Companion in the HD 102365 binary. Covered in same article.",
+    "system": "Gliese 442"
   },
   "Gl 827": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Pavonis",
@@ -863,11 +946,13 @@
   "Gl 432A": {
     "wikipedia": "https://en.wikipedia.org/wiki/HR_4458",
     "name": "HD 100623",
-    "notes": "Wikipedia article titled HR 4458 (HD 100623, 20 Crateris). K0V star in Hydra, ~5 Gyr old. Binary system."
+    "notes": "Wikipedia article titled HR 4458 (HD 100623, 20 Crateris). K0V star in Hydra, ~5 Gyr old. Binary system.",
+    "system": "Gliese 432"
   },
   "Gl 432B": {
     "wikipedia": "https://en.wikipedia.org/wiki/HR_4458",
-    "notes": "Companion in HD 100623 system. Covered in same article."
+    "notes": "Companion in HD 100623 system. Covered in same article.",
+    "system": "Gliese 432"
   },
   "Gl 434": {
     "wikipedia": "https://en.wikipedia.org/wiki/61_Ursae_Majoris",
@@ -877,5 +962,62 @@
   "Gl 569A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_569",
     "notes": "Flare star in Bootes orbited by a pair of brown dwarfs (Gliese 569 Ba/Bb in 2.4-year orbit). Complex hierarchical system."
+  },
+  "Gl 866B": {
+    "system": "EZ Aquarii"
+  },
+  "GJ 1230A": {
+    "system": "GJ 1230"
+  },
+  "GJ 1230B": {
+    "system": "GJ 1230"
+  },
+  "Gl 257A": {
+    "system": "Gliese 257"
+  },
+  "Gl 257B": {
+    "system": "Gliese 257"
+  },
+  "Gl 831A": {
+    "system": "Gliese 831"
+  },
+  "Gl 831B": {
+    "system": "Gliese 831"
+  },
+  "Gl 747A": {
+    "system": "Gliese 747"
+  },
+  "Gl 747B": {
+    "system": "Gliese 747"
+  },
+  "Gl 618A": {
+    "system": "Gliese 618"
+  },
+  "Gl 618B": {
+    "system": "Gliese 618"
+  },
+  "Gl 745A": {
+    "system": "Gliese 745"
+  },
+  "Gl 745B": {
+    "system": "Gliese 745"
+  },
+  "Gl 185A": {
+    "system": "Gliese 185"
+  },
+  "Gl 185B": {
+    "system": "Gliese 185"
+  },
+  "GJ 1103A": {
+    "system": "GJ 1103"
+  },
+  "GJ 1103B": {
+    "system": "GJ 1103"
+  },
+  "Gl 283A": {
+    "system": "Gliese 283"
+  },
+  "Gl 283B": {
+    "system": "Gliese 283"
   }
 }

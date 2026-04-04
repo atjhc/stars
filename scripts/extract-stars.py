@@ -250,6 +250,8 @@ def extract(input_csv: str, output_json: str, augmentations_path: str | None = N
                 entry["wikipedia"] = aug["wikipedia"]
             if aug.get("notes"):
                 entry["notes"] = aug["notes"]
+            if aug.get("system"):
+                entry["system"] = aug["system"]
             results.append(entry)
         except (ValueError, KeyError):
             continue
