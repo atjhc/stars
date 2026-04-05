@@ -11,6 +11,13 @@ await new Promise<void>((resolve) => {
   else document.addEventListener("DOMContentLoaded", () => resolve());
 });
 
+// Prevent iOS Safari from scrolling the document (CSS2D labels expand beyond viewport)
+document.addEventListener("touchmove", (e) => {
+  if (!(e.target as HTMLElement).closest("#search-results, #detail")) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
 interface Star {
   name: string;
   x: number;
@@ -46,17 +53,19 @@ const camera = new THREE.PerspectiveCamera(
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-document.body.appendChild(renderer.domElement);
+document.getElementById("viewport")!.appendChild(renderer.domElement);
 
 const labelRenderer = new CSS2DRenderer();
 labelRenderer.setSize(window.innerWidth, window.innerHeight);
 labelRenderer.domElement.style.position = "absolute";
 labelRenderer.domElement.style.top = "0";
+labelRenderer.domElement.style.left = "0";
+labelRenderer.domElement.style.overflow = "hidden";
 labelRenderer.domElement.style.pointerEvents = "none";
 labelRenderer.domElement.style.zIndex = "10";
 labelRenderer.domElement.style.userSelect = "none";
 labelRenderer.domElement.style.webkitUserSelect = "none";
-document.body.appendChild(labelRenderer.domElement);
+document.getElementById("viewport")!.appendChild(labelRenderer.domElement);
 
 const starVertexShader = `
   attribute vec3 starColor;
@@ -565,13 +574,18 @@ let lastHoveredMesh: THREE.Mesh | null = null;
 let selectedSystem: SystemGroup | null = null;
 let hoveredSystem: SystemGroup | null = null;
 const detail = document.getElementById("detail")!;
+detail.addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).closest("a")) return;
+  if (window.getSelection()?.toString()) return;
+  detail.classList.toggle("collapsed");
+});
 
 function formatDist(pc: number): string {
   return `${(pc * 3.262).toFixed(1)} ly (${pc.toFixed(2)} pc)`;
 }
 
 function renderWikiLink(url: string | undefined): string {
-  return url ? `<div class="star-wiki"><a href="${url}" target="_blank">Wikipedia \u2197</a></div>` : "";
+  return url ? `<div class="star-wiki"><a href="${url}" target="_blank">Wikipedia</a></div>` : "";
 }
 
 function renderNotes(text: string | undefined): string {
@@ -715,12 +729,14 @@ function updateSystemDetailPanel(group: SystemGroup) {
 
   detail.innerHTML = `
     <div class="star-name">${group.name}</div>
-    <div class="star-detail">
-      Distance: ${formatDist(group.avgDist)}
+    <div class="detail-body">
+      <div class="star-detail">
+        Distance: ${formatDist(group.avgDist)}
+      </div>
+      <div class="system-member-list">${rows.join("")}</div>
+      ${notes.length > 0 ? `<div class="star-notes">${notes.join("<br>")}</div>` : ""}
+      ${renderWikiLink([...wikiUrls][0])}
     </div>
-    <div class="system-member-list">${rows.join("")}</div>
-    ${notes.length > 0 ? `<div class="star-notes">${notes.join("<br>")}</div>` : ""}
-    ${renderWikiLink([...wikiUrls][0])}
   `;
   detail.classList.add("active");
 }
@@ -743,15 +759,17 @@ function updateDetailPanel() {
 
   detail.innerHTML = `
     <div class="star-name">${star.name}</div>
-    ${aliasLine}
-    <div class="star-detail">
-      From Sol: ${formatDist(star.dist)}<br>
-      Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
-      Spectral: ${star.spect || "\u2014"}<br>
-      Luminosity: ${star.lum.toFixed(3)} L\u2609
+    <div class="detail-body">
+      ${aliasLine}
+      <div class="star-detail">
+        From Sol: ${formatDist(star.dist)}<br>
+        Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
+        Spectral: ${star.spect || "\u2014"}<br>
+        Luminosity: ${star.lum.toFixed(3)} L\u2609
+      </div>
+      ${renderNotes(star.notes)}
+      ${renderWikiLink(star.wikipedia)}
     </div>
-    ${renderNotes(star.notes)}
-    ${renderWikiLink(star.wikipedia)}
   `;
   detail.classList.add("active");
 }
@@ -819,6 +837,7 @@ window.addEventListener("resize", () => {
 const searchEl = document.getElementById("search")!;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
 const searchResults = document.getElementById("search-results")!;
+const searchBtn = document.getElementById("search-btn")!;
 let searchOpen = false;
 let selectedIndex = 0;
 let filteredStars: { star: Star; mesh: THREE.Mesh }[] = [];
@@ -826,6 +845,7 @@ let filteredStars: { star: Star; mesh: THREE.Mesh }[] = [];
 function openSearch() {
   searchOpen = true;
   searchEl.classList.add("active");
+  searchBtn.classList.add("hidden");
   searchInput.value = "";
   updateSearchResults("");
   searchInput.focus();
@@ -834,8 +854,15 @@ function openSearch() {
 function closeSearch() {
   searchOpen = false;
   searchEl.classList.remove("active");
+  searchBtn.classList.remove("hidden");
   searchInput.blur();
 }
+
+searchBtn.addEventListener("pointerup", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  openSearch();
+});
 
 function starMatchesQuery(star: Star, q: string): boolean {
   if (star.name.toLowerCase().includes(q)) return true;
@@ -951,6 +978,10 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     selectSearchResult(selectedIndex);
   }
+});
+
+searchInput.addEventListener("blur", () => {
+  setTimeout(() => { if (searchOpen) closeSearch(); }, 150);
 });
 
 searchInput.addEventListener("input", () => {

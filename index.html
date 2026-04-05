@@ -6,7 +6,9 @@
 <title>Stellar Neighborhood</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; overflow: hidden; font-family: 'Helvetica Neue', sans-serif; color: #fff; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+  body { font-family: 'Helvetica Neue', sans-serif; color: #fff; }
+  #viewport { position: fixed; inset: 0; overflow: hidden; }
   canvas { display: block; }
   body, body * { -webkit-user-select: none; user-select: none; }
   #detail { -webkit-user-select: text; user-select: text; }
@@ -18,27 +20,45 @@
   .member-spect { color: #777; font-size: 10px; }
   #info {
     position: absolute; top: 16px; left: 16px;
-    background: #000; padding: 12px 16px; border-radius: 8px;
+    padding: 12px 16px;
     font-size: 13px; line-height: 1.6; pointer-events: none;
-    border: 1px solid rgba(255,255,255,0.1); z-index: 20;
+    z-index: 20;
   }
   #info h1 { font-size: 16px; margin-bottom: 4px; font-weight: 600; }
   #info .hint { color: #888; font-size: 11px; }
+  @media (hover: none) and (pointer: coarse) {
+    #info { top: 8px; left: 8px; padding: 6px 8px; }
+    #info h1 { font-size: 14px; margin-bottom: 0; }
+    #info .hint { display: none; }
+    #detail { bottom: 8px; left: 8px; padding: 8px 12px; }
+  }
   #detail {
     position: absolute; bottom: 16px; left: 16px; display: none;
     background: #000; padding: 12px 16px; border-radius: 8px;
     font-size: 12px; line-height: 1.5;
     border: 1px solid rgba(255,255,255,0.15); z-index: 20;
-    max-width: 320px; user-select: text;
+    max-width: 320px; max-height: 60vh; overflow-y: auto; user-select: text;
   }
   #detail.active { display: block; }
   #detail .star-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+  #detail { cursor: pointer; }
+  #detail.collapsed .detail-body { display: none; }
   #detail .star-aliases { color: #777; font-size: 10px; margin-bottom: 4px; }
   #detail .star-detail { color: #aaa; font-size: 11px; }
   #detail .star-notes { color: #999; font-size: 11px; margin-top: 6px; }
   #detail .star-wiki { margin-top: 6px; }
   #detail .star-wiki a { color: #6699dd; font-size: 12px; text-decoration: none; }
   #detail .star-wiki a:hover { text-decoration: underline; }
+  #search-btn {
+    position: absolute; top: 16px; right: 16px;
+    background: #000; border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px; color: #888; font-size: 22px;
+    width: 36px; height: 36px; cursor: pointer; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s;
+  }
+  #search-btn:hover { border-color: rgba(255,255,255,0.4); color: #ccc; }
+  #search-btn.hidden { display: none; }
   #search {
     position: absolute; top: 16px; right: 16px;
     display: none; flex-direction: column;
@@ -49,7 +69,7 @@
   #search.active { display: flex; }
   #search-input {
     background: transparent; border: none; outline: none;
-    color: #fff; font-size: 14px; padding: 10px 12px;
+    color: #fff; font-size: 16px; padding: 10px 12px;
     font-family: 'Helvetica Neue', sans-serif;
     border-bottom: 1px solid rgba(255,255,255,0.1);
   }
@@ -70,16 +90,19 @@
 </style>
 </head>
 <body>
+<div id="viewport">
 <div id="info">
   <h1>Stellar Neighborhood</h1>
   <div>Stars within ~50 light-years of Sol</div>
   <div class="hint">Drag to rotate &middot; ⌥+drag to zoom &middot; / search &middot; L labels &middot; G grid</div>
 </div>
 <div id="detail"></div>
+<button id="search-btn" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="15" y1="15" x2="21" y2="21"/></svg></button>
 <div id="search">
   <input id="search-input" type="text" placeholder="Search stars..." autocomplete="off" />
   <ul id="search-results"></ul>
 </div>
 <script type="module" src="./src/main.ts"></script>
+</div>
 </body>
 </html>
