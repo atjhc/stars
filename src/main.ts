@@ -307,8 +307,8 @@ const galNorthEq = new THREE.Vector3(
   -Math.cos(decGNP) * Math.sin(raGNP),
 ).normalize();
 
-const GRID_SIZE = 60;
-const GRID_DIVISIONS = 30;
+const GRID_SIZE = 300;
+const GRID_DIVISIONS = 150;
 const GRID_FADE_RADIUS = 30.0;
 
 const gridShaderMat = new THREE.ShaderMaterial({
@@ -817,31 +817,64 @@ function updateSearchResults(query: string) {
   const q = query.toLowerCase().trim();
   filteredStars = [];
   if (q.length > 0) {
+    // Two passes: primary name/system matches first, then alias matches
     const seenSystems = new Set<string>();
+    const seen = new Set<THREE.Mesh>();
+
     for (const mesh of starObjects) {
       const star = mesh.userData as Star;
-      if (!starMatchesQuery(star, q)) continue;
-      // Deduplicate system members — show system once
+      const nameMatch = star.name.toLowerCase().includes(q);
+      const sysMatch = star.system?.toLowerCase().includes(q) ?? false;
+      if (!nameMatch && !sysMatch) continue;
       if (star.system) {
-        if (seenSystems.has(star.system)) continue;
+        if (seenSystems.has(star.system) && !nameMatch) continue;
         seenSystems.add(star.system);
       }
+      seen.add(mesh);
       filteredStars.push({ star, mesh });
       if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
+    }
+
+    if (filteredStars.length < MAX_SEARCH_RESULTS) {
+      for (const mesh of starObjects) {
+        if (seen.has(mesh)) continue;
+        const star = mesh.userData as Star;
+        if (!star.aliases?.some((a) => a.toLowerCase().includes(q))) continue;
+        if (star.system) {
+          if (seenSystems.has(star.system)) continue;
+          seenSystems.add(star.system);
+        }
+        filteredStars.push({ star, mesh });
+        if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
+      }
     }
   }
   selectedIndex = 0;
   renderSearchResults();
 }
 
+function findMatchSource(star: Star, q: string): string | null {
+  if (star.name.toLowerCase().includes(q)) return null;
+  if (star.system?.toLowerCase().includes(q)) return star.system;
+  const alias = star.aliases?.find((a) => a.toLowerCase().includes(q));
+  if (alias) return alias;
+  return null;
+}
+
 function renderSearchResults() {
   searchResults.innerHTML = "";
+  const q = searchInput.value.toLowerCase().trim();
   filteredStars.forEach((entry, i) => {
     const li = document.createElement("li");
     const sys = meshToSystem.get(entry.mesh);
-    const displayName = sys ? sys.name : entry.star.name;
-    const dist = sys ? sys.avgDist : entry.star.dist;
-    li.textContent = `${displayName}  (${formatDist(dist)})`;
+    const primaryName = sys ? sys.name : entry.star.name;
+    const matchSource = findMatchSource(entry.star, q);
+
+    if (matchSource && matchSource !== primaryName) {
+      li.innerHTML = `${primaryName} <span class="search-secondary">${matchSource}</span>`;
+    } else {
+      li.textContent = primaryName;
+    }
     if (i === selectedIndex) li.classList.add("selected");
     li.addEventListener("click", () => selectSearchResult(i));
     searchResults.appendChild(li);
