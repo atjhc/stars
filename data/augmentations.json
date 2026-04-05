@@ -144,12 +144,6 @@
     "name": "YZ Ceti",
     "notes": "Red dwarf flare star in Cetus. Hosts three confirmed planets. Possible first detection of a magnetic field from a terrestrial exoplanet (2023)."
   },
-  "HIP 82724": {
-    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "name": "36 Ophiuchi A",
-    "notes": "Component A of 36 Ophiuchi triple star system. IAU-approved name is 'Guniibuu' (from Aboriginal Australian Kamilaroi/Euahlayi culture). Also known as GJ 663 A. Wikipedia article is '36 Ophiuchi' covering the whole system.",
-    "system": "36 Ophiuchi"
-  },
   "Gl 273": {
     "wikipedia": "https://en.wikipedia.org/wiki/Luyten%27s_Star",
     "notes": "Red dwarf in Canis Minor. Named after Willem Jacob Luyten. Hosts Luyten b, a potentially habitable super-Earth."
@@ -183,12 +177,6 @@
     "name": "Ross 614 B",
     "notes": "Component B of Ross 614.",
     "system": "Ross 614"
-  },
-  "HIP 82725": {
-    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "name": "36 Ophiuchi B",
-    "notes": "Component B of the 36 Ophiuchi triple star system. Also known as GJ 663 B. Wikipedia article is '36 Ophiuchi' covering the whole system.",
-    "system": "36 Ophiuchi"
   },
   "Gl 35": {
     "wikipedia": "https://en.wikipedia.org/wiki/Van_Maanen%27s_Star",
@@ -636,10 +624,6 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_402",
     "name": "EE Leonis",
     "notes": "Wikipedia title redirects to EE Leonis. BY Draconis variable in Leo. Also known as Wolf 358."
-  },
-  "HIP 85605": {
-    "wikipedia": "https://en.wikipedia.org/wiki/HIP_85605",
-    "notes": "WARNING: Originally thought to be nearby (16-22 ly) but Gaia DR2 showed it is actually ~1,730 ly away. Distance in dataset may be based on erroneous Hipparcos parallax."
   },
   "Gl 667A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gliese_667",

@@ -5,10 +5,22 @@ corrections applied via `data/augmentations.json`.
 
 ## Source Data
 
-The HYG Database v4.2 merges Hipparcos, Yale Bright Star, and Gliese catalogs.
-Merging introduces inconsistencies: duplicate entries under different catalog IDs,
-incorrect system groupings, and distance discrepancies from different parallax
-measurements.
+Originally used HYG Database v4.2 (Hipparcos, Yale Bright Star, Gliese catalogs).
+Migrated to **HYGLike from AT-HYG v3.2** which uses the same column structure but
+incorporates **Gaia DR3 distances** for 97.5% of stars, dramatically improving
+parallax accuracy. This migration resolved several known distance errors.
+
+### Stars removed by Gaia-corrected distances
+
+These stars appeared nearby in HYG (bad Hipparcos parallax) but are actually far:
+
+- **HIP 82724** ("36 Ophiuchi A"): HYG 3.70 pc → Gaia **62.8 pc** (not nearby)
+- **HIP 82725** ("36 Ophiuchi B"): HYG 4.15 pc → Gaia **2413 pc** (not nearby)
+- **HIP 85605**: HYG 6.8 pc → Gaia **530 pc** (previously flagged as erroneous)
+
+These were not the real 36 Ophiuchi system — they were distant background stars
+with coincidentally similar coordinates but wildly wrong Hipparcos parallaxes.
+The real 36 Ophiuchi stars (Gl 663A/B, aka Guniibuu) remain at ~5.9 pc.
 
 ## Corrections
 

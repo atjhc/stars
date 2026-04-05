@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
-Extract the nearest stars from the HYG v4.2 database into a JSON file
+Extract the nearest stars from the HYGLike (AT-HYG) database into a JSON file
 for the stellar neighborhood viewer.
 
+HYGLike is a subset of AT-HYG v3.2 with the same column structure as HYG but
+with Gaia DR3 distances for 97.5% of stars, replacing less accurate Hipparcos
+parallaxes.
+
 Usage:
-    # Download the HYG database first:
-    curl -L -o hyg_v42.csv.gz \
-      "https://codeberg.org/astronexus/hyg/media/branch/main/data/hyg/CURRENT/hyg_v42.csv.gz"
-    gunzip hyg_v42.csv.gz
+    # Download the HYGLike database:
+    curl -L -o hyglike.csv.gz \
+      "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v3/hyglike_from_athyg_v32.csv.gz"
+    gunzip hyglike.csv.gz
 
     # Run the extraction (with augmentations):
-    python3 scripts/extract-stars.py hyg_v42.csv src/stars.json data/augmentations.json
+    python3 scripts/extract-stars.py hyglike.csv src/stars.json data/augmentations.json
 
 Data source: https://codeberg.org/astronexus/hyg (CC-BY-SA 4.0)
 

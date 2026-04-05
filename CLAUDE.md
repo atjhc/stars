@@ -17,10 +17,10 @@ Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deplo
 ### Updating star data
 
 ```sh
-curl -L -o hyg_v42.csv.gz \
-  "https://codeberg.org/astronexus/hyg/media/branch/main/data/hyg/CURRENT/hyg_v42.csv.gz"
-gunzip hyg_v42.csv.gz
-python3 scripts/extract-stars.py hyg_v42.csv src/stars.json data/augmentations.json
+curl -L -o hyglike.csv.gz \
+  "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v3/hyglike_from_athyg_v32.csv.gz"
+gunzip hyglike.csv.gz
+python3 scripts/extract-stars.py hyglike.csv src/stars.json data/augmentations.json
 ```
 
 ### Structure
@@ -51,4 +51,4 @@ only get suffixed when the same name appears on multiple components in a system.
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
 - **3D:** Three.js with CSS2DRenderer for labels, custom ShaderMaterial for grid fade
-- **Data:** [HYG v4.2](https://codeberg.org/astronexus/hyg) star catalog (CC-BY-SA 4.0)
+- **Data:** [HYGLike from AT-HYG v3.2](https://codeberg.org/astronexus/hyg) star catalog with Gaia DR3 distances (CC-BY-SA 4.0)
