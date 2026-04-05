@@ -23,21 +23,33 @@ gunzip hyglike.csv.gz
 python3 scripts/extract-stars.py hyglike.csv src/stars.json data/augmentations.json
 ```
 
-### Structure
+### Source modules
+
+- `src/main.ts` — Entry point: star/system creation, input event wiring, render loop
+- `src/types.ts` — Star and SystemGroup interfaces
+- `src/constants.ts` — All magic numbers, thresholds, and shared CSS
+- `src/scene.ts` — Three.js setup, camera orbit, galactic grid, bloom, animation
+- `src/interaction.ts` — Hover/select state, star/system highlighting, system members
+- `src/labels.ts` — Per-frame label visibility, opacity fading, screen-space collapse clustering
+- `src/detail.ts` — Info panel rendering (star and system detail)
+- `src/search.ts` — Search UI, query filtering, result rendering
+- `src/stars.json` — 750 nearest stars extracted from HYGLike with augmentations
+
+### Other files
 
 - `server.ts` — Bun.serve() entry point with HTML imports
 - `build.ts` — Static build script (bundles to dist/)
-- `index.html` — App shell (styles + markup)
-- `src/main.ts` — Three.js scene, camera, interaction logic
-- `src/stars.json` — 300 nearest stars extracted from HYG v4.2 database
-- `scripts/extract-stars.py` — Extracts and names stars from the HYG CSV
-- `data/augmentations.json` — Hand-curated overrides: Wikipedia links, name fixes, notes (keyed by Gliese ID)
+- `index.html` — App shell (styles + markup + viewport wrapper)
+- `scripts/extract-stars.py` — Extracts and names stars from the HYGLike CSV
+- `data/augmentations.json` — Hand-curated overrides: Wikipedia links, name fixes, notes, system groupings, synthetic companions (keyed by Gliese ID)
+- `docs/stars.md` — Star rendering documentation (shader, bloom, sizing)
+- `docs/data-corrections.md` — Corrections applied on top of source data
 
 ### Star naming
 
 Names are assigned by `extract-stars.py` in priority order:
 
-1. **IAU proper name** — "Sirius", "Proxima Centauri"
+1. **IAU proper name** — "Sirius A", "Proxima Centauri"
 2. **Inherited proper name + component** — "Sirius B", "Ross 614 B"
 3. **Bayer/Flamsteed** (parsed to readable form) — "61 Cygni A", "Tau Ceti"
 4. **Gliese catalog** — "Gl 65A", "GJ 1061"
@@ -50,5 +62,6 @@ only get suffixed when the same name appears on multiple components in a system.
 ### Stack
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
-- **3D:** Three.js with CSS2DRenderer for labels, custom ShaderMaterial for grid fade
-- **Data:** [HYGLike from AT-HYG v3.2](https://codeberg.org/astronexus/hyg) star catalog with Gaia DR3 distances (CC-BY-SA 4.0)
+- **3D:** Three.js with custom GLSL shaders, CSS2DRenderer for labels, UnrealBloomPass
+- **Data:** [HYGLike from AT-HYG v3.2](https://codeberg.org/astronexus/hyg) with Gaia DR3 distances (CC-BY-SA 4.0)
+- **Hosting:** Vercel (static)
