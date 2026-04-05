@@ -77,8 +77,7 @@ const starVertexShader = `
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     // Logarithmic scaling: grows slowly when close, preserves presence when far
     float dist = -mvCenter.z;
-    float baseScale = clamp(log(1.0 + dist * 0.5) * 0.2, 0.05, 0.3);
-    float scale = mix(baseScale, max(baseScale, 0.15), step(1.01, uHighlight));
+    float scale = clamp(log(1.0 + dist * 0.5) * 0.2, 0.05, 0.3);
     mvCenter.xy += position.xy * scale;
     gl_Position = projectionMatrix * mvCenter;
   }
@@ -530,6 +529,19 @@ function updateLabelVisibility() {
   for (const label of starLabels) {
     label.visible = labelsVisible;
   }
+  for (const group of systemGroups) {
+    if (!labelsVisible) group.label.visible = false;
+  }
+  if (!labelsVisible) {
+    for (const mesh of starObjects) {
+      const div = meshLabelMap.get(mesh);
+      if (div) div.style.visibility = "hidden";
+    }
+    for (const group of systemGroups) {
+      (group.label.element as HTMLElement).style.visibility = "hidden";
+    }
+  }
+  labelsDirty = true;
 }
 
 function tickAnimation(now: number) {

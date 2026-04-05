@@ -1090,5 +1090,13 @@
   "Gl 395": {
     "system": "36 Ursae Majoris",
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ursae_Majoris"
+  },
+  "Gl 2": {
+    "system": "ADS 48",
+    "notes": "Component F of the ADS 48 multiple system. M2V red dwarf."
+  },
+  "Gl 4A": {
+    "system": "ADS 48",
+    "notes": "Primary component of the ADS 48 multiple system. K6V dwarf, also a spectroscopic binary (Gl 4A/B)."
   }
 }
