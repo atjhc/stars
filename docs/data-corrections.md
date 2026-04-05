@@ -102,6 +102,14 @@ from what the HYG naming hierarchy produces. Examples:
 - GJ 1111 → "DX Cancri" (variable star designation is more common)
 - GJ 3192 → "LTT 1445 A" (the LTT designation is standard in the literature)
 
+### Questionable System Groupings
+
+#### Gliese 831 (Gl 831A + Gl 831B)
+- **Source**: HYG groups these with the same `base` field
+- **Problem**: 0.86 scene units apart (~0.29 pc), no Wikipedia article, no
+  confirmation of binary status found
+- **Fix**: Removed system tag. Treated as independent stars
+
 ## How to Add Corrections
 
 Add entries to `data/augmentations.json` keyed by Gliese catalog ID (or

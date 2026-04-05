@@ -77,7 +77,8 @@ const starVertexShader = `
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     // Logarithmic scaling: grows slowly when close, preserves presence when far
     float dist = -mvCenter.z;
-    float scale = clamp(log(1.0 + dist * 0.5) * 0.2, 0.05, 0.3);
+    float baseScale = clamp(log(1.0 + dist * 0.5) * 0.2, 0.05, 0.3);
+    float scale = mix(baseScale, max(baseScale, 0.15), step(1.01, uHighlight));
     mvCenter.xy += position.xy * scale;
     gl_Position = projectionMatrix * mvCenter;
   }
@@ -380,15 +381,19 @@ function updateCamera() {
 }
 updateCamera();
 
-const HIGHLIGHT_BOOST = 1.25;
+const HIGHLIGHT_BOOST = 1.5;
 
 function highlightStar(mesh: THREE.Mesh) {
-  (mesh.material as THREE.ShaderMaterial).uniforms.uHighlight.value = HIGHLIGHT_BOOST;
+  const mat = mesh.material as THREE.ShaderMaterial;
+  mat.uniforms.uHighlight.value = HIGHLIGHT_BOOST;
+  mat.uniformsNeedUpdate = true;
   meshLabelMap.get(mesh)?.classList.add("highlight");
 }
 
 function unhighlightStar(mesh: THREE.Mesh) {
-  (mesh.material as THREE.ShaderMaterial).uniforms.uHighlight.value = 1.0;
+  const mat = mesh.material as THREE.ShaderMaterial;
+  mat.uniforms.uHighlight.value = 1.0;
+  mat.uniformsNeedUpdate = true;
   meshLabelMap.get(mesh)?.classList.remove("highlight");
 }
 
@@ -573,12 +578,14 @@ function showSystemMembers(group: SystemGroup) {
   const names = members.map((m) => (m.userData as Star).name);
   el.innerHTML = `<div>${group.name}</div><div class="system-members">${names.join(" · ")}</div>`;
   el.classList.add("highlight");
+  for (const m of group.meshes) highlightStar(m);
 }
 
 function hideSystemMembers(group: SystemGroup) {
   const el = group.label.element as HTMLElement;
   el.innerHTML = `<div>${group.name}</div>`;
   el.classList.remove("highlight");
+  for (const m of group.meshes) unhighlightStar(m);
 }
 
 function animateTo(pos: THREE.Vector3) {
@@ -638,7 +645,17 @@ function selectSystem(group: SystemGroup) {
   if (selectedSystem && selectedSystem !== group) hideSystemMembers(selectedSystem);
   selectedSystem = group;
   showSystemMembers(group);
-  animateTo(group.centroid);
+
+  // For tight systems, focus on centroid; for wide systems, focus on nearest member
+  let nearest = group.meshes[0];
+  let nearestDist = Infinity;
+  for (const m of group.meshes) {
+    const d = m.position.distanceTo(camera.position);
+    if (d < nearestDist) { nearest = m; nearestDist = d; }
+  }
+  const focusTarget = nearest.position.distanceTo(group.centroid) < 0.5
+    ? group.centroid : nearest.position;
+  animateTo(focusTarget);
   lastHoveredMesh = null;
   updateDetailPanel();
 }
@@ -957,7 +974,8 @@ function updateLabels() {
 
       group.label.visible = true;
       const dist = group.anchor.position.distanceTo(camera.position);
-      const opacity = 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
+      const isSystemHighlighted = hoveredSystem === group || selectedSystem === group;
+      const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       const zIndex = Math.round(10000 - dist * 100);
       const el = group.label.element as HTMLElement;
       el.style.opacity = String(Math.max(0.1, opacity));
