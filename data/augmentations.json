@@ -45,13 +45,25 @@
   "Gl 244A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Sirius",
     "notes": "Brightest star in the night sky (apparent magnitude -1.46). A1V main sequence star. Wikipedia covers the whole system.",
-    "system": "Sirius"
+    "system": "Sirius",
+    "name": "Sirius A"
   },
   "Gl 244B": {
-    "wikipedia": "https://en.wikipedia.org/wiki/Sirius",
+    "system": "Sirius",
     "name": "Sirius B",
-    "notes": "White dwarf companion of Sirius. First white dwarf discovered. Wikipedia covers both components under 'Sirius'.",
-    "system": "Sirius"
+    "wikipedia": "https://en.wikipedia.org/wiki/Sirius#Sirius_B",
+    "notes": "White dwarf companion of Sirius. First white dwarf discovered (1862). Orbits Sirius A every ~50 years at ~20 AU.",
+    "synthetic": {
+      "x": -0.494,
+      "y": 2.477,
+      "z": -0.758,
+      "dist": 2.6371,
+      "mag": 8.44,
+      "absmag": 11.18,
+      "ci": -0.03,
+      "spect": "DA2",
+      "lum": 0.026
+    }
   },
   "Gl 729": {
     "wikipedia": "https://en.wikipedia.org/wiki/Ross_154",
@@ -105,13 +117,25 @@
   "Gl 280A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Procyon",
     "notes": "Brightest star in Canis Minor and 8th brightest in the night sky. F5IV-V subgiant/main-sequence star.",
-    "system": "Procyon"
+    "system": "Procyon",
+    "name": "Procyon A"
   },
   "Gl 280B": {
-    "wikipedia": "https://en.wikipedia.org/wiki/Procyon",
+    "system": "Procyon",
     "name": "Procyon B",
-    "notes": "White dwarf companion of Procyon. Wikipedia covers the system under 'Procyon'.",
-    "system": "Procyon"
+    "wikipedia": "https://en.wikipedia.org/wiki/Procyon#Procyon_B",
+    "notes": "White dwarf companion of Procyon. Orbits Procyon A every ~41 years at ~15 AU.",
+    "synthetic": {
+      "x": -1.469,
+      "y": 3.176,
+      "z": 0.32,
+      "dist": 3.5142,
+      "mag": 10.7,
+      "absmag": 13.0,
+      "ci": 0.0,
+      "spect": "DQZ",
+      "lum": 0.00055
+    }
   },
   "Gl 15A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Groombridge_34",

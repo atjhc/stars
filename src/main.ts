@@ -58,7 +58,6 @@ labelRenderer.domElement.style.userSelect = "none";
 labelRenderer.domElement.style.webkitUserSelect = "none";
 document.body.appendChild(labelRenderer.domElement);
 
-// Star shader material — procedural multi-layer glow
 const starVertexShader = `
   attribute vec3 starColor;
   attribute float starBrightness;
@@ -73,11 +72,10 @@ const starVertexShader = `
     vColor = starColor;
     vBrightness = starBrightness * uHighlight;
 
-    // Billboard: always face camera
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-    // Logarithmic scaling: grows slowly when close, preserves presence when far
-    float dist = -mvCenter.z;
-    float scale = clamp(log(1.0 + dist * 0.5) * 0.2, 0.05, 0.3);
+    float camDist = -mvCenter.z;
+    float scale = clamp(log(1.0 + camDist * 0.5) * 0.12, 0.02, 0.15);
+
     mvCenter.xy += position.xy * scale;
     gl_Position = projectionMatrix * mvCenter;
   }
@@ -93,23 +91,18 @@ const starFragmentShader = `
     float d = length(uv);
     if (d > 1.0) discard;
 
-    // Multi-layer glow
     float core = exp(-d * d * 30.0);
     float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
     float outerGlow = exp(-d * 4.0) * 0.3;
-
     float intensity = (core + halo * 0.4 + outerGlow) * vBrightness;
 
-    // Core desaturates toward white; color shows in the halo
     vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, core * vBrightness));
-
     gl_FragColor = vec4(color * intensity, intensity);
   }
 `;
 
+
 const BLOOM_LAYER = 1;
-const bloomLayer = new THREE.Layers();
-bloomLayer.set(BLOOM_LAYER);
 
 const starGroup = new THREE.Group();
 scene.add(starGroup);
@@ -583,7 +576,7 @@ function renderNotes(text: string | undefined): string {
   return text ? `<div class="star-notes">${text}</div>` : "";
 }
 
-let lastSystemLabelState = new WeakMap<SystemGroup, string>();
+const lastSystemLabelState = new WeakMap<SystemGroup, string>();
 
 function updateSystemLabelText(group: SystemGroup) {
   const isActive = hoveredSystem === group || selectedSystem === group;
@@ -854,7 +847,6 @@ function updateSearchResults(query: string) {
   filteredStars = [];
   if (q.length > 0) {
     // Two passes: primary name/system matches first, then alias matches
-    const seenSystems = new Set<string>();
     const seen = new Set<THREE.Mesh>();
 
     for (const mesh of starObjects) {
@@ -862,16 +854,13 @@ function updateSearchResults(query: string) {
       const nameMatch = star.name.toLowerCase().includes(q);
       const sysMatch = star.system?.toLowerCase().includes(q) ?? false;
       if (!nameMatch && !sysMatch) continue;
-      if (star.system) {
-        if (seenSystems.has(star.system) && !nameMatch) continue;
-        seenSystems.add(star.system);
-      }
       seen.add(mesh);
       filteredStars.push({ star, mesh });
       if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
     }
 
     if (filteredStars.length < MAX_SEARCH_RESULTS) {
+      const seenSystems = new Set<string>();
       for (const mesh of starObjects) {
         if (seen.has(mesh)) continue;
         const star = mesh.userData as Star;
@@ -905,9 +894,13 @@ function renderSearchResults() {
     const sys = meshToSystem.get(entry.mesh);
     const primaryName = sys ? sys.name : entry.star.name;
     const matchSource = findMatchSource(entry.star, q);
+    // Show the star's own name if it differs from the system name
+    const secondary = matchSource && matchSource !== primaryName
+      ? matchSource
+      : (sys && entry.star.name !== sys.name ? entry.star.name : null);
 
-    if (matchSource && matchSource !== primaryName) {
-      li.innerHTML = `${primaryName} <span class="search-secondary">${matchSource}</span>`;
+    if (secondary) {
+      li.innerHTML = `${primaryName} <span class="search-secondary">${secondary}</span>`;
     } else {
       li.textContent = primaryName;
     }
@@ -972,9 +965,9 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.8,  // strength
-  0.3,  // radius
-  0.2,  // threshold
+  1.2,  // strength
+  0.5,  // radius
+  0.15, // threshold
 );
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());

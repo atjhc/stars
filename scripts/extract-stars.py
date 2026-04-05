@@ -237,6 +237,11 @@ def extract(input_csv: str, output_json: str, augmentations_path: str | None = N
 
         return candidates[0], candidates[1:]
 
+    def apply_augmentation(entry: dict, aug: dict) -> None:
+        for field in ("wikipedia", "notes", "system"):
+            if aug.get(field):
+                entry[field] = aug[field]
+
     results = []
     for row in nearest:
         try:
@@ -267,15 +272,30 @@ def extract(input_csv: str, output_json: str, augmentations_path: str | None = N
             }
             if aliases:
                 entry["aliases"] = aliases
-            if aug.get("wikipedia"):
-                entry["wikipedia"] = aug["wikipedia"]
-            if aug.get("notes"):
-                entry["notes"] = aug["notes"]
-            if aug.get("system"):
-                entry["system"] = aug["system"]
+            apply_augmentation(entry, aug)
             results.append(entry)
         except (ValueError, KeyError):
             continue
+
+    # Inject synthetic stars from augmentations (companions missing from source catalog)
+    for key, aug in augmentations.items():
+        synth = aug.get("synthetic")
+        if not synth:
+            continue
+        # Skip if a star with this key already exists in results
+        if any(s.get("name") == aug.get("name", key) for s in results):
+            continue
+        entry: dict = {
+            "name": aug.get("name", key),
+            "x": synth["x"], "y": synth["y"], "z": synth["z"],
+            "dist": synth["dist"],
+            "mag": synth["mag"], "absmag": synth["absmag"],
+            "ci": synth.get("ci", 0.656),
+            "spect": synth.get("spect", ""),
+            "lum": synth.get("lum", 1.0),
+        }
+        apply_augmentation(entry, aug)
+        results.append(entry)
 
     names = [s["name"] for s in results]
     dupes = set(n for n in names if names.count(n) > 1)

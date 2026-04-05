@@ -122,6 +122,16 @@ from what the HYG naming hierarchy produces. Examples:
   confirmation of binary status found
 - **Fix**: Removed system tag. Treated as independent stars
 
+### Missing Companions in HYGLike
+
+#### Sirius B (Gl 244B) and Procyon B (Gl 280B)
+- **Source**: HYGLike (AT-HYG) does not include these white dwarf companions —
+  they lack independent Gaia/Hipparcos parallax measurements
+- **Fix**: Added as synthetic entries in `augmentations.json` with coordinates
+  matching their primaries and known photometric data. The extraction script
+  injects synthetic stars into the output when a `synthetic` field is present
+  in the augmentation entry
+
 ## How to Add Corrections
 
 Add entries to `data/augmentations.json` keyed by Gliese catalog ID (or
@@ -138,7 +148,25 @@ Add entries to `data/augmentations.json` keyed by Gliese catalog ID (or
 }
 ```
 
+For stars missing from the source catalog, add a `synthetic` field with full data:
+
+```json
+{
+  "Gl 244B": {
+    "name": "Sirius B",
+    "system": "Sirius",
+    "synthetic": {
+      "x": -0.494, "y": 2.477, "z": -0.758,
+      "dist": 2.6371,
+      "mag": 8.44, "absmag": 11.18,
+      "ci": -0.03, "spect": "DA2",
+      "lum": 0.026
+    }
+  }
+}
+```
+
 Then regenerate:
 ```sh
-python3 scripts/extract-stars.py hyg_v42.csv src/stars.json data/augmentations.json
+python3 scripts/extract-stars.py hyglike.csv src/stars.json data/augmentations.json
 ```
