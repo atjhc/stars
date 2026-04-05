@@ -41,7 +41,7 @@ import re
 import sys
 from collections import defaultdict
 
-STAR_COUNT = 300
+STAR_COUNT = 750
 
 # IAU constellation abbreviations to Latin genitive form
 CON_NAMES = {
@@ -131,7 +131,24 @@ def extract(input_csv: str, output_json: str, augmentations_path: str | None = N
             all_stars.append(row)
 
     all_stars.sort(key=lambda r: float(r["dist"]))
-    nearest = all_stars[:STAR_COUNT]
+
+    # Deduplicate by Gliese ID (prefer entry with HIP ID)
+    seen_gl: dict[str, dict] = {}
+    deduped: list[dict] = []
+    for row in all_stars:
+        gl = row.get("gl", "").strip()
+        if gl and gl in seen_gl:
+            existing = seen_gl[gl]
+            if not existing.get("hip", "").strip() and row.get("hip", "").strip():
+                deduped.remove(existing)
+                seen_gl[gl] = row
+                deduped.append(row)
+            continue
+        if gl:
+            seen_gl[gl] = row
+        deduped.append(row)
+
+    nearest = deduped[:STAR_COUNT]
     by_id = {s["id"]: s for s in all_stars}
 
     # Find systems where multiple components share the same proper name

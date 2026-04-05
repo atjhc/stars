@@ -11,12 +11,11 @@
   body, body * { -webkit-user-select: none; user-select: none; }
   #detail { -webkit-user-select: text; user-select: text; }
   #detail * { -webkit-user-select: text; user-select: text; }
-  [data-star-label] { transition: color 0.15s, text-shadow 0.15s; }
+  [data-star-label] { transition: opacity 0.15s; }
   .system-members { color: #aaa; font-size: 9px; font-weight: normal; white-space: nowrap; text-align: center; }
   .system-member-list { margin-top: 6px; }
   .system-member-row { color: #bbb; font-size: 11px; padding: 1px 0; }
   .member-spect { color: #777; font-size: 10px; }
-  [data-star-label].highlight { color: #fff !important; text-shadow: 0 0 8px rgba(100,150,220,0.8), 0 0 4px #000 !important; }
   #info {
     position: absolute; top: 16px; left: 16px;
     background: #000; padding: 12px 16px; border-radius: 8px;
@@ -73,7 +72,7 @@
 <body>
 <div id="info">
   <h1>Stellar Neighborhood</h1>
-  <div>Stars within ~33 light-years of Sol</div>
+  <div>Stars within ~50 light-years of Sol</div>
   <div class="hint">Drag to rotate &middot; ⌥+drag to zoom &middot; / search &middot; L labels &middot; G grid</div>
 </div>
 <div id="detail"></div>

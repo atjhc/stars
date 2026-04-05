@@ -238,6 +238,8 @@ interface SystemGroup {
   centroid: THREE.Vector3;
   avgDist: number;
   collapsedMembers: THREE.Mesh[];
+  screens: { x: number; y: number }[];
+  parents: number[];
 }
 
 const systemGroups: SystemGroup[] = [];
@@ -273,7 +275,9 @@ const meshToSystem = new Map<THREE.Mesh, SystemGroup>();
     centroid.divideScalar(meshes.length);
 
     const avgDist = meshes.reduce((s, m) => s + (m.userData as Star).dist, 0) / meshes.length;
-    const group: SystemGroup = { name, meshes, label, anchor, centroid, avgDist, collapsedMembers: [] };
+    const screens = meshes.map(() => ({ x: 0, y: 0 }));
+    const parents = new Array(meshes.length);
+    const group: SystemGroup = { name, meshes, label, anchor, centroid, avgDist, collapsedMembers: [], screens, parents };
     systemGroups.push(group);
     for (const m of meshes) meshToSystem.set(m, group);
 
@@ -383,19 +387,14 @@ updateCamera();
 
 const HIGHLIGHT_BOOST = 1.5;
 
-function highlightStar(mesh: THREE.Mesh) {
+function setStarHighlight(mesh: THREE.Mesh, value: number) {
   const mat = mesh.material as THREE.ShaderMaterial;
-  mat.uniforms.uHighlight.value = HIGHLIGHT_BOOST;
+  mat.uniforms.uHighlight.value = value;
   mat.uniformsNeedUpdate = true;
-  meshLabelMap.get(mesh)?.classList.add("highlight");
 }
 
-function unhighlightStar(mesh: THREE.Mesh) {
-  const mat = mesh.material as THREE.ShaderMaterial;
-  mat.uniforms.uHighlight.value = 1.0;
-  mat.uniformsNeedUpdate = true;
-  meshLabelMap.get(mesh)?.classList.remove("highlight");
-}
+function highlightStar(mesh: THREE.Mesh) { setStarHighlight(mesh, HIGHLIGHT_BOOST); }
+function unhighlightStar(mesh: THREE.Mesh) { setStarHighlight(mesh, 1.0); }
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -572,20 +571,40 @@ function renderNotes(text: string | undefined): string {
   return text ? `<div class="star-notes">${text}</div>` : "";
 }
 
-function showSystemMembers(group: SystemGroup) {
+let lastSystemLabelState = new WeakMap<SystemGroup, string>();
+
+function updateSystemLabelText(group: SystemGroup) {
+  const isActive = hoveredSystem === group || selectedSystem === group;
+  const members = isActive
+    ? (group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes)
+    : [];
+  const key = isActive ? members.map((m) => (m.userData as Star).name).join(",") : "";
+
+  if (lastSystemLabelState.get(group) === key) return;
+  lastSystemLabelState.set(group, key);
+
   const el = group.label.element as HTMLElement;
-  const members = group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes;
-  const names = members.map((m) => (m.userData as Star).name);
-  el.innerHTML = `<div>${group.name}</div><div class="system-members">${names.join(" · ")}</div>`;
-  el.classList.add("highlight");
-  for (const m of group.meshes) highlightStar(m);
+  if (isActive) {
+    const names = members.map((m) => (m.userData as Star).name);
+    el.innerHTML = `<div>${group.name}</div><div class="system-members">${names.join(" · ")}</div>`;
+  } else {
+    el.innerHTML = `<div>${group.name}</div>`;
+  }
+}
+
+function highlightSystem(group: SystemGroup) { group.meshes.forEach((m) => setStarHighlight(m, HIGHLIGHT_BOOST)); }
+function unhighlightSystem(group: SystemGroup) { group.meshes.forEach((m) => setStarHighlight(m, 1.0)); }
+
+function showSystemMembers(group: SystemGroup) {
+  highlightSystem(group);
+  updateSystemLabelText(group);
+  labelsDirty = true;
 }
 
 function hideSystemMembers(group: SystemGroup) {
-  const el = group.label.element as HTMLElement;
-  el.innerHTML = `<div>${group.name}</div>`;
-  el.classList.remove("highlight");
-  for (const m of group.meshes) unhighlightStar(m);
+  unhighlightSystem(group);
+  updateSystemLabelText(group);
+  labelsDirty = true;
 }
 
 function animateTo(pos: THREE.Vector3) {
@@ -597,11 +616,13 @@ function showHover(mesh: THREE.Mesh) {
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) unhighlightStar(lastHoveredMesh);
   lastHoveredMesh = mesh;
   if (mesh !== selectedMesh) highlightStar(mesh);
+  labelsDirty = true;
 }
 
 function hideHover() {
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) unhighlightStar(lastHoveredMesh);
   lastHoveredMesh = null;
+  labelsDirty = true;
 }
 
 function hoverTarget(mesh: THREE.Mesh) {
@@ -645,6 +666,7 @@ function selectSystem(group: SystemGroup) {
   if (selectedSystem && selectedSystem !== group) hideSystemMembers(selectedSystem);
   selectedSystem = group;
   showSystemMembers(group);
+  labelsDirty = true;
 
   // For tight systems, focus on centroid; for wide systems, focus on nearest member
   let nearest = group.meshes[0];
@@ -665,6 +687,7 @@ function selectStar(mesh: THREE.Mesh) {
   if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
   selectedMesh = mesh;
   highlightStar(mesh);
+  labelsDirty = true;
   animateTo(mesh.position);
   updateLabelVisibility();
   lastHoveredMesh = null;
@@ -783,6 +806,7 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer.setSize(window.innerWidth, window.innerHeight);
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  labelsDirty = true;
 });
 
 const searchEl = document.getElementById("search")!;
@@ -943,62 +967,77 @@ const bloomPass = new UnrealBloomPass(
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
 
-const LABEL_FADE_NEAR = 5;
-const LABEL_FADE_FAR = 40;
+const LABEL_FADE_NEAR = 8;
+const LABEL_FADE_FAR = 50;
+const LABEL_HIDE_DIST = 55;
 const COLLAPSE_PX = 45;
+const COLLAPSE_PX_SQ = COLLAPSE_PX * COLLAPSE_PX;
 
 const projVec = new THREE.Vector3();
-function projectToScreen(pos: THREE.Vector3): { x: number; y: number } {
+const screenBuf = { x: 0, y: 0 };
+function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
   projVec.copy(pos).project(camera);
-  return {
-    x: (projVec.x * 0.5 + 0.5) * window.innerWidth,
-    y: (-projVec.y * 0.5 + 0.5) * window.innerHeight,
-  };
+  screenBuf.x = (projVec.x * 0.5 + 0.5) * window.innerWidth;
+  screenBuf.y = (-projVec.y * 0.5 + 0.5) * window.innerHeight;
+  return screenBuf;
 }
 
-// Per-frame: which meshes are currently collapsed into a system label
+let labelsDirty = true;
+const prevCamPos = new THREE.Vector3();
+
+function setLabelStyle(div: HTMLElement, opacity: string, zIndex: string, visible: boolean) {
+  div.style.visibility = visible ? "visible" : "hidden";
+  div.style.opacity = opacity;
+  div.style.zIndex = zIndex;
+}
+
 function updateLabels() {
   if (!labelsVisible) return;
+
+  if (!labelsDirty) return;
 
   const collapsed = new Set<THREE.Mesh>();
 
   // Dynamic screen-space clustering within each system
   for (const group of systemGroups) {
     const n = group.meshes.length;
-    const screens = group.meshes.map((m) => projectToScreen(m.position));
+    const screens = group.screens;
+    const parent = group.parents;
 
-    // Single-linkage clustering by screen distance
-    const parent = group.meshes.map((_, i) => i);
+    for (let i = 0; i < n; i++) {
+      const s = projectToScreen(group.meshes[i].position);
+      screens[i].x = s.x;
+      screens[i].y = s.y;
+      parent[i] = i;
+    }
+
     function find(i: number): number { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
-    function union(a: number, b: number) { parent[find(a)] = find(b); }
 
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const dx = screens[i].x - screens[j].x;
         const dy = screens[i].y - screens[j].y;
-        if (Math.sqrt(dx * dx + dy * dy) < COLLAPSE_PX) {
-          union(i, j);
+        if (dx * dx + dy * dy < COLLAPSE_PX_SQ) {
+          parent[find(i)] = find(j);
         }
       }
     }
 
     // Find the largest cluster with 2+ members
-    const clusters = new Map<number, number[]>();
+    const clusterCounts = new Map<number, number>();
+    let bestRoot = -1, bestCount = 0;
     for (let i = 0; i < n; i++) {
       const root = find(i);
-      if (!clusters.has(root)) clusters.set(root, []);
-      clusters.get(root)!.push(i);
+      const count = (clusterCounts.get(root) || 0) + 1;
+      clusterCounts.set(root, count);
+      if (count > bestCount && count >= 2) { bestRoot = root; bestCount = count; }
     }
 
-    let bestCluster: number[] | null = null;
-    for (const indices of clusters.values()) {
-      if (indices.length >= 2 && (!bestCluster || indices.length > bestCluster.length)) {
-        bestCluster = indices;
+    if (bestRoot >= 0) {
+      const members: THREE.Mesh[] = [];
+      for (let i = 0; i < n; i++) {
+        if (find(i) === bestRoot) members.push(group.meshes[i]);
       }
-    }
-
-    if (bestCluster) {
-      const members = bestCluster.map((i) => group.meshes[i]);
       group.collapsedMembers = members;
 
       group.anchor.position.set(0, 0, 0);
@@ -1011,15 +1050,11 @@ function updateLabels() {
       const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       const zIndex = Math.round(10000 - dist * 100);
       const el = group.label.element as HTMLElement;
-      el.style.opacity = String(Math.max(0.1, opacity));
-      el.style.zIndex = String(zIndex);
+      setLabelStyle(el, String(Math.max(0.1, opacity)), String(zIndex), true);
 
       for (const m of members) collapsed.add(m);
 
-      // Update hover text if this system is being hovered or selected
-      if (hoveredSystem === group || selectedSystem === group) {
-        showSystemMembers(group);
-      }
+      updateSystemLabelText(group);
     } else {
       group.collapsedMembers = [];
       group.label.visible = false;
@@ -1035,27 +1070,42 @@ function updateLabels() {
     const div = meshLabelMap.get(mesh);
     if (!div) continue;
 
-    const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh;
-    const isCollapsed = collapsed.has(mesh) && !isHighlighted;
-    div.style.visibility = isCollapsed ? "hidden" : "visible";
-    if (isCollapsed) continue;
-
     const camDist = mesh.position.distanceTo(camera.position);
-    const zIndex = Math.round(10000 - camDist * 100);
-    div.style.zIndex = String(zIndex);
+    const sys = meshToSystem.get(mesh);
 
+    // Collapsed system members always hidden — the system label handles display
+    if (collapsed.has(mesh)) {
+      setLabelStyle(div, "0", "0", false);
+      continue;
+    }
+
+    const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh
+      || (sys !== undefined && (sys === hoveredSystem || sys === selectedSystem));
+
+    // Hide labels beyond visible range
+    if (camDist > LABEL_HIDE_DIST && !isHighlighted) {
+      setLabelStyle(div, "0", "0", false);
+      continue;
+    }
+
+    const zIndex = String(Math.round(10000 - camDist * 100));
     if (isHighlighted) {
-      div.style.opacity = "1";
+      setLabelStyle(div, "1", zIndex, true);
     } else {
       const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
-      div.style.opacity = String(Math.max(0.1, opacity));
+      setLabelStyle(div, String(Math.max(0.1, opacity)), zIndex, true);
     }
   }
+
+  labelsDirty = false;
+  prevCamPos.copy(camera.position);
 }
 
 function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
+  // Check if camera moved since last frame
+  if (!prevCamPos.equals(camera.position)) labelsDirty = true;
   updateLabels();
   composer.render();
   labelRenderer.render(scene, camera);
