@@ -1009,5 +1009,86 @@
     "name": "LTT 1445 BC",
     "wikipedia": "https://en.wikipedia.org/wiki/LTT_1445",
     "notes": "Unresolved binary pair (B+C) in the LTT 1445 triple system. B and C orbit each other every ~36 years, while the BC pair orbits A at ~34 AU separation."
+  },
+  "Gl 423A": {
+    "system": "Xi Ursae Majoris",
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Ursae_Majoris",
+    "notes": "First visual binary ever discovered (Herschel, 1780). Actually a hierarchical quadruple system."
+  },
+  "Gl 423B": {
+    "system": "Xi Ursae Majoris",
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Ursae_Majoris",
+    "notes": "Secondary component of Xi Ursae Majoris. Each visual component is itself a spectroscopic binary."
+  },
+  "HIP 31292": {
+    "system": "HIP 31292/31293"
+  },
+  "HIP 31293": {
+    "system": "HIP 31292/31293"
+  },
+  "Gl 49": {
+    "system": "Gl 49/51"
+  },
+  "Gl 51": {
+    "system": "Gl 49/51"
+  },
+  "Gl 653": {
+    "system": "36 Ophiuchi",
+    "name": "36 Ophiuchi A",
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
+    "notes": "Primary of the 36 Ophiuchi triple system. K-type dwarf at 10.5 pc."
+  },
+  "Gl 654": {
+    "system": "36 Ophiuchi",
+    "name": "36 Ophiuchi B",
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
+    "notes": "Secondary of the 36 Ophiuchi triple system."
+  },
+  "Gl 617A": {
+    "system": "Gliese 617"
+  },
+  "Gl 617B": {
+    "system": "Gliese 617"
+  },
+  "GJ 1075": {
+    "system": "Zeta Doradus",
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Doradus",
+    "notes": "Faint companion to Zeta Doradus."
+  },
+  "Gl 360": {
+    "system": "Gl 360/362"
+  },
+  "Gl 362": {
+    "system": "Gl 360/362"
+  },
+  "Gl 211": {
+    "system": "Gl 211/212"
+  },
+  "Gl 212": {
+    "system": "Gl 211/212"
+  },
+  "Gl 620.1A": {
+    "system": "Gl 620.1"
+  },
+  "Gl 620.1B": {
+    "system": "Gl 620.1"
+  },
+  "Gl 394": {
+    "system": "36 Ursae Majoris",
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ursae_Majoris"
+  },
+  "HIP 86963": {
+    "system": "Mu Herculis"
+  },
+  "HIP 86961": {
+    "system": "Mu Herculis"
+  },
+  "Gl 189": {
+    "system": "Zeta Doradus",
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Doradus"
+  },
+  "Gl 395": {
+    "system": "36 Ursae Majoris",
+    "wikipedia": "https://en.wikipedia.org/wiki/36_Ursae_Majoris"
   }
 }
