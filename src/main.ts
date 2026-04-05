@@ -83,7 +83,11 @@ const starVertexShader = `
 
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     float camDist = -mvCenter.z;
-    float scale = clamp(log(1.0 + camDist * 0.5) * 0.12, 0.02, 0.15);
+    float logScale = clamp(log(1.0 + camDist * 0.5) * 0.12, 0.02, 0.15);
+    // Minimum scale proportional to distance — ensures enough pixels
+    // for bloom downsample to capture the bright core consistently
+    float minScale = camDist * 0.006;
+    float scale = max(logScale, minScale);
 
     mvCenter.xy += position.xy * scale;
     gl_Position = projectionMatrix * mvCenter;
@@ -98,7 +102,6 @@ const starFragmentShader = `
   void main() {
     vec2 uv = (vUv - 0.5) * 2.0;
     float d = length(uv);
-    if (d > 1.0) discard;
 
     float core = exp(-d * d * 30.0);
     float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
@@ -315,7 +318,7 @@ const galNorthEq = new THREE.Vector3(
 ).normalize();
 
 const GRID_SIZE = 300;
-const GRID_DIVISIONS = 150;
+const GRID_DIVISIONS = 65;
 const GRID_FADE_RADIUS = 30.0;
 
 const gridShaderMat = new THREE.ShaderMaterial({
