@@ -217,7 +217,6 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   const label = new CSS2DObject(labelDiv);
   label.center.set(0.5, 0);
   label.userData.mesh = mesh;
-  label.userData.notable = !!star.wikipedia;
   mesh.add(label);
   starLabels.push(label);
 });
@@ -233,6 +232,7 @@ interface SystemGroup {
   collapsedMembers: THREE.Mesh[];
   screens: { x: number; y: number }[];
   parents: number[];
+  notable: boolean;
 }
 
 const systemGroups: SystemGroup[] = [];
@@ -270,7 +270,8 @@ const meshToSystem = new Map<THREE.Mesh, SystemGroup>();
     const avgDist = meshes.reduce((s, m) => s + (m.userData as Star).dist, 0) / meshes.length;
     const screens = meshes.map(() => ({ x: 0, y: 0 }));
     const parents = new Array(meshes.length);
-    const group: SystemGroup = { name, meshes, label, anchor, centroid, avgDist, collapsedMembers: [], screens, parents };
+    const notable = meshes.some((m) => !!(m.userData as Star).wikipedia);
+    const group: SystemGroup = { name, meshes, label, anchor, centroid, avgDist, collapsedMembers: [], screens, parents, notable };
     systemGroups.push(group);
     for (const m of meshes) meshToSystem.set(m, group);
 
@@ -1050,16 +1051,16 @@ function updateLabels() {
       for (const m of members) group.anchor.position.add(m.position);
       group.anchor.position.divideScalar(members.length);
 
-      group.label.visible = true;
+      for (const m of members) collapsed.add(m);
+
       const dist = group.anchor.position.distanceTo(camera.position);
       const isSystemHighlighted = hoveredSystem === group || selectedSystem === group;
+      group.label.visible = (group.notable && dist <= LABEL_HIDE_DIST) || isSystemHighlighted;
+      if (!group.label.visible) continue;
       const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       const zIndex = Math.round(10000 - dist * 100);
       const el = group.label.element as HTMLElement;
       setLabelStyle(el, String(Math.max(0.2, opacity)), String(zIndex), true);
-
-      for (const m of members) collapsed.add(m);
-
       updateSystemLabelText(group);
     } else {
       group.collapsedMembers = [];
