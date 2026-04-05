@@ -164,7 +164,7 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   // Billboard size based on luminosity (log scale)
   const quadSize = 0.4;
   // Brightness multiplier for the shader
-  const brightness = Math.max(0.6, Math.min(2.0, 0.7 + 0.3 * Math.log10(Math.max(star.lum, 0.001))));
+  const brightness = Math.max(0.8, Math.min(2.5, 0.9 + 0.35 * Math.log10(Math.max(star.lum, 0.001))));
 
   // Per-star shader material with attributes baked as uniforms
   const mat = new THREE.ShaderMaterial({
@@ -217,6 +217,7 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   const label = new CSS2DObject(labelDiv);
   label.center.set(0.5, 0);
   label.userData.mesh = mesh;
+  label.userData.notable = !!star.wikipedia;
   mesh.add(label);
   starLabels.push(label);
 });
@@ -313,7 +314,7 @@ const gridShaderMat = new THREE.ShaderMaterial({
   uniforms: {
     uCenter: { value: new THREE.Vector3(0, 0, 0) },
     uFadeRadius: { value: GRID_FADE_RADIUS },
-    uColor: { value: new THREE.Color(0x6699dd) },
+    uColor: { value: new THREE.Color(0x4d7fc4) },
   },
   vertexShader: `
     varying vec3 vWorldPos;
@@ -1055,7 +1056,7 @@ function updateLabels() {
       const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       const zIndex = Math.round(10000 - dist * 100);
       const el = group.label.element as HTMLElement;
-      setLabelStyle(el, String(Math.max(0.1, opacity)), String(zIndex), true);
+      setLabelStyle(el, String(Math.max(0.2, opacity)), String(zIndex), true);
 
       for (const m of members) collapsed.add(m);
 
@@ -1086,6 +1087,14 @@ function updateLabels() {
 
     const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh
       || (sys !== undefined && (sys === hoveredSystem || sys === selectedSystem));
+    const star = mesh.userData as Star;
+    const isNotable = !!star.wikipedia;
+
+    // Non-notable stars only show label when highlighted
+    if (!isNotable && !isHighlighted) {
+      setLabelStyle(div, "0", "0", false);
+      continue;
+    }
 
     // Hide labels beyond visible range
     if (camDist > LABEL_HIDE_DIST && !isHighlighted) {
@@ -1098,7 +1107,7 @@ function updateLabels() {
       setLabelStyle(div, "1", zIndex, true);
     } else {
       const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
-      setLabelStyle(div, String(Math.max(0.1, opacity)), zIndex, true);
+      setLabelStyle(div, String(Math.max(0.2, opacity)), zIndex, true);
     }
   }
 
