@@ -145,6 +145,23 @@ function bvToColor(ci: number): THREE.Color {
   return new THREE.Color(r, g, b);
 }
 
+const LABEL_CSS = `
+  color: rgba(255,255,255,0.7); font-size: 10px;
+  pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
+  margin-top: 16px; user-select: none; text-align: center; cursor: pointer;
+`;
+
+function initLabelDrag(div: HTMLElement) {
+  div.setAttribute("data-star-label", "");
+  div.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    isDragging = true;
+    prevMouse.x = e.clientX;
+    prevMouse.y = e.clientY;
+    dragDistance = 0;
+  });
+}
+
 // Shared quad geometry for all star billboards
 const starQuadGeo = new THREE.PlaneGeometry(1, 1);
 
@@ -199,24 +216,11 @@ const starQuadGeo = new THREE.PlaneGeometry(1, 1);
   starObjects.push(mesh);
 
   const labelDiv = document.createElement("div");
-  labelDiv.style.cssText = `
-    color: rgba(255,255,255,0.7); font-size: 10px;
-    pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
-    margin-top: 16px; user-select: none; text-align: center;
-    cursor: pointer;
-  `;
+  labelDiv.style.cssText = LABEL_CSS;
   labelDiv.textContent = star.name;
   labelMeshMap.set(labelDiv, mesh);
   meshLabelMap.set(mesh, labelDiv);
-  labelDiv.setAttribute("data-star-label", "");
-  labelDiv.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    // Forward to drag system so camera rotation works from labels
-    isDragging = true;
-    prevMouse.x = e.clientX;
-    prevMouse.y = e.clientY;
-    dragDistance = 0;
-  });
+  initLabelDrag(labelDiv);
   const label = new CSS2DObject(labelDiv);
   label.center.set(0.5, 0);
   label.userData.mesh = mesh;
@@ -231,6 +235,7 @@ interface SystemGroup {
   label: CSS2DObject;
   anchor: THREE.Object3D;
   centroid: THREE.Vector3;
+  avgDist: number;
   collapsedMembers: THREE.Mesh[];
 }
 
@@ -250,23 +255,10 @@ const meshToSystem = new Map<THREE.Mesh, SystemGroup>();
   for (const [name, meshes] of systemMap) {
     if (meshes.length < 2) continue;
     const labelDiv = document.createElement("div");
-    labelDiv.style.cssText = `
-      color: rgba(255,255,255,0.7); font-size: 10px;
-      pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
-      margin-top: 16px; user-select: none; cursor: pointer; text-align: center;
-    `;
-    const memberNames = meshes.map((m) => (m.userData as Star).name);
-    const membersHtml = `<div class="system-members">${memberNames.join(" · ")}</div>`;
+    labelDiv.style.cssText = LABEL_CSS;
     labelDiv.innerHTML = `<div>${name}</div>`;
-    labelDiv.setAttribute("data-star-label", "");
     labelDiv.setAttribute("data-system-label", "");
-    labelDiv.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      isDragging = true;
-      prevMouse.x = e.clientX;
-      prevMouse.y = e.clientY;
-      dragDistance = 0;
-    });
+    initLabelDrag(labelDiv);
 
     const anchor = new THREE.Object3D();
     scene.add(anchor);
@@ -279,7 +271,8 @@ const meshToSystem = new Map<THREE.Mesh, SystemGroup>();
     for (const m of meshes) centroid.add(m.position);
     centroid.divideScalar(meshes.length);
 
-    const group: SystemGroup = { name, meshes, label, anchor, centroid, collapsedMembers: [] };
+    const avgDist = meshes.reduce((s, m) => s + (m.userData as Star).dist, 0) / meshes.length;
+    const group: SystemGroup = { name, meshes, label, anchor, centroid, avgDist, collapsedMembers: [] };
     systemGroups.push(group);
     for (const m of meshes) meshToSystem.set(m, group);
 
@@ -432,15 +425,7 @@ function trySelectAt(clientX: number, clientY: number) {
   setMouseNDC(mouse, clientX, clientY);
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(starObjects);
-  if (hits.length > 0) {
-    const mesh = hits[0].object as THREE.Mesh;
-    const sys = meshToSystem.get(mesh);
-    if (sys) {
-      selectSystem(sys);
-    } else {
-      selectStar(mesh);
-    }
-  }
+  if (hits.length > 0) selectTarget(hits[0].object as THREE.Mesh);
 }
 
 // Mouse controls
@@ -596,6 +581,10 @@ function hideSystemMembers(group: SystemGroup) {
   el.classList.remove("highlight");
 }
 
+function animateTo(pos: THREE.Vector3) {
+  animation = { from: target.clone(), to: pos.clone(), start: performance.now() };
+}
+
 function showHover(mesh: THREE.Mesh) {
   if (lastHoveredMesh === mesh) return;
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) unhighlightStar(lastHoveredMesh);
@@ -608,30 +597,68 @@ function hideHover() {
   lastHoveredMesh = null;
 }
 
+function hoverTarget(mesh: THREE.Mesh) {
+  const sys = meshToSystem.get(mesh);
+  if (sys) {
+    hideHover();
+    if (hoveredSystem !== sys && selectedSystem !== sys) {
+      if (hoveredSystem && hoveredSystem !== selectedSystem) hideSystemMembers(hoveredSystem);
+      hoveredSystem = sys;
+      showSystemMembers(sys);
+    }
+  } else {
+    if (hoveredSystem && hoveredSystem !== selectedSystem) {
+      hideSystemMembers(hoveredSystem);
+      hoveredSystem = null;
+    }
+    showHover(mesh);
+  }
+}
+
+function unhoverAll() {
+  hideHover();
+  if (hoveredSystem && hoveredSystem !== selectedSystem) {
+    hideSystemMembers(hoveredSystem);
+    hoveredSystem = null;
+  }
+}
+
+function selectTarget(mesh: THREE.Mesh) {
+  const sys = meshToSystem.get(mesh);
+  if (sys) {
+    selectSystem(sys);
+  } else {
+    selectStar(mesh);
+  }
+}
+
 function selectSystem(group: SystemGroup) {
   if (selectedMesh) unhighlightStar(selectedMesh);
   selectedMesh = null;
   if (selectedSystem && selectedSystem !== group) hideSystemMembers(selectedSystem);
   selectedSystem = group;
   showSystemMembers(group);
+  animateTo(group.centroid);
+  lastHoveredMesh = null;
+  updateDetailPanel();
+}
 
-  animation = {
-    from: target.clone(),
-    to: group.centroid.clone(),
-    start: performance.now(),
-  };
+function selectStar(mesh: THREE.Mesh) {
+  if (selectedMesh) unhighlightStar(selectedMesh);
+  if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
+  selectedMesh = mesh;
+  highlightStar(mesh);
+  animateTo(mesh.position);
+  updateLabelVisibility();
   lastHoveredMesh = null;
   updateDetailPanel();
 }
 
 function updateSystemDetailPanel(group: SystemGroup) {
-  const allMembers = group.meshes;
-  const avgDist = allMembers.reduce((s, m) => s + (m.userData as Star).dist, 0) / allMembers.length;
-
   const wikiUrls = new Set<string>();
   const notes: string[] = [];
   const rows: string[] = [];
-  for (const m of allMembers) {
+  for (const m of group.meshes) {
     const s = m.userData as Star;
     const spect = s.spect ? `<span class="member-spect">${s.spect}</span>` : "";
     rows.push(`<div class="system-member-row">${s.name} — ${formatDist(s.dist)} ${spect}</div>`);
@@ -642,28 +669,13 @@ function updateSystemDetailPanel(group: SystemGroup) {
   detail.innerHTML = `
     <div class="star-name">${group.name}</div>
     <div class="star-detail">
-      Distance: ${formatDist(avgDist)}
+      Distance: ${formatDist(group.avgDist)}
     </div>
     <div class="system-member-list">${rows.join("")}</div>
     ${notes.length > 0 ? `<div class="star-notes">${notes.join("<br>")}</div>` : ""}
     ${renderWikiLink([...wikiUrls][0])}
   `;
   detail.classList.add("active");
-}
-
-function selectStar(mesh: THREE.Mesh) {
-  if (selectedMesh) unhighlightStar(selectedMesh);
-  if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
-  selectedMesh = mesh;
-  highlightStar(mesh);
-  animation = {
-    from: target.clone(),
-    to: mesh.position.clone(),
-    start: performance.now(),
-  };
-  updateLabelVisibility();
-  lastHoveredMesh = null;
-  updateDetailPanel();
 }
 
 function updateDetailPanel() {
@@ -712,28 +724,9 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   const intersects = raycaster.intersectObjects(starObjects);
 
   if (intersects.length > 0) {
-    const mesh = intersects[0].object as THREE.Mesh;
-    const sys = meshToSystem.get(mesh);
-    if (sys) {
-      hideHover();
-      if (hoveredSystem !== sys && selectedSystem !== sys) {
-        if (hoveredSystem && hoveredSystem !== selectedSystem) hideSystemMembers(hoveredSystem);
-        hoveredSystem = sys;
-        showSystemMembers(sys);
-      }
-    } else {
-      if (hoveredSystem && hoveredSystem !== selectedSystem) {
-        hideSystemMembers(hoveredSystem);
-        hoveredSystem = null;
-      }
-      showHover(mesh);
-    }
+    hoverTarget(intersects[0].object as THREE.Mesh);
   } else {
-    hideHover();
-    if (hoveredSystem && hoveredSystem !== selectedSystem) {
-      hideSystemMembers(hoveredSystem);
-      hoveredSystem = null;
-    }
+    unhoverAll();
   }
 });
 
@@ -742,32 +735,14 @@ labelRenderer.domElement.addEventListener("mouseover", (e) => {
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoveredViaLabel = true;
-  const sys = meshToSystem.get(mesh);
-  if (sys) {
-    if (hoveredSystem !== sys && selectedSystem !== sys) {
-      if (hoveredSystem && hoveredSystem !== selectedSystem) hideSystemMembers(hoveredSystem);
-      hoveredSystem = sys;
-      showSystemMembers(sys);
-    }
-  } else {
-    showHover(mesh);
-  }
+  hoverTarget(mesh);
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
   if (!hoveredViaLabel) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
-  const sys = meshToSystem.get(mesh);
-  if (sys) {
-    if (hoveredSystem !== sys && selectedSystem !== sys) {
-      if (hoveredSystem && hoveredSystem !== selectedSystem) hideSystemMembers(hoveredSystem);
-      hoveredSystem = sys;
-      showSystemMembers(sys);
-    }
-  } else {
-    showHover(mesh);
-  }
+  hoverTarget(mesh);
 });
 
 labelRenderer.domElement.addEventListener("mouseout", (e) => {
@@ -776,23 +751,13 @@ labelRenderer.domElement.addEventListener("mouseout", (e) => {
   const related = (e as MouseEvent).relatedTarget as HTMLElement | null;
   if (related && label.contains(related)) return;
   hoveredViaLabel = false;
-  hideHover();
-  if (hoveredSystem && hoveredSystem !== selectedSystem) {
-    hideSystemMembers(hoveredSystem);
-    hoveredSystem = null;
-  }
+  unhoverAll();
 });
 
 labelRenderer.domElement.addEventListener("mouseup", (e) => {
   if (dragDistance >= CLICK_THRESHOLD) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
-  if (!mesh) return;
-  const sys = meshToSystem.get(mesh);
-  if (sys) {
-    selectSystem(sys);
-  } else {
-    selectStar(mesh);
-  }
+  if (mesh) selectTarget(mesh);
 });
 
 window.addEventListener("resize", () => {
@@ -856,11 +821,9 @@ function renderSearchResults() {
   searchResults.innerHTML = "";
   filteredStars.forEach((entry, i) => {
     const li = document.createElement("li");
-    const displayName = entry.star.system || entry.star.name;
     const sys = meshToSystem.get(entry.mesh);
-    const dist = sys
-      ? sys.meshes.reduce((s, m) => s + (m.userData as Star).dist, 0) / sys.meshes.length
-      : entry.star.dist;
+    const displayName = sys ? sys.name : entry.star.name;
+    const dist = sys ? sys.avgDist : entry.star.dist;
     li.textContent = `${displayName}  (${formatDist(dist)})`;
     if (i === selectedIndex) li.classList.add("selected");
     li.addEventListener("click", () => selectSearchResult(i));
@@ -870,13 +833,7 @@ function renderSearchResults() {
 
 function selectSearchResult(index: number) {
   if (index < 0 || index >= filteredStars.length) return;
-  const mesh = filteredStars[index].mesh;
-  const sys = meshToSystem.get(mesh);
-  if (sys) {
-    selectSystem(sys);
-  } else {
-    selectStar(mesh);
-  }
+  selectTarget(filteredStars[index].mesh);
   closeSearch();
 }
 
@@ -950,12 +907,10 @@ function projectToScreen(pos: THREE.Vector3): { x: number; y: number } {
 }
 
 // Per-frame: which meshes are currently collapsed into a system label
-const currentCollapsed = new Set<THREE.Mesh>();
-
 function updateLabels() {
   if (!labelsVisible) return;
 
-  currentCollapsed.clear();
+  const collapsed = new Set<THREE.Mesh>();
 
   // Dynamic screen-space clustering within each system
   for (const group of systemGroups) {
@@ -993,13 +948,12 @@ function updateLabels() {
     }
 
     if (bestCluster) {
-      const collapsed = bestCluster.map((i) => group.meshes[i]);
-      group.collapsedMembers = collapsed;
+      const members = bestCluster.map((i) => group.meshes[i]);
+      group.collapsedMembers = members;
 
-      // Position anchor at centroid of collapsed members
       group.anchor.position.set(0, 0, 0);
-      for (const m of collapsed) group.anchor.position.add(m.position);
-      group.anchor.position.divideScalar(collapsed.length);
+      for (const m of members) group.anchor.position.add(m.position);
+      group.anchor.position.divideScalar(members.length);
 
       group.label.visible = true;
       const dist = group.anchor.position.distanceTo(camera.position);
@@ -1009,7 +963,7 @@ function updateLabels() {
       el.style.opacity = String(Math.max(0.1, opacity));
       el.style.zIndex = String(zIndex);
 
-      for (const m of collapsed) currentCollapsed.add(m);
+      for (const m of members) collapsed.add(m);
 
       // Update hover text if this system is being hovered or selected
       if (hoveredSystem === group || selectedSystem === group) {
@@ -1031,9 +985,9 @@ function updateLabels() {
     if (!div) continue;
 
     const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh;
-    const collapsed = currentCollapsed.has(mesh) && !isHighlighted;
-    div.style.visibility = collapsed ? "hidden" : "visible";
-    if (collapsed) continue;
+    const isCollapsed = collapsed.has(mesh) && !isHighlighted;
+    div.style.visibility = isCollapsed ? "hidden" : "visible";
+    if (isCollapsed) continue;
 
     const camDist = mesh.position.distanceTo(camera.position);
     const zIndex = Math.round(10000 - camDist * 100);
