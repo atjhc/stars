@@ -8,7 +8,7 @@ import { GRID_SIZE, GRID_DIVISIONS, GRID_FADE_RADIUS, MIN_ORBIT_RADIUS, MAX_ORBI
 
 export const scene = new THREE.Scene();
 export const camera = new THREE.PerspectiveCamera(
-  55, window.innerWidth / window.innerHeight, 0.01, 500,
+  55, window.innerWidth / window.innerHeight, 0.01, 20000,
 );
 
 const viewport = document.getElementById("viewport")!;

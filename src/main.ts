@@ -179,6 +179,10 @@ function doUpdateLabelVisibility() {
       const div = meshLabelMap.get(mesh);
       if (div) div.style.visibility = "hidden";
     }
+    for (const mesh of notableObjects) {
+      const div = notableLabelMap.get(mesh);
+      if (div) div.style.visibility = "hidden";
+    }
     for (const group of systemGroups) {
       (group.label.element as HTMLElement).style.visibility = "hidden";
     }
@@ -362,7 +366,7 @@ function animate(now: number) {
   tickAnimation(now);
   checkCameraMoved();
   updateStarfield();
-  updateLabels(labelsVisible, starObjects, systemGroups, meshLabelMap, meshToSystem);
+  updateLabels(labelsVisible, starObjects, systemGroups, meshLabelMap, meshToSystem, notableObjects, notableLabelMap);
   composer.render();
   labelRenderer.render(scene, camera);
 }

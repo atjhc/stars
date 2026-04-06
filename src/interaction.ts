@@ -103,12 +103,12 @@ export function showHover(mesh: THREE.Mesh) {
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
     unhighlightStar(lastHoveredMesh);
     const prevLabel = getLabelDiv(lastHoveredMesh);
-    if (prevLabel) { prevLabel.style.visibility = "hidden"; removeLabelGlow(prevLabel); }
+    if (prevLabel) removeLabelGlow(prevLabel);
   }
   lastHoveredMesh = mesh;
   if (mesh !== selectedMesh) highlightStar(mesh);
   const label = getLabelDiv(mesh);
-  if (label) { label.style.visibility = "visible"; applyLabelGlow(label, mesh); }
+  if (label) applyLabelGlow(label, mesh);
   labelsDirty = true;
 }
 
@@ -116,7 +116,7 @@ export function hideHover() {
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
     unhighlightStar(lastHoveredMesh);
     const label = getLabelDiv(lastHoveredMesh);
-    if (label) { label.style.visibility = "hidden"; removeLabelGlow(label); }
+    if (label) removeLabelGlow(label);
   }
   lastHoveredMesh = null;
   labelsDirty = true;
@@ -174,13 +174,13 @@ export function selectStar(mesh: THREE.Mesh, updateDetailPanel: () => void, upda
   if (selectedMesh) {
     unhighlightStar(selectedMesh);
     const prevLabel = getLabelDiv(selectedMesh);
-    if (prevLabel) { prevLabel.style.visibility = "hidden"; removeLabelGlow(prevLabel); }
+    if (prevLabel) removeLabelGlow(prevLabel);
   }
   if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
   selectedMesh = mesh;
   highlightStar(mesh);
   const label = getLabelDiv(mesh);
-  if (label) { label.style.visibility = "visible"; applyLabelGlow(label, mesh); }
+  if (label) applyLabelGlow(label, mesh);
   labelsDirty = true;
   animateTo(mesh.position);
   updateLabelVisibility();

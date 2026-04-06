@@ -19,7 +19,6 @@ export function createNotableStars(initLabelDrag: (div: HTMLElement) => void) {
     notableObjects.push(mesh);
 
     const { div } = createStarLabel(star, mesh, initLabelDrag);
-    div.style.visibility = "hidden";
     notableLabelMap.set(mesh, div);
     notableLabelMeshMap.set(div, mesh);
   });

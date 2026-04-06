@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
-import { LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ } from "./constants.ts";
+import { LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, NOTABLE_FADE_NEAR, NOTABLE_FADE_FAR } from "./constants.ts";
 import { camera } from "./scene.ts";
 import {
   selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh, labelsDirty, setLabelsDirty,
@@ -31,6 +31,8 @@ export function updateLabels(
   systemGroups: SystemGroup[],
   meshLabelMap: WeakMap<THREE.Mesh, HTMLElement>,
   meshToSystem: Map<THREE.Mesh, SystemGroup>,
+  notableObjects: THREE.Mesh[],
+  notableLabelMap: WeakMap<THREE.Mesh, HTMLElement>,
 ) {
   if (!labelsVisible) return;
   if (!labelsDirty) return;
@@ -140,6 +142,21 @@ export function updateLabels(
       if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
       const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       setLabelStyle(div, String(Math.max(0.2, opacity)), zIndex, true);
+    }
+  }
+
+  for (const mesh of notableObjects) {
+    const div = notableLabelMap.get(mesh);
+    if (!div) continue;
+    const camDist = mesh.position.distanceTo(camera.position);
+    const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh;
+    const zIndex = String(Math.round(10000 - camDist * 100));
+    if (isHighlighted) {
+      setLabelStyle(div, "1", zIndex, true);
+    } else {
+      const t = THREE.MathUtils.clamp(
+        (camDist - NOTABLE_FADE_NEAR) / (NOTABLE_FADE_FAR - NOTABLE_FADE_NEAR), 0, 1);
+      setLabelStyle(div, String(1 - t), zIndex, t < 1);
     }
   }
 
