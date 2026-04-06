@@ -80,28 +80,31 @@ let catalogMeta: CatalogMeta | null = null;
 const loadedTiles = new Map<string, { geometry: THREE.BufferGeometry; points: THREE.Points; lastUsed: number }>();
 let pointsGroup: THREE.Group;
 
-function tileBoundingSphere(tile: TileMeta): THREE.Sphere {
-  const center = new THREE.Vector3(
-    (tile.min[0] + tile.max[0]) / 2,
-    (tile.min[1] + tile.max[1]) / 2,
-    (tile.min[2] + tile.max[2]) / 2,
-  );
-  const halfSize = new THREE.Vector3(
-    (tile.max[0] - tile.min[0]) / 2,
-    (tile.max[1] - tile.min[1]) / 2,
-    (tile.max[2] - tile.min[2]) / 2,
-  );
-  return new THREE.Sphere(center, halfSize.length());
+// Precomputed at init time — avoids per-frame allocations
+const tileSpheres = new Map<string, THREE.Sphere>();
+
+function precomputeTileSpheres() {
+  if (!catalogMeta) return;
+  for (const [path, tile] of Object.entries(catalogMeta.tiles)) {
+    const center = new THREE.Vector3(
+      (tile.min[0] + tile.max[0]) / 2,
+      (tile.min[1] + tile.max[1]) / 2,
+      (tile.min[2] + tile.max[2]) / 2,
+    );
+    const halfSize = new THREE.Vector3(
+      (tile.max[0] - tile.min[0]) / 2,
+      (tile.max[1] - tile.min[1]) / 2,
+      (tile.max[2] - tile.min[2]) / 2,
+    );
+    tileSpheres.set(path, new THREE.Sphere(center, halfSize.length()));
+  }
 }
 
-function shouldLoadTile(tile: TileMeta, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
-  const sphere = tileBoundingSphere(tile);
+function shouldLoadTile(path: string, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
+  const sphere = tileSpheres.get(path);
+  if (!sphere) return false;
   if (!frustum.intersectsSphere(sphere)) return false;
-
-  // Distance-based priority: don't load very distant tiles
-  const dist = sphere.center.distanceTo(camPos);
-  const maxDist = 800; // scene units
-  return dist < maxDist;
+  return sphere.center.distanceTo(camPos) < 800;
 }
 
 async function loadTile(path: string, tile: TileMeta) {
@@ -143,7 +146,7 @@ async function loadTile(path: string, tile: TileMeta) {
 
     loadedTiles.set(path, { geometry, points, lastUsed: performance.now() });
   } catch (e) {
-    // Silently skip failed tiles
+    console.warn(`Failed to load tile ${tile.file}:`, e);
   }
 }
 
@@ -175,6 +178,7 @@ export async function initStarfield() {
       return;
     }
     catalogMeta = await response.json();
+    precomputeTileSpheres();
     console.log(`Star catalog: ${catalogMeta!.totalStars} stars in ${catalogMeta!.tileCount} tiles`);
   } catch {
     console.warn("Could not load star tile metadata");
@@ -194,23 +198,18 @@ export function updateStarfield() {
 
   const camPos = camera.position;
 
-  // Check which tiles should be loaded
   for (const [path, tile] of Object.entries(catalogMeta.tiles)) {
-    if (shouldLoadTile(tile, frustum, camPos)) {
-      loadTile(path, tile);
-    } else {
-      // Hide tiles that are out of view
-      const loaded = loadedTiles.get(path);
-      if (loaded) loaded.points.visible = false;
-    }
-  }
-
-  // Show visible loaded tiles
-  for (const [path, loaded] of loadedTiles) {
-    const tile = catalogMeta.tiles[path];
-    if (tile && shouldLoadTile(tile, frustum, camPos)) {
-      loaded.points.visible = true;
-      loaded.lastUsed = now;
+    const visible = shouldLoadTile(path, frustum, camPos);
+    const loaded = loadedTiles.get(path);
+    if (visible) {
+      if (loaded) {
+        loaded.points.visible = true;
+        loaded.lastUsed = now;
+      } else {
+        loadTile(path, tile);
+      }
+    } else if (loaded) {
+      loaded.points.visible = false;
     }
   }
 
