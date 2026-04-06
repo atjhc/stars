@@ -303,7 +303,7 @@ def extract(input_csv: str, output_json: str, augmentations_path: str | None = N
         print(f"WARNING: Duplicate names: {dupes}", file=sys.stderr)
 
     with open(output_json, "w") as f:
-        json.dump(results, f)
+        json.dump(results, f, indent=2)
 
     fallbacks = sum(1 for s in results if s["name"].startswith(("HIP ", "HD ", "HYG ")))
     print(f"Extracted {len(results)} stars to {output_json} ({fallbacks} with catalog-only names)")

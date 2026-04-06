@@ -3,6 +3,20 @@ import type { Star, SystemGroup } from "./types.ts";
 import { HIGHLIGHT_BOOST } from "./constants.ts";
 import { camera, animateTo } from "./scene.ts";
 
+// Label maps — registered by main.ts and notable.ts
+const labelMaps: WeakMap<THREE.Mesh, HTMLElement>[] = [];
+export function registerLabelMap(map: WeakMap<THREE.Mesh, HTMLElement>) {
+  labelMaps.push(map);
+}
+
+function getLabelDiv(mesh: THREE.Mesh): HTMLElement | undefined {
+  for (const map of labelMaps) {
+    const div = map.get(mesh);
+    if (div) return div;
+  }
+  return undefined;
+}
+
 // Shared interaction state
 export let selectedMesh: THREE.Mesh | null = null;
 export let selectedSystem: SystemGroup | null = null;
@@ -59,14 +73,24 @@ export function hideSystemMembers(group: SystemGroup) {
 // Hover
 export function showHover(mesh: THREE.Mesh) {
   if (lastHoveredMesh === mesh) return;
-  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) unhighlightStar(lastHoveredMesh);
+  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
+    unhighlightStar(lastHoveredMesh);
+    const prevLabel = getLabelDiv(lastHoveredMesh);
+    if (prevLabel) prevLabel.style.visibility = "hidden";
+  }
   lastHoveredMesh = mesh;
   if (mesh !== selectedMesh) highlightStar(mesh);
+  const label = getLabelDiv(mesh);
+  if (label) label.style.visibility = "visible";
   labelsDirty = true;
 }
 
 export function hideHover() {
-  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) unhighlightStar(lastHoveredMesh);
+  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
+    unhighlightStar(lastHoveredMesh);
+    const label = getLabelDiv(lastHoveredMesh);
+    if (label) label.style.visibility = "hidden";
+  }
   lastHoveredMesh = null;
   labelsDirty = true;
 }
@@ -120,10 +144,16 @@ export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) 
 }
 
 export function selectStar(mesh: THREE.Mesh, updateDetailPanel: () => void, updateLabelVisibility: () => void) {
-  if (selectedMesh) unhighlightStar(selectedMesh);
+  if (selectedMesh) {
+    unhighlightStar(selectedMesh);
+    const prevLabel = getLabelDiv(selectedMesh);
+    if (prevLabel) prevLabel.style.visibility = "hidden";
+  }
   if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
   selectedMesh = mesh;
   highlightStar(mesh);
+  const label = getLabelDiv(mesh);
+  if (label) label.style.visibility = "visible";
   labelsDirty = true;
   animateTo(mesh.position);
   updateLabelVisibility();

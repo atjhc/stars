@@ -25,7 +25,7 @@ from collections import defaultdict
 SCALE = 3  # parsecs to scene units
 MAX_STARS_PER_TILE = 50000
 MAX_DEPTH = 6
-MIN_DIST = 15.33  # parsecs (~50 ly) — stars closer are rendered as billboards
+MIN_DIST = 0  # include all stars — point cloud is the sole visual renderer
 MAX_DIST = 1000  # parsecs — ~3260 ly
 
 def bv_to_color(ci: float) -> tuple[int, int, int]:

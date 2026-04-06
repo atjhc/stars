@@ -14,6 +14,7 @@ import {
 import {
   selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh,
   labelsDirty, setLabelsDirty,
+  registerLabelMap,
   highlightStar, unhighlightStar,
   showHover, hideHover, hoverTarget, unhoverAll,
   selectTarget, selectSystem, selectStar,
@@ -23,6 +24,7 @@ import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initStarfield, updateStarfield } from "./starfield.ts";
+import { createNotableStars, notableObjects, notableLabelMap, notableLabelMeshMap } from "./notable.ts";
 import starsData from "./stars.json";
 
 // Wait for DOM
@@ -58,25 +60,9 @@ function initLabelDrag(div: HTMLElement) {
   });
 }
 
-function bvToColor(ci: number): THREE.Color {
-  if (ci < -0.4) ci = -0.4;
-  if (ci > 2.0) ci = 2.0;
-  const temp = 4600.0 * (1.0 / (0.92 * ci + 1.7) + 1.0 / (0.92 * ci + 0.62));
-  const t = temp / 100.0;
-  let r: number, g: number, b: number;
-  if (t <= 66) { r = 1.0; } else { r = Math.min(1, 329.698727446 * Math.pow(t - 60, -0.1332047592) / 255); }
-  if (t <= 66) { g = Math.min(1, Math.max(0, (99.4708025861 * Math.log(t) - 161.1195681661) / 255)); }
-  else { g = Math.min(1, 288.1221695283 * Math.pow(t - 60, -0.0755148492) / 255); }
-  if (t >= 66) { b = 1.0; } else if (t <= 19) { b = 0.0; }
-  else { b = Math.min(1, Math.max(0, (138.5177312231 * Math.log(t - 10) - 305.0447927307) / 255)); }
-  const avg = (r + g + b) / 3;
-  const sat = 1.8;
-  r = Math.min(1, Math.max(0, avg + (r - avg) * sat));
-  g = Math.min(1, Math.max(0, avg + (g - avg) * sat));
-  b = Math.min(1, Math.max(0, avg + (b - avg) * sat));
-  return new THREE.Color(r, g, b);
-}
 
+// Billboard meshes add detailed glow when close to camera.
+// At distance they fade to zero, letting the point cloud take over.
 const starVertexShader = `
   attribute vec3 starColor;
   attribute float starBrightness;
@@ -87,12 +73,17 @@ const starVertexShader = `
   void main() {
     vUv = uv;
     vColor = starColor;
-    vBrightness = starBrightness * uHighlight;
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     float camDist = -mvCenter.z;
-    float logScale = clamp(log(1.0 + camDist * 0.5) * 0.12, 0.02, 0.15);
-    float minScale = camDist * 0.006;
-    float scale = max(logScale, minScale);
+    float scale = clamp(log(1.0 + camDist * 0.5) * 0.12, 0.02, 0.15);
+    // Fade out as camera moves away — point cloud takes over
+    float proximityFade = smoothstep(40.0, 10.0, camDist);
+    vBrightness = starBrightness * uHighlight * proximityFade;
+    // Discard when fully faded
+    if (proximityFade < 0.01) {
+      gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+      return;
+    }
     mvCenter.xy += position.xy * scale;
     gl_Position = projectionMatrix * mvCenter;
   }
@@ -114,7 +105,25 @@ const starFragmentShader = `
   }
 `;
 
-const BLOOM_LAYER = 1;
+function bvToColor(ci: number): THREE.Color {
+  if (ci < -0.4) ci = -0.4;
+  if (ci > 2.0) ci = 2.0;
+  const temp = 4600.0 * (1.0 / (0.92 * ci + 1.7) + 1.0 / (0.92 * ci + 0.62));
+  const t = temp / 100.0;
+  let r: number, g: number, b: number;
+  if (t <= 66) { r = 1.0; } else { r = Math.min(1, 329.698727446 * Math.pow(t - 60, -0.1332047592) / 255); }
+  if (t <= 66) { g = Math.min(1, Math.max(0, (99.4708025861 * Math.log(t) - 161.1195681661) / 255)); }
+  else { g = Math.min(1, 288.1221695283 * Math.pow(t - 60, -0.0755148492) / 255); }
+  if (t >= 66) { b = 1.0; } else if (t <= 19) { b = 0.0; }
+  else { b = Math.min(1, Math.max(0, (138.5177312231 * Math.log(t - 10) - 305.0447927307) / 255)); }
+  const avg = (r + g + b) / 3;
+  const sat = 1.8;
+  r = Math.min(1, Math.max(0, avg + (r - avg) * sat));
+  g = Math.min(1, Math.max(0, avg + (g - avg) * sat));
+  b = Math.min(1, Math.max(0, avg + (b - avg) * sat));
+  return new THREE.Color(r, g, b);
+}
+
 const starQuadGeo = new THREE.PlaneGeometry(1, 1);
 const scratchVec3 = new THREE.Vector3();
 
@@ -146,7 +155,6 @@ scene.add(starGroup);
 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.scale.set(quadSize, quadSize, 1);
-  mesh.layers.enable(BLOOM_LAYER);
 
   const hitSphere = new THREE.Sphere(new THREE.Vector3(), 0);
   mesh.raycast = (raycaster, intersects) => {
@@ -234,6 +242,13 @@ scene.add(starGroup);
   }
 }
 
+// Notable distant stars (beyond 50 ly, with proper names)
+createNotableStars(initLabelDrag);
+
+// Register label maps for hover/select label visibility
+registerLabelMap(meshLabelMap);
+registerLabelMap(notableLabelMap);
+
 // Input state
 let isDragging = false;
 let isZooming = false;
@@ -250,13 +265,16 @@ function setMouseNDC(clientX: number, clientY: number) {
 
 function meshFromLabel(el: HTMLElement): THREE.Mesh | undefined {
   const label = el.closest("[data-star-label]") as HTMLElement | null;
-  return label ? labelMeshMap.get(label) : undefined;
+  if (!label) return undefined;
+  return labelMeshMap.get(label) || notableLabelMeshMap.get(label);
 }
+
+const allInteractiveStars = () => [...starObjects, ...notableObjects];
 
 function trySelectAt(clientX: number, clientY: number) {
   setMouseNDC(clientX, clientY);
   raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(starObjects);
+  const hits = raycaster.intersectObjects(allInteractiveStars());
   if (hits.length > 0) selectTarget(hits[0].object as THREE.Mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
 }
 
@@ -376,7 +394,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   if (hoveredViaLabel || lastInputWasTouch) return;
   setMouseNDC(e.clientX, e.clientY);
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(starObjects);
+  const intersects = raycaster.intersectObjects(allInteractiveStars());
   if (intersects.length > 0) {
     hoverTarget(intersects[0].object as THREE.Mesh, meshToSystem);
   } else {
@@ -432,7 +450,7 @@ window.addEventListener("resize", () => {
 });
 
 // Search
-const search = setupSearch(starObjects, meshToSystem, (mesh) => {
+const search = setupSearch([...starObjects, ...notableObjects], meshToSystem, (mesh) => {
   selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
 });
 
