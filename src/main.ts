@@ -22,6 +22,7 @@ import {
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
+import { initStarfield, updateStarfield } from "./starfield.ts";
 import starsData from "./stars.json";
 
 // Wait for DOM
@@ -443,11 +444,15 @@ const search = setupSearch(starObjects, meshToSystem, (mesh) => {
   selectStar(solMesh, updateDetailPanel, doUpdateLabelVisibility);
 }
 
+// Initialize starfield tiles
+initStarfield();
+
 // Render loop
 function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
   checkCameraMoved();
+  updateStarfield();
   updateLabels(labelsVisible, starObjects, systemGroups, meshLabelMap, meshToSystem);
   composer.render();
   labelRenderer.render(scene, camera);
