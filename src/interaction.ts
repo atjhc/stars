@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { HIGHLIGHT_BOOST } from "./constants.ts";
 import { camera, animateTo } from "./scene.ts";
-import { bvToColor } from "./color.ts";
+import { starGlowShadow } from "./color.ts";
 
 // Label maps — registered by main.ts and notable.ts
 const labelMaps: WeakMap<THREE.Mesh, HTMLElement>[] = [];
@@ -29,12 +29,8 @@ export function setLabelsDirty(v: boolean) { labelsDirty = v; }
 
 function applyLabelGlow(div: HTMLElement, mesh: THREE.Mesh) {
   const star = mesh.userData as Star;
-  const color = bvToColor(star.ci);
-  const r = Math.round(Math.min(255, color.r * 255 * 1.3));
-  const g = Math.round(Math.min(255, color.g * 255 * 1.3));
-  const b = Math.round(Math.min(255, color.b * 255 * 1.3));
   div.classList.add("highlight");
-  div.style.textShadow = `0 0 8px rgba(${r},${g},${b},0.9), 0 0 20px rgba(${r},${g},${b},0.4), 0 0 4px #000`;
+  div.style.textShadow = starGlowShadow(star.ci);
 }
 
 function removeLabelGlow(div: HTMLElement) {
@@ -75,18 +71,12 @@ export function updateSystemLabelText(group: SystemGroup) {
 }
 
 function applySystemLabelGlow(group: SystemGroup) {
-  const el = group.label.element as HTMLElement;
-  // Use the brightest member's color for the system glow
   let brightestStar = group.meshes[0].userData as Star;
   for (const m of group.meshes) {
     const s = m.userData as Star;
     if (s.lum > brightestStar.lum) brightestStar = s;
   }
-  const color = bvToColor(brightestStar.ci);
-  const r = Math.round(Math.min(255, color.r * 255 * 1.3));
-  const g = Math.round(Math.min(255, color.g * 255 * 1.3));
-  const b = Math.round(Math.min(255, color.b * 255 * 1.3));
-  el.style.textShadow = `0 0 8px rgba(${r},${g},${b},0.9), 0 0 20px rgba(${r},${g},${b},0.4), 0 0 4px #000`;
+  (group.label.element as HTMLElement).style.textShadow = starGlowShadow(brightestStar.ci);
 }
 
 function removeSystemLabelGlow(group: SystemGroup) {

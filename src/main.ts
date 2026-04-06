@@ -158,16 +158,12 @@ function meshFromLabel(el: HTMLElement): THREE.Mesh | undefined {
   return labelMeshMap.get(label) || notableLabelMeshMap.get(label);
 }
 
-let _allInteractive: THREE.Mesh[] | null = null;
-function allInteractiveStars() {
-  if (!_allInteractive) _allInteractive = [...starObjects, ...notableObjects];
-  return _allInteractive;
-}
+const allInteractiveStars: THREE.Mesh[] = [...starObjects, ...notableObjects];
 
 function trySelectAt(clientX: number, clientY: number) {
   setMouseNDC(clientX, clientY);
   raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(allInteractiveStars());
+  const hits = raycaster.intersectObjects(allInteractiveStars);
   if (hits.length > 0) selectTarget(hits[0].object as THREE.Mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
 }
 
@@ -196,6 +192,8 @@ renderer.domElement.addEventListener("mousedown", (e) => {
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
   dragDistance = 0;
+  hoveredViaLabel = false;
+  unhoverAll();
 });
 
 window.addEventListener("mousemove", (e) => {
@@ -284,10 +282,10 @@ window.addEventListener("touchstart", () => { lastInputWasTouch = true; }, { cap
 window.addEventListener("mousemove", () => { lastInputWasTouch = false; }, { capture: true });
 
 renderer.domElement.addEventListener("mousemove", (e) => {
-  if (hoveredViaLabel || lastInputWasTouch) return;
+  if (hoveredViaLabel || lastInputWasTouch || isDragging || isZooming) return;
   setMouseNDC(e.clientX, e.clientY);
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(allInteractiveStars());
+  const intersects = raycaster.intersectObjects(allInteractiveStars);
   if (intersects.length > 0) {
     hoverTarget(intersects[0].object as THREE.Mesh, meshToSystem);
   } else {
@@ -296,7 +294,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 });
 
 labelRenderer.domElement.addEventListener("mouseover", (e) => {
-  if (lastInputWasTouch) return;
+  if (lastInputWasTouch || isDragging || isZooming) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoveredViaLabel = true;
@@ -304,7 +302,7 @@ labelRenderer.domElement.addEventListener("mouseover", (e) => {
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
-  if (!hoveredViaLabel) return;
+  if (!hoveredViaLabel || isDragging || isZooming) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoverTarget(mesh, meshToSystem);
@@ -343,7 +341,7 @@ window.addEventListener("resize", () => {
 });
 
 // Search
-const search = setupSearch([...starObjects, ...notableObjects], meshToSystem, (mesh) => {
+const search = setupSearch(allInteractiveStars, meshToSystem, (mesh) => {
   selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
 });
 

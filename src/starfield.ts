@@ -78,14 +78,17 @@ const pointMaterial = new THREE.ShaderMaterial({
 // State
 let catalogMeta: CatalogMeta | null = null;
 const loadedTiles = new Map<string, { geometry: THREE.BufferGeometry; points: THREE.Points; lastUsed: number }>();
+const loadingTiles = new Set<string>();
 let pointsGroup: THREE.Group;
 
 // Precomputed at init time — avoids per-frame allocations
 const tileSpheres = new Map<string, THREE.Sphere>();
+let tileEntries: [string, TileMeta][] = [];
 
 function precomputeTileSpheres() {
   if (!catalogMeta) return;
-  for (const [path, tile] of Object.entries(catalogMeta.tiles)) {
+  tileEntries = Object.entries(catalogMeta.tiles);
+  for (const [path, tile] of tileEntries) {
     const center = new THREE.Vector3(
       (tile.min[0] + tile.max[0]) / 2,
       (tile.min[1] + tile.max[1]) / 2,
@@ -108,11 +111,8 @@ function shouldLoadTile(path: string, frustum: THREE.Frustum, camPos: THREE.Vect
 }
 
 async function loadTile(path: string, tile: TileMeta) {
-  if (loadedTiles.has(path)) {
-    loadedTiles.get(path)!.lastUsed = performance.now();
-    return;
-  }
-
+  if (loadedTiles.has(path) || loadingTiles.has(path)) return;
+  loadingTiles.add(path);
   try {
     const response = await fetch(`${TILE_BASE_URL}${tile.file}`);
     if (!response.ok) return;
@@ -147,6 +147,8 @@ async function loadTile(path: string, tile: TileMeta) {
     loadedTiles.set(path, { geometry, points, lastUsed: performance.now() });
   } catch (e) {
     console.warn(`Failed to load tile ${tile.file}:`, e);
+  } finally {
+    loadingTiles.delete(path);
   }
 }
 
@@ -198,7 +200,7 @@ export function updateStarfield() {
 
   const camPos = camera.position;
 
-  for (const [path, tile] of Object.entries(catalogMeta.tiles)) {
+  for (const [path, tile] of tileEntries) {
     const visible = shouldLoadTile(path, frustum, camPos);
     const loaded = loadedTiles.get(path);
     if (visible) {

@@ -18,3 +18,11 @@ export function bvToColor(ci: number): THREE.Color {
   b = Math.min(1, Math.max(0, avg + (b - avg) * sat));
   return new THREE.Color(r, g, b);
 }
+
+export function starGlowShadow(ci: number): string {
+  const color = bvToColor(ci);
+  const r = Math.round(Math.min(255, color.r * 255 * 1.3));
+  const g = Math.round(Math.min(255, color.g * 255 * 1.3));
+  const b = Math.round(Math.min(255, color.b * 255 * 1.3));
+  return `0 0 8px rgba(${r},${g},${b},0.9), 0 0 20px rgba(${r},${g},${b},0.4), 0 0 4px #000`;
+}
