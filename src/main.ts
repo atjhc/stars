@@ -25,7 +25,7 @@ import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initStarfield, updateStarfield } from "./starfield.ts";
 import { createNotableStars, notableObjects, notableLabelMap, notableLabelMeshMap } from "./notable.ts";
-import starsData from "./stars.json";
+import starsData from "../data/stars.json";
 
 // Wait for DOM
 await new Promise<void>((resolve) => {
