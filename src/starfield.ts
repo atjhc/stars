@@ -34,8 +34,17 @@ const pointVertexShader = `
     vBrightness = brightness / 255.0;
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     float dist = -mvPosition.z;
-    gl_PointSize = max(2.0, vBrightness * 5.0) * (400.0 / dist);
-    gl_PointSize = clamp(gl_PointSize, 1.5, 12.0);
+    float baseSize = max(2.0, vBrightness * 4.0);
+    float rawSize = baseSize * (500.0 / dist);
+    // Fade brightness smoothly as point size shrinks to avoid popping
+    float fadeFactor = smoothstep(4.0, 8.0, rawSize);
+    vBrightness *= fadeFactor;
+    // Discard fully faded stars
+    if (fadeFactor < 0.01) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      return;
+    }
+    gl_PointSize = clamp(rawSize, 4.0, 16.0);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -47,10 +56,12 @@ const pointFragmentShader = `
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float d = length(uv) * 2.0;
-    float core = exp(-d * d * 6.0);
-    float halo = exp(-d * 2.0) * 0.3;
-    float intensity = (core + halo) * vBrightness * 1.5;
-    vec3 color = mix(vColor, vec3(1.0), core * 0.6);
+    // Same glow model as billboard stars for visual consistency
+    float core = exp(-d * d * 30.0);
+    float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
+    float outerGlow = exp(-d * 4.0) * 0.3;
+    float intensity = (core + halo * 0.4 + outerGlow) * vBrightness * 2.5;
+    vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, core * vBrightness));
     gl_FragColor = vec4(color * intensity, intensity);
   }
 `;

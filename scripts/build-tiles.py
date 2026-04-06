@@ -25,7 +25,7 @@ from collections import defaultdict
 SCALE = 3  # parsecs to scene units
 MAX_STARS_PER_TILE = 50000
 MAX_DEPTH = 6
-MIN_DIST = 0  # parsecs
+MIN_DIST = 15.33  # parsecs (~50 ly) — stars closer are rendered as billboards
 MAX_DIST = 1000  # parsecs — ~3260 ly
 
 def bv_to_color(ci: float) -> tuple[int, int, int]:
@@ -54,11 +54,12 @@ def bv_to_color(ci: float) -> tuple[int, int, int]:
 
 
 def lum_to_brightness(mag: float, absmag: float) -> int:
-    """Convert magnitude to a 0-255 brightness byte."""
-    # Use absolute magnitude to derive luminosity
+    """Convert magnitude to a 0-255 brightness byte.
+    Matches the billboard brightness formula: max(0.8, min(2.5, 0.9 + 0.35*log10(lum)))
+    Divided by 2.5 to fit in 0-1 range, then multiplied by 255.
+    The shader multiplies by 1.5 to recover the final brightness."""
     lum = 10 ** ((4.74 - absmag) / 2.5) if absmag < 20 else 0.001
-    # Log scale with floor
-    val = max(0.3, min(1.0, 0.4 + 0.15 * math.log10(max(lum, 0.001))))
+    val = max(0.8, min(2.5, 0.9 + 0.35 * math.log10(max(lum, 0.001)))) / 2.5
     return int(val * 255)
 
 
