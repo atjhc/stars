@@ -1,5 +1,5 @@
 export const SCALE = 3;
-export const HIGHLIGHT_BOOST = 1.5;
+export const HIGHLIGHT_BOOST = 2.5;
 export const ANIM_DURATION = 600;
 export const MIN_ORBIT_RADIUS = 0.5;
 export const MAX_ORBIT_RADIUS = 100;
@@ -19,5 +19,6 @@ export const HIT_SCREEN_FRACTION = 0.02;
 export const LABEL_CSS = `
   color: rgba(255,255,255,0.7); font-size: 10px;
   pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
+  transform: translateZ(0); -webkit-transform: translateZ(0);
   margin-top: 16px; user-select: none; text-align: center; cursor: pointer;
 `;

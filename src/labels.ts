@@ -6,6 +6,7 @@ import {
   selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh, labelsDirty, setLabelsDirty,
   updateSystemLabelText,
 } from "./interaction.ts";
+import { bvToColor } from "./color.ts";
 
 const projVec = new THREE.Vector3();
 const screenBuf = { x: 0, y: 0 };
@@ -129,9 +130,19 @@ export function updateLabels(
     }
 
     const zIndex = String(Math.round(10000 - camDist * 100));
+    const isSystemMemberHighlighted = sys !== undefined && (sys === hoveredSystem || sys === selectedSystem);
     if (isHighlighted) {
       setLabelStyle(div, "1", zIndex, true);
+      // Apply glow to uncollapsed system member labels
+      if (isSystemMemberHighlighted && !div.style.textShadow.includes("rgba")) {
+        const color = bvToColor(star.ci);
+        const r = Math.round(Math.min(255, color.r * 255 * 1.3));
+        const g = Math.round(Math.min(255, color.g * 255 * 1.3));
+        const b = Math.round(Math.min(255, color.b * 255 * 1.3));
+        div.style.textShadow = `0 0 8px rgba(${r},${g},${b},0.9), 0 0 20px rgba(${r},${g},${b},0.4), 0 0 4px #000`;
+      }
     } else {
+      if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
       const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       setLabelStyle(div, String(Math.max(0.2, opacity)), zIndex, true);
     }

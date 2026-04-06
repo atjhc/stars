@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { HIGHLIGHT_BOOST } from "./constants.ts";
 import { camera, animateTo } from "./scene.ts";
+import { bvToColor } from "./color.ts";
 
 // Label maps — registered by main.ts and notable.ts
 const labelMaps: WeakMap<THREE.Mesh, HTMLElement>[] = [];
@@ -25,6 +26,21 @@ export let lastHoveredMesh: THREE.Mesh | null = null;
 export let labelsDirty = true;
 
 export function setLabelsDirty(v: boolean) { labelsDirty = v; }
+
+function applyLabelGlow(div: HTMLElement, mesh: THREE.Mesh) {
+  const star = mesh.userData as Star;
+  const color = bvToColor(star.ci);
+  const r = Math.round(Math.min(255, color.r * 255 * 1.3));
+  const g = Math.round(Math.min(255, color.g * 255 * 1.3));
+  const b = Math.round(Math.min(255, color.b * 255 * 1.3));
+  div.classList.add("highlight");
+  div.style.textShadow = `0 0 8px rgba(${r},${g},${b},0.9), 0 0 20px rgba(${r},${g},${b},0.4), 0 0 4px #000`;
+}
+
+function removeLabelGlow(div: HTMLElement) {
+  div.classList.remove("highlight");
+  div.style.textShadow = "";
+}
 
 // Star highlight
 function setStarHighlight(mesh: THREE.Mesh, value: number) {
@@ -58,14 +74,35 @@ export function updateSystemLabelText(group: SystemGroup) {
   }
 }
 
+function applySystemLabelGlow(group: SystemGroup) {
+  const el = group.label.element as HTMLElement;
+  // Use the brightest member's color for the system glow
+  let brightestStar = group.meshes[0].userData as Star;
+  for (const m of group.meshes) {
+    const s = m.userData as Star;
+    if (s.lum > brightestStar.lum) brightestStar = s;
+  }
+  const color = bvToColor(brightestStar.ci);
+  const r = Math.round(Math.min(255, color.r * 255 * 1.3));
+  const g = Math.round(Math.min(255, color.g * 255 * 1.3));
+  const b = Math.round(Math.min(255, color.b * 255 * 1.3));
+  el.style.textShadow = `0 0 8px rgba(${r},${g},${b},0.9), 0 0 20px rgba(${r},${g},${b},0.4), 0 0 4px #000`;
+}
+
+function removeSystemLabelGlow(group: SystemGroup) {
+  (group.label.element as HTMLElement).style.textShadow = "";
+}
+
 export function showSystemMembers(group: SystemGroup) {
   highlightSystem(group);
+  applySystemLabelGlow(group);
   updateSystemLabelText(group);
   labelsDirty = true;
 }
 
 export function hideSystemMembers(group: SystemGroup) {
   unhighlightSystem(group);
+  removeSystemLabelGlow(group);
   updateSystemLabelText(group);
   labelsDirty = true;
 }
@@ -76,12 +113,12 @@ export function showHover(mesh: THREE.Mesh) {
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
     unhighlightStar(lastHoveredMesh);
     const prevLabel = getLabelDiv(lastHoveredMesh);
-    if (prevLabel) prevLabel.style.visibility = "hidden";
+    if (prevLabel) { prevLabel.style.visibility = "hidden"; removeLabelGlow(prevLabel); }
   }
   lastHoveredMesh = mesh;
   if (mesh !== selectedMesh) highlightStar(mesh);
   const label = getLabelDiv(mesh);
-  if (label) label.style.visibility = "visible";
+  if (label) { label.style.visibility = "visible"; applyLabelGlow(label, mesh); }
   labelsDirty = true;
 }
 
@@ -89,7 +126,7 @@ export function hideHover() {
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
     unhighlightStar(lastHoveredMesh);
     const label = getLabelDiv(lastHoveredMesh);
-    if (label) label.style.visibility = "hidden";
+    if (label) { label.style.visibility = "hidden"; removeLabelGlow(label); }
   }
   lastHoveredMesh = null;
   labelsDirty = true;
@@ -147,13 +184,13 @@ export function selectStar(mesh: THREE.Mesh, updateDetailPanel: () => void, upda
   if (selectedMesh) {
     unhighlightStar(selectedMesh);
     const prevLabel = getLabelDiv(selectedMesh);
-    if (prevLabel) prevLabel.style.visibility = "hidden";
+    if (prevLabel) { prevLabel.style.visibility = "hidden"; removeLabelGlow(prevLabel); }
   }
   if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
   selectedMesh = mesh;
   highlightStar(mesh);
   const label = getLabelDiv(mesh);
-  if (label) label.style.visibility = "visible";
+  if (label) { label.style.visibility = "visible"; applyLabelGlow(label, mesh); }
   labelsDirty = true;
   animateTo(mesh.position);
   updateLabelVisibility();

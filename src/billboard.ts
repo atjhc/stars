@@ -19,7 +19,10 @@ export const billboardVertexShader = `
     vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     float camDist = -mvCenter.z;
     float scale = clamp(log(1.0 + camDist * 0.5) * 0.12, 0.02, 0.15);
-    float proximityFade = smoothstep(40.0, 10.0, camDist);
+    bool isHighlighted = uHighlight > 1.01;
+    // When highlighted, ensure the billboard is large enough for visible glow
+    if (isHighlighted) scale = max(scale, camDist * 0.012);
+    float proximityFade = isHighlighted ? 1.0 : smoothstep(40.0, 10.0, camDist);
     vBrightness = starBrightness * uHighlight * proximityFade;
     if (proximityFade < 0.01) {
       gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
