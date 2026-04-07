@@ -96,7 +96,7 @@ export function updateLabels(
 
       const dist = group.anchor.position.distanceTo(camera.position);
       const isSystemHighlighted = hoveredSystem === group || selectedSystem === group;
-      group.label.visible = (group.notable && dist <= LABEL_HIDE_DIST) || isSystemHighlighted;
+      group.label.visible = dist <= LABEL_HIDE_DIST || isSystemHighlighted;
       if (!group.label.visible) continue;
 
       const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);

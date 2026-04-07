@@ -287,11 +287,10 @@ function rebuildSystems() {
 
     const screens = meshes.map(() => ({ x: 0, y: 0 }));
     const parents = new Array(meshes.length);
-    const notable = meshes.some((m) => !!(m.userData as Star).wikipedia);
 
     const group: SystemGroup = {
       name, meshes, label, anchor, centroid, avgDist,
-      collapsedMembers: [], screens, parents, notable,
+      collapsedMembers: [], screens, parents,
     };
     systemGroups.push(group);
     for (const m of meshes) meshToSystem.set(m, group);
