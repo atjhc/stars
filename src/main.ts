@@ -1,32 +1,34 @@
 import * as THREE from "three";
-import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star, SystemGroup } from "./types.ts";
-import {
-  SCALE, CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS,
-  LABEL_CSS,
-} from "./constants.ts";
-import { createBillboardMesh, createStarLabel } from "./billboard.ts";
+import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS } from "./constants.ts";
 import {
   scene, camera, renderer, labelRenderer, composer,
-  gridHelper, target, handleResize,
-  updateCamera, animateTo, tickAnimation, applyOrbitDrag, onWheel,
+  gridHelper, handleResize,
+  updateCamera, applyOrbitDrag, onWheel, tickAnimation,
   orbitRadius, setOrbitRadius,
 } from "./scene.ts";
 import {
-  selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh,
-  labelsDirty, setLabelsDirty,
+  selectedSystem, hoveredSystem,
+  setLabelsDirty,
   registerLabelMap,
-  highlightStar, unhighlightStar,
-  showHover, hideHover, hoverTarget, unhoverAll,
+  highlightStar,
+  hoverTarget, unhoverAll,
   selectTarget, selectSystem, selectStar,
   showSystemMembers, hideSystemMembers,
 } from "./interaction.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
-import { initStarfield, updateStarfield } from "./starfield.ts";
-import { createNotableStars, notableObjects, notableLabelMap, notableLabelMeshMap } from "./notable.ts";
-import starsData from "../data/stars.json";
+import {
+  initStarfield, updateStarfield,
+  notableObjects, notableLabelMap, notableLabelMeshMap,
+  allInteractiveStars, tier1Meshes, canonicalTargets,
+  systemGroups, meshToSystem,
+  setInitLabelDrag, onLabelsChanged,
+  tier1LabelMeshFromDiv, tier1LabelDivFromMesh,
+  streamedLabelMap,
+  canonicalTarget,
+} from "./starfield.ts";
 
 // Wait for DOM
 await new Promise<void>((resolve) => {
@@ -34,21 +36,21 @@ await new Promise<void>((resolve) => {
   else document.addEventListener("DOMContentLoaded", () => resolve());
 });
 
-// Prevent iOS Safari from scrolling the document
 document.addEventListener("touchmove", (e) => {
   if (!(e.target as HTMLElement).closest("#search-results, #detail")) {
     e.preventDefault();
   }
 }, { passive: false });
 
-// Star creation
-const starObjects: THREE.Mesh[] = [];
-const starLabels: CSS2DObject[] = [];
-const labelMeshMap = new WeakMap<HTMLElement, THREE.Mesh>();
-const meshLabelMap = new WeakMap<THREE.Mesh, HTMLElement>();
-const systemGroups: SystemGroup[] = [];
-const meshToSystem = new Map<THREE.Mesh, SystemGroup>();
 let labelsVisible = true;
+
+// Input state
+let isDragging = false;
+let isZooming = false;
+let prevMouse = { x: 0, y: 0 };
+let dragDistance = 0;
+let lastInputWasTouch = false;
+let hoveredViaLabel = false;
 
 function initLabelDrag(div: HTMLElement) {
   div.setAttribute("data-star-label", "");
@@ -60,89 +62,7 @@ function initLabelDrag(div: HTMLElement) {
     dragDistance = 0;
   });
 }
-
-
-const starGroup = new THREE.Group();
-scene.add(starGroup);
-
-(starsData as Star[]).forEach((star) => {
-  const mesh = createBillboardMesh(star);
-  starGroup.add(mesh);
-  starObjects.push(mesh);
-
-  const { div, label } = createStarLabel(star, mesh, initLabelDrag);
-  labelMeshMap.set(div, mesh);
-  meshLabelMap.set(mesh, div);
-  starLabels.push(label);
-});
-
-// Create systems
-{
-  const systemMap = new Map<string, THREE.Mesh[]>();
-  for (const mesh of starObjects) {
-    const star = mesh.userData as Star;
-    if (star.system) {
-      if (!systemMap.has(star.system)) systemMap.set(star.system, []);
-      systemMap.get(star.system)!.push(mesh);
-    }
-  }
-
-  for (const [name, meshes] of systemMap) {
-    if (meshes.length < 2) continue;
-    const labelDiv = document.createElement("div");
-    labelDiv.style.cssText = LABEL_CSS;
-    labelDiv.innerHTML = `<div>${name}</div>`;
-    labelDiv.setAttribute("data-system-label", "");
-    initLabelDrag(labelDiv);
-
-    const anchor = new THREE.Object3D();
-    scene.add(anchor);
-    const label = new CSS2DObject(labelDiv);
-    label.center.set(0.5, 0);
-    label.visible = false;
-    anchor.add(label);
-
-    const centroid = new THREE.Vector3();
-    for (const m of meshes) centroid.add(m.position);
-    centroid.divideScalar(meshes.length);
-
-    const avgDist = meshes.reduce((s, m) => s + (m.userData as Star).dist, 0) / meshes.length;
-    const screens = meshes.map(() => ({ x: 0, y: 0 }));
-    const parents = new Array(meshes.length);
-    const notable = meshes.some((m) => !!(m.userData as Star).wikipedia);
-    const group: SystemGroup = { name, meshes, label, anchor, centroid, avgDist, collapsedMembers: [], screens, parents, notable };
-    systemGroups.push(group);
-    for (const m of meshes) meshToSystem.set(m, group);
-
-    labelDiv.addEventListener("mouseenter", () => {
-      if (selectedSystem !== group) {
-        showSystemMembers(group);
-      }
-    });
-    labelDiv.addEventListener("mouseleave", () => {
-      if (hoveredSystem === group && selectedSystem !== group) {
-        hideSystemMembers(group);
-      }
-    });
-    labelDiv.addEventListener("mouseup", () => {
-      if (dragDistance >= CLICK_THRESHOLD) return;
-      selectSystem(group, updateDetailPanel);
-    });
-  }
-}
-
-// Notable distant stars (beyond 50 ly, with proper names)
-createNotableStars(initLabelDrag);
-
-// Register label maps for hover/select label visibility
-registerLabelMap(meshLabelMap);
-registerLabelMap(notableLabelMap);
-
-// Input state
-let isDragging = false;
-let isZooming = false;
-let prevMouse = { x: 0, y: 0 };
-let dragDistance = 0;
+setInitLabelDrag(initLabelDrag);
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -155,40 +75,54 @@ function setMouseNDC(clientX: number, clientY: number) {
 function meshFromLabel(el: HTMLElement): THREE.Mesh | undefined {
   const label = el.closest("[data-star-label]") as HTMLElement | null;
   if (!label) return undefined;
-  return labelMeshMap.get(label) || notableLabelMeshMap.get(label);
+  return notableLabelMeshMap.get(label) || tier1LabelMeshFromDiv(label);
 }
 
-const allInteractiveStars: THREE.Mesh[] = [...starObjects, ...notableObjects];
+function divFor(mesh: THREE.Mesh): HTMLElement | undefined {
+  return notableLabelMap.get(mesh) || tier1LabelDivFromMesh(mesh);
+}
 
 function trySelectAt(clientX: number, clientY: number) {
   setMouseNDC(clientX, clientY);
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(allInteractiveStars);
-  if (hits.length > 0) selectTarget(hits[0].object as THREE.Mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+  if (hits.length > 0) {
+    selectTarget(canonicalTarget(hits[0].object), meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+  }
 }
 
 function doUpdateLabelVisibility() {
-  for (const label of starLabels) {
-    label.visible = labelsVisible;
-  }
-  for (const group of systemGroups) {
-    if (!labelsVisible) group.label.visible = false;
-  }
   if (!labelsVisible) {
-    for (const mesh of starObjects) {
-      const div = meshLabelMap.get(mesh);
-      if (div) div.style.visibility = "hidden";
-    }
-    for (const mesh of notableObjects) {
-      const div = notableLabelMap.get(mesh);
-      if (div) div.style.visibility = "hidden";
-    }
-    for (const group of systemGroups) {
-      (group.label.element as HTMLElement).style.visibility = "hidden";
-    }
+    for (const anchor of notableObjects) anchor.visible = false;
+    for (const obj of allInteractiveStars) obj.visible = false;
+    for (const group of systemGroups) group.label.visible = false;
   }
   setLabelsDirty(true);
 }
+
+// Wire system label divs each time the system list is rebuilt.
+const wiredSystems = new WeakSet<SystemGroup>();
+function wireSystemLabels() {
+  for (const group of systemGroups) {
+    if (wiredSystems.has(group)) continue;
+    wiredSystems.add(group);
+    const labelDiv = group.label.element as HTMLElement;
+    labelDiv.addEventListener("mouseenter", () => {
+      if (selectedSystem !== group) showSystemMembers(group);
+    });
+    labelDiv.addEventListener("mouseleave", () => {
+      if (hoveredSystem === group && selectedSystem !== group) hideSystemMembers(group);
+    });
+    labelDiv.addEventListener("mouseup", () => {
+      if (dragDistance >= CLICK_THRESHOLD) return;
+      selectSystem(group, updateDetailPanel);
+    });
+  }
+}
+onLabelsChanged(() => {
+  wireSystemLabels();
+  setLabelsDirty(true);
+});
 
 // Mouse controls
 renderer.domElement.addEventListener("mousedown", (e) => {
@@ -274,13 +208,8 @@ renderer.domElement.addEventListener("touchend", (e) => {
   }
 }, { passive: false });
 
-// Wheel zoom
 renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
 labelRenderer.domElement.addEventListener("wheel", onWheel, { passive: false });
-
-// Hover (mouse only)
-let lastInputWasTouch = false;
-let hoveredViaLabel = false;
 
 window.addEventListener("touchstart", () => { lastInputWasTouch = true; }, { capture: true });
 window.addEventListener("mousemove", () => { lastInputWasTouch = false; }, { capture: true });
@@ -291,7 +220,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(allInteractiveStars);
   if (intersects.length > 0) {
-    hoverTarget(intersects[0].object as THREE.Mesh, meshToSystem);
+    hoverTarget(canonicalTarget(intersects[0].object), meshToSystem);
   } else {
     unhoverAll();
   }
@@ -327,7 +256,6 @@ labelRenderer.domElement.addEventListener("mouseup", (e) => {
   if (mesh) selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
 });
 
-// Keyboard shortcuts
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLInputElement) return;
   if (e.key === "l") {
@@ -338,27 +266,27 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-// Resize
 window.addEventListener("resize", () => {
   handleResize();
   setLabelsDirty(true);
 });
 
-// Search
-const search = setupSearch(allInteractiveStars, meshToSystem, (mesh) => {
+// Search reads the live canonicalTargets array on each query.
+setupSearch(canonicalTargets, meshToSystem, (mesh) => {
   selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
 });
 
-// Select Sol on load
-{
-  const solMesh = starObjects[0];
-  highlightStar(solMesh);
-  // Set selectedMesh via selectStar to properly initialize
-  selectStar(solMesh, updateDetailPanel, doUpdateLabelVisibility);
-}
+// Boot the catalog + starfield, then select Sol once notables are loaded.
+await initStarfield();
+registerLabelMap(notableLabelMap);
+registerLabelMap(streamedLabelMap);
+wireSystemLabels();
 
-// Initialize starfield tiles
-initStarfield();
+const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
+if (solAnchor) {
+  highlightStar(solAnchor);
+  selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
+}
 
 // Render loop
 function animate(now: number) {
@@ -366,7 +294,7 @@ function animate(now: number) {
   tickAnimation(now);
   checkCameraMoved();
   updateStarfield();
-  updateLabels(labelsVisible, starObjects, systemGroups, meshLabelMap, meshToSystem, notableObjects, notableLabelMap);
+  updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor);
   composer.render();
   labelRenderer.render(scene, camera);
 }

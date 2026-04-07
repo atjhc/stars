@@ -1,31 +1,19 @@
 import type * as THREE from "three";
 import type { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import type { LabelRow } from "./catalog.ts";
 
-export interface Star {
-  name: string;
-  x: number;
-  y: number;
-  z: number;
-  dist: number;
-  mag: number;
-  absmag: number;
-  ci: number;
-  spect: string;
-  lum: number;
-  aliases?: string[];
-  wikipedia?: string;
-  notes?: string;
-  system?: string;
-}
+// Star is an alias for the streamed catalog row that's stored on
+// mesh.userData for every interactive star in the scene.
+export type Star = LabelRow & { tile?: string };
 
 export interface SystemGroup {
   name: string;
-  meshes: THREE.Mesh[];
+  meshes: THREE.Object3D[];
   label: CSS2DObject;
   anchor: THREE.Object3D;
   centroid: THREE.Vector3;
   avgDist: number;
-  collapsedMembers: THREE.Mesh[];
+  collapsedMembers: THREE.Object3D[];
   screens: { x: number; y: number }[];
   parents: number[];
   notable: boolean;

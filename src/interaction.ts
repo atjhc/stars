@@ -4,31 +4,39 @@ import { HIGHLIGHT_BOOST } from "./constants.ts";
 import { camera, animateTo } from "./scene.ts";
 import { starGlowShadow } from "./color.ts";
 
-// Label maps — registered by main.ts and notable.ts
-const labelMaps: WeakMap<THREE.Mesh, HTMLElement>[] = [];
-export function registerLabelMap(map: WeakMap<THREE.Mesh, HTMLElement>) {
+// Label maps — registered by main.ts after starfield init
+const labelMaps: WeakMap<THREE.Object3D, HTMLElement>[] = [];
+export function registerLabelMap(map: WeakMap<THREE.Object3D, HTMLElement>) {
   labelMaps.push(map);
 }
 
-function getLabelDiv(mesh: THREE.Mesh): HTMLElement | undefined {
+function getLabelDiv(target: THREE.Object3D): HTMLElement | undefined {
   for (const map of labelMaps) {
-    const div = map.get(mesh);
+    const div = map.get(target);
     if (div) return div;
   }
   return undefined;
 }
 
+// Companion lookup: when a target without a shader (e.g. a notable anchor)
+// is highlighted, also ripple the highlight to its associated billboard if
+// one is currently spawned. Registered by starfield.ts.
+let companionResolver: ((target: THREE.Object3D) => THREE.Object3D | undefined) | null = null;
+export function setCompanionResolver(fn: (target: THREE.Object3D) => THREE.Object3D | undefined) {
+  companionResolver = fn;
+}
+
 // Shared interaction state
-export let selectedMesh: THREE.Mesh | null = null;
+export let selectedMesh: THREE.Object3D | null = null;
 export let selectedSystem: SystemGroup | null = null;
 export let hoveredSystem: SystemGroup | null = null;
-export let lastHoveredMesh: THREE.Mesh | null = null;
+export let lastHoveredMesh: THREE.Object3D | null = null;
 export let labelsDirty = true;
 
 export function setLabelsDirty(v: boolean) { labelsDirty = v; }
 
-function applyLabelGlow(div: HTMLElement, mesh: THREE.Mesh) {
-  const star = mesh.userData as Star;
+function applyLabelGlow(div: HTMLElement, target: THREE.Object3D) {
+  const star = target.userData as Star;
   div.classList.add("highlight");
   div.style.textShadow = starGlowShadow(star.ci);
 }
@@ -38,15 +46,25 @@ function removeLabelGlow(div: HTMLElement) {
   div.style.textShadow = "";
 }
 
-// Star highlight
-function setStarHighlight(mesh: THREE.Mesh, value: number) {
-  const mat = mesh.material as THREE.ShaderMaterial;
-  mat.uniforms.uHighlight.value = value;
-  mat.uniformsNeedUpdate = true;
+// Star highlight: sets uHighlight uniform on the target's shader if any,
+// then ripples to a companion target (anchor → billboard or billboard → anchor).
+function setShaderHighlight(target: THREE.Object3D, value: number) {
+  const mesh = target as THREE.Mesh;
+  const mat = mesh.material as THREE.ShaderMaterial | undefined;
+  if (mat?.uniforms?.uHighlight) {
+    mat.uniforms.uHighlight.value = value;
+    mat.uniformsNeedUpdate = true;
+  }
 }
 
-export function highlightStar(mesh: THREE.Mesh) { setStarHighlight(mesh, HIGHLIGHT_BOOST); }
-export function unhighlightStar(mesh: THREE.Mesh) { setStarHighlight(mesh, 1.0); }
+function setStarHighlight(target: THREE.Object3D, value: number) {
+  setShaderHighlight(target, value);
+  const companion = companionResolver?.(target);
+  if (companion) setShaderHighlight(companion, value);
+}
+
+export function highlightStar(target: THREE.Object3D) { setStarHighlight(target, HIGHLIGHT_BOOST); }
+export function unhighlightStar(target: THREE.Object3D) { setStarHighlight(target, 1.0); }
 function highlightSystem(group: SystemGroup) { group.meshes.forEach((m) => setStarHighlight(m, HIGHLIGHT_BOOST)); }
 function unhighlightSystem(group: SystemGroup) { group.meshes.forEach((m) => setStarHighlight(m, 1.0)); }
 
@@ -98,17 +116,17 @@ export function hideSystemMembers(group: SystemGroup) {
 }
 
 // Hover
-export function showHover(mesh: THREE.Mesh) {
-  if (lastHoveredMesh === mesh) return;
+export function showHover(target: THREE.Object3D) {
+  if (lastHoveredMesh === target) return;
   if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
     unhighlightStar(lastHoveredMesh);
     const prevLabel = getLabelDiv(lastHoveredMesh);
     if (prevLabel) removeLabelGlow(prevLabel);
   }
-  lastHoveredMesh = mesh;
-  if (mesh !== selectedMesh) highlightStar(mesh);
-  const label = getLabelDiv(mesh);
-  if (label) applyLabelGlow(label, mesh);
+  lastHoveredMesh = target;
+  if (target !== selectedMesh) highlightStar(target);
+  const label = getLabelDiv(target);
+  if (label) applyLabelGlow(label, target);
   labelsDirty = true;
 }
 
@@ -122,8 +140,8 @@ export function hideHover() {
   labelsDirty = true;
 }
 
-export function hoverTarget(mesh: THREE.Mesh, meshToSystem: Map<THREE.Mesh, SystemGroup>) {
-  const sys = meshToSystem.get(mesh);
+export function hoverTarget(target: THREE.Object3D, meshToSystem: Map<THREE.Object3D, SystemGroup>) {
+  const sys = meshToSystem.get(target);
   if (sys) {
     hideHover();
     if (hoveredSystem !== sys && selectedSystem !== sys) {
@@ -136,7 +154,7 @@ export function hoverTarget(mesh: THREE.Mesh, meshToSystem: Map<THREE.Mesh, Syst
       hideSystemMembers(hoveredSystem);
       hoveredSystem = null;
     }
-    showHover(mesh);
+    showHover(target);
   }
 }
 
@@ -170,34 +188,34 @@ export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) 
   updateDetailPanel();
 }
 
-export function selectStar(mesh: THREE.Mesh, updateDetailPanel: () => void, updateLabelVisibility: () => void) {
+export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void, updateLabelVisibility: () => void) {
   if (selectedMesh) {
     unhighlightStar(selectedMesh);
     const prevLabel = getLabelDiv(selectedMesh);
     if (prevLabel) removeLabelGlow(prevLabel);
   }
   if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
-  selectedMesh = mesh;
-  highlightStar(mesh);
-  const label = getLabelDiv(mesh);
-  if (label) applyLabelGlow(label, mesh);
+  selectedMesh = target;
+  highlightStar(target);
+  const label = getLabelDiv(target);
+  if (label) applyLabelGlow(label, target);
   labelsDirty = true;
-  animateTo(mesh.position);
+  animateTo(target.position);
   updateLabelVisibility();
   lastHoveredMesh = null;
   updateDetailPanel();
 }
 
 export function selectTarget(
-  mesh: THREE.Mesh,
-  meshToSystem: Map<THREE.Mesh, SystemGroup>,
+  target: THREE.Object3D,
+  meshToSystem: Map<THREE.Object3D, SystemGroup>,
   updateDetailPanel: () => void,
   updateLabelVisibility: () => void,
 ) {
-  const sys = meshToSystem.get(mesh);
+  const sys = meshToSystem.get(target);
   if (sys) {
     selectSystem(sys, updateDetailPanel);
   } else {
-    selectStar(mesh, updateDetailPanel, updateLabelVisibility);
+    selectStar(target, updateDetailPanel, updateLabelVisibility);
   }
 }

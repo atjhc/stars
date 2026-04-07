@@ -9,7 +9,7 @@ const searchBtn = document.getElementById("search-btn")!;
 
 let searchOpen = false;
 let selectedIndex = 0;
-let filteredStars: { star: Star; mesh: THREE.Mesh }[] = [];
+let filteredStars: { star: Star; mesh: THREE.Object3D }[] = [];
 
 function openSearch() {
   searchOpen = true;
@@ -34,11 +34,11 @@ function starMatchesQuery(star: Star, q: string): boolean {
   return false;
 }
 
-function updateSearchResults(query: string, starObjects?: THREE.Mesh[]) {
+function updateSearchResults(query: string, starObjects?: THREE.Object3D[]) {
   const q = query.toLowerCase().trim();
   filteredStars = [];
   if (q.length > 0 && starObjects) {
-    const seen = new Set<THREE.Mesh>();
+    const seen = new Set<THREE.Object3D>();
 
     for (const mesh of starObjects) {
       const star = mesh.userData as Star;
@@ -76,7 +76,7 @@ function findMatchSource(star: Star, q: string): string | null {
   return null;
 }
 
-function renderSearchResults(meshToSystem: Map<THREE.Mesh, SystemGroup>) {
+function renderSearchResults(meshToSystem: Map<THREE.Object3D, SystemGroup>) {
   searchResults.innerHTML = "";
   const q = searchInput.value.toLowerCase().trim();
   filteredStars.forEach((entry, i) => {
@@ -102,9 +102,9 @@ function renderSearchResults(meshToSystem: Map<THREE.Mesh, SystemGroup>) {
 let selectResult = (_index: number) => {};
 
 export function setupSearch(
-  starObjects: THREE.Mesh[],
-  meshToSystem: Map<THREE.Mesh, SystemGroup>,
-  onSelect: (mesh: THREE.Mesh) => void,
+  starObjects: THREE.Object3D[],
+  meshToSystem: Map<THREE.Object3D, SystemGroup>,
+  onSelect: (mesh: THREE.Object3D) => void,
 ) {
   selectResult = (index: number) => {
     if (index < 0 || index >= filteredStars.length) return;

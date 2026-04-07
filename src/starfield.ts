@@ -1,28 +1,23 @@
 import * as THREE from "three";
+import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import type { Star, SystemGroup } from "./types.ts";
+import { LABEL_CSS } from "./constants.ts";
 import { scene, camera } from "./scene.ts";
-
-interface TileMeta {
-  file: string;
-  stars: number;
-  min: [number, number, number];
-  max: [number, number, number];
-  depth: number;
-}
-
-interface CatalogMeta {
-  tileCount: number;
-  totalStars: number;
-  bytesPerStar: number;
-  format: string;
-  bounds: { min: [number, number, number]; max: [number, number, number] };
-  tiles: Record<string, TileMeta>;
-}
+import { createBillboardMesh, createNotableAnchor, createStarLabel, rebindHitSphere } from "./billboard.ts";
+import { setCompanionResolver, setLabelsDirty } from "./interaction.ts";
+import {
+  initCatalog, getMeta, getNotable, getSystems, getTileLabels,
+  loadTileLabels, evictTileLabels,
+  onTileLabelsLoaded, onTileLabelsEvicted,
+  type LabelRow, type TileMeta,
+} from "./catalog.ts";
 
 const BYTES_PER_STAR = 16;
 const MAX_LOADED_TILES = 80;
 const TILE_BASE_URL = "/tiles/";
+const GEOMETRY_LOAD_DIST = 800;
+let tier1LoadDist = 150;
 
-// Point cloud shader — simpler than billboard stars, optimized for millions
 const pointVertexShader = `
   attribute float brightness;
   attribute vec3 starColor;
@@ -36,10 +31,8 @@ const pointVertexShader = `
     float dist = -mvPosition.z;
     float baseSize = max(2.0, vBrightness * 4.0);
     float rawSize = baseSize * (500.0 / dist);
-    // Fade brightness smoothly as point size shrinks to avoid popping
     float fadeFactor = smoothstep(4.0, 8.0, rawSize);
     vBrightness *= fadeFactor;
-    // Discard fully faded stars
     if (fadeFactor < 0.01) {
       gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
       return;
@@ -52,11 +45,9 @@ const pointVertexShader = `
 const pointFragmentShader = `
   varying vec3 vColor;
   varying float vBrightness;
-
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float d = length(uv) * 2.0;
-    // Same glow model as billboard stars for visual consistency
     float core = exp(-d * d * 30.0);
     float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
     float outerGlow = exp(-d * 4.0) * 0.3;
@@ -75,19 +66,242 @@ const pointMaterial = new THREE.ShaderMaterial({
   depthTest: true,
 });
 
-// State
-let catalogMeta: CatalogMeta | null = null;
-const loadedTiles = new Map<string, { geometry: THREE.BufferGeometry; points: THREE.Points; lastUsed: number }>();
-const loadingTiles = new Set<string>();
-let pointsGroup: THREE.Group;
+interface LoadedTile {
+  geometry: THREE.BufferGeometry;
+  points: THREE.Points;
+  positions: Float32Array;
+  starCount: number;
+  lastUsed: number;
+  labelsLoaded: boolean;
+}
 
-// Precomputed at init time — avoids per-frame allocations
+let pointsGroup: THREE.Group;
+let billboardsGroup: THREE.Group;
+let notableAnchorsGroup: THREE.Group;
+
+const loadedTiles = new Map<string, LoadedTile>();
+const loadingTiles = new Set<string>();
 const tileSpheres = new Map<string, THREE.Sphere>();
 let tileEntries: [string, TileMeta][] = [];
 
+// Tier 0 = persistent Object3D "anchors" (no mesh, no shader, no canvas
+// raycast). Tier 1 = streamed billboard meshes spawned on tile labels load.
+export const notableObjects: THREE.Object3D[] = [];
+export const notableLabelMap = new WeakMap<THREE.Object3D, HTMLElement>();
+export const notableLabelMeshMap = new WeakMap<HTMLElement, THREE.Object3D>();
+
+// Tier-0 billboards forward canvas-raycast hits to their anchor.
+const billboardByAnchor = new WeakMap<THREE.Object3D, THREE.Mesh>();
+const anchorByBillboard = new WeakMap<THREE.Mesh, THREE.Object3D>();
+
+export const streamedLabelMap = new WeakMap<THREE.Mesh, HTMLElement>();
+const tier1DivToMesh = new WeakMap<HTMLElement, THREE.Mesh>();
+
+// Canvas raycast list: tier-0 billboards (when present) + tier-1 billboards.
+// Anchors are NOT in this list — distant tier-0 hover goes through the label DOM.
+export const allInteractiveStars: THREE.Object3D[] = [];
+
+// Tier-1 billboards only, for label rendering + search (avoids anchor/billboard duplication).
+export const tier1Meshes: THREE.Object3D[] = [];
+
+// Live canonical list for search: notable anchors + tier-1 billboards.
+export const canonicalTargets: THREE.Object3D[] = [];
+
+// (tile, index) → anchor | tier-1 billboard, for system resolution.
+const meshByRef = new Map<string, THREE.Object3D>();
+function refKey(tile: string, i: number): string { return `${tile}/${i}`; }
+
+const spawnedByTile = new Map<string, THREE.Mesh[]>();
+
+// Coalesces rebuildSystems + notifyLabelsChanged so a burst of tile loads/evicts
+// in a single updateStarfield tick results in one rebuild, not N.
+let labelSetDirty = false;
+
+// SystemGroup tracking. Rebuilt when label set changes.
+export const systemGroups: SystemGroup[] = [];
+export const meshToSystem = new Map<THREE.Object3D, SystemGroup>();
+
+let initLabelDragFn: ((div: HTMLElement) => void) | null = null;
+let labelChangeListeners: Array<() => void> = [];
+export function onLabelsChanged(fn: () => void) { labelChangeListeners.push(fn); }
+function notifyLabelsChanged() { for (const fn of labelChangeListeners) fn(); }
+
+export function setInitLabelDrag(fn: (div: HTMLElement) => void) {
+  initLabelDragFn = fn;
+}
+
+export function canonicalTarget(obj: THREE.Object3D): THREE.Object3D {
+  return anchorByBillboard.get(obj as THREE.Mesh) ?? obj;
+}
+
+function spawnNotableAnchors() {
+  const notable = getNotable();
+  for (const n of notable) {
+    const [sx, sy, sz] = n.pos;
+    const anchor = createNotableAnchor(n, sx, sy, sz);
+    const { div } = createStarLabel(n, anchor, initLabelDragFn ?? (() => {}));
+    notableAnchorsGroup.add(anchor);
+    notableObjects.push(anchor);
+    canonicalTargets.push(anchor);
+    notableLabelMap.set(anchor, div);
+    notableLabelMeshMap.set(div, anchor);
+    const ref = refKey(n.tile, n.i);
+    meshByRef.set(ref, anchor);
+  }
+}
+
+function spawnTier0Billboard(row: LabelRow, path: string, sx: number, sy: number, sz: number): THREE.Mesh | null {
+  const anchor = meshByRef.get(refKey(path, row.i));
+  if (!anchor) return null;
+  const mesh = createBillboardMesh(row, sx, sy, sz);
+  // Hit-test against the anchor's visibility: the billboard is only
+  // selectable while its always-on label is currently rendered.
+  rebindHitSphere(mesh, anchor);
+  billboardsGroup.add(mesh);
+  billboardByAnchor.set(anchor, mesh);
+  anchorByBillboard.set(mesh, anchor);
+  return mesh;
+}
+
+function spawnTier1Billboard(row: LabelRow, path: string, sx: number, sy: number, sz: number): THREE.Mesh {
+  const star: Star = { ...row, tile: path };
+  const mesh = createBillboardMesh(star, sx, sy, sz);
+  const { div } = createStarLabel(star, mesh, initLabelDragFn ?? (() => {}));
+  // Start hidden to avoid a one-frame flash before labels.ts runs.
+  mesh.visible = false;
+  billboardsGroup.add(mesh);
+  streamedLabelMap.set(mesh, div);
+  tier1DivToMesh.set(div, mesh);
+  return mesh;
+}
+
+function spawnTileLabels(path: string, labels: LabelRow[]) {
+  const tile = loadedTiles.get(path);
+  if (!tile) return;
+  if (tile.labelsLoaded) return;
+  tile.labelsLoaded = true;
+  const meshes: THREE.Mesh[] = [];
+  for (const row of labels) {
+    const i = row.i;
+    const sx = tile.positions[i * 3];
+    const sy = tile.positions[i * 3 + 1];
+    const sz = tile.positions[i * 3 + 2];
+
+    let mesh: THREE.Mesh | null = null;
+    if (row.tier === 0) {
+      mesh = spawnTier0Billboard(row, path, sx, sy, sz);
+      if (mesh) allInteractiveStars.push(mesh);
+    } else {
+      mesh = spawnTier1Billboard(row, path, sx, sy, sz);
+      const ref = refKey(path, i);
+      meshByRef.set(ref, mesh);
+      allInteractiveStars.push(mesh);
+      tier1Meshes.push(mesh);
+      canonicalTargets.push(mesh);
+    }
+    if (mesh) meshes.push(mesh);
+  }
+  spawnedByTile.set(path, meshes);
+  if (meshes.length > 0) {
+    labelSetDirty = true;
+    setLabelsDirty(true);
+  }
+}
+
+function despawnTileLabels(path: string) {
+  const meshes = spawnedByTile.get(path);
+  if (!meshes) return;
+  for (const mesh of meshes) {
+    billboardsGroup.remove(mesh);
+    const idx = allInteractiveStars.indexOf(mesh);
+    if (idx >= 0) allInteractiveStars.splice(idx, 1);
+
+    const anchor = anchorByBillboard.get(mesh);
+    if (anchor) {
+      // Tier-0 billboard: detach from anchor but keep anchor in meshByRef.
+      billboardByAnchor.delete(anchor);
+      anchorByBillboard.delete(mesh);
+    } else {
+      // Tier-1 billboard: remove label div from DOM and unregister everywhere.
+      const div = streamedLabelMap.get(mesh);
+      if (div) {
+        div.remove();
+        streamedLabelMap.delete(mesh);
+        tier1DivToMesh.delete(div);
+      }
+      const star = mesh.userData as Star & { tile?: string };
+      if (star.tile !== undefined) meshByRef.delete(refKey(star.tile, star.i));
+      const t1idx = tier1Meshes.indexOf(mesh);
+      if (t1idx >= 0) tier1Meshes.splice(t1idx, 1);
+      const cidx = canonicalTargets.indexOf(mesh);
+      if (cidx >= 0) canonicalTargets.splice(cidx, 1);
+    }
+    (mesh.material as THREE.Material).dispose();
+    mesh.geometry.dispose();
+  }
+  spawnedByTile.delete(path);
+  labelSetDirty = true;
+}
+
+function rebuildSystems() {
+  // Dispose old system label anchors AND their DOM elements before clearing.
+  for (const group of systemGroups) {
+    group.anchor.removeFromParent();
+    (group.label.element as HTMLElement).remove();
+  }
+  systemGroups.length = 0;
+  meshToSystem.clear();
+  const catalog = getSystems();
+  for (const [name, members] of Object.entries(catalog)) {
+    if (members.length < 2) continue;
+    const meshes: THREE.Object3D[] = [];
+    let allPresent = true;
+    for (const m of members) {
+      const mesh = meshByRef.get(refKey(m.tile, m.i));
+      if (!mesh) { allPresent = false; break; }
+      meshes.push(mesh);
+    }
+    if (!allPresent) continue;
+
+    const labelDiv = document.createElement("div");
+    labelDiv.style.cssText = LABEL_CSS;
+    labelDiv.innerHTML = `<div>${name}</div>`;
+    labelDiv.setAttribute("data-system-label", "");
+    if (initLabelDragFn) initLabelDragFn(labelDiv);
+
+    const anchor = new THREE.Object3D();
+    scene.add(anchor);
+    const label = new CSS2DObject(labelDiv);
+    label.center.set(0.5, 0);
+    label.visible = false;
+    anchor.add(label);
+
+    const centroid = new THREE.Vector3();
+    for (const m of meshes) centroid.add(m.position);
+    centroid.divideScalar(meshes.length);
+
+    const avgDist = meshes.reduce((s, m) => {
+      const star = m.userData as Star;
+      return s + (star.dist ?? 0);
+    }, 0) / meshes.length;
+
+    const screens = meshes.map(() => ({ x: 0, y: 0 }));
+    const parents = new Array(meshes.length);
+    const notable = meshes.some((m) => !!(m.userData as Star).wikipedia);
+
+    const group: SystemGroup = {
+      name, meshes, label, anchor, centroid, avgDist,
+      collapsedMembers: [], screens, parents, notable,
+    };
+    systemGroups.push(group);
+    for (const m of meshes) meshToSystem.set(m, group);
+  }
+}
+
 function precomputeTileSpheres() {
-  if (!catalogMeta) return;
-  tileEntries = Object.entries(catalogMeta.tiles);
+  const meta = getMeta();
+  if (!meta) return;
+  tileEntries = Object.entries(meta.tiles);
   for (const [path, tile] of tileEntries) {
     const center = new THREE.Vector3(
       (tile.min[0] + tile.max[0]) / 2,
@@ -103,18 +317,25 @@ function precomputeTileSpheres() {
   }
 }
 
-function shouldLoadTile(path: string, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
+function shouldLoadGeometry(path: string, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
   const sphere = tileSpheres.get(path);
   if (!sphere) return false;
   if (!frustum.intersectsSphere(sphere)) return false;
-  return sphere.center.distanceTo(camPos) < 800;
+  return sphere.center.distanceTo(camPos) < GEOMETRY_LOAD_DIST;
+}
+
+function shouldLoadLabels(path: string, camPos: THREE.Vector3): boolean {
+  const sphere = tileSpheres.get(path);
+  if (!sphere) return false;
+  // Load labels if the tile's bounding sphere overlaps the tier-1 range.
+  return sphere.center.distanceTo(camPos) - sphere.radius < tier1LoadDist;
 }
 
 async function loadTile(path: string, tile: TileMeta) {
   if (loadedTiles.has(path) || loadingTiles.has(path)) return;
   loadingTiles.add(path);
   try {
-    const response = await fetch(`${TILE_BASE_URL}${tile.file}`);
+    const response = await fetch(`${TILE_BASE_URL}${tile.bin}`);
     if (!response.ok) return;
     const buffer = await response.arrayBuffer();
     const starCount = buffer.byteLength / BYTES_PER_STAR;
@@ -144,66 +365,91 @@ async function loadTile(path: string, tile: TileMeta) {
     points.frustumCulled = false;
     pointsGroup.add(points);
 
-    loadedTiles.set(path, { geometry, points, lastUsed: performance.now() });
+    loadedTiles.set(path, {
+      geometry, points, positions, starCount,
+      lastUsed: performance.now(),
+      labelsLoaded: false,
+    });
+
+    const cached = getTileLabels(path);
+    if (cached) spawnTileLabels(path, cached);
   } catch (e) {
-    console.warn(`Failed to load tile ${tile.file}:`, e);
+    console.warn(`Failed to load tile ${tile.bin}:`, e);
   } finally {
     loadingTiles.delete(path);
   }
 }
 
+function evictGeometryTile(path: string) {
+  const tile = loadedTiles.get(path);
+  if (!tile) return;
+  despawnTileLabels(path);
+  evictTileLabels(path);
+  pointsGroup.remove(tile.points);
+  tile.geometry.dispose();
+  loadedTiles.delete(path);
+}
+
 function evictOldTiles() {
   if (loadedTiles.size <= MAX_LOADED_TILES) return;
-
   const entries = [...loadedTiles.entries()].sort((a, b) => a[1].lastUsed - b[1].lastUsed);
   const toEvict = entries.slice(0, loadedTiles.size - MAX_LOADED_TILES);
-  for (const [path, tile] of toEvict) {
-    pointsGroup.remove(tile.points);
-    tile.geometry.dispose();
-    loadedTiles.delete(path);
-  }
+  for (const [path] of toEvict) evictGeometryTile(path);
 }
 
 const frustum = new THREE.Frustum();
 const projScreenMatrix = new THREE.Matrix4();
 let lastUpdateTime = 0;
-const UPDATE_INTERVAL = 500; // ms between tile checks
+const UPDATE_INTERVAL = 500;
 
 export async function initStarfield() {
   pointsGroup = new THREE.Group();
   scene.add(pointsGroup);
+  billboardsGroup = new THREE.Group();
+  scene.add(billboardsGroup);
+  notableAnchorsGroup = new THREE.Group();
+  scene.add(notableAnchorsGroup);
 
-  try {
-    const response = await fetch(`${TILE_BASE_URL}meta.json`);
-    if (!response.ok) {
-      console.warn("Star tiles not found — run scripts/build-tiles.py to generate");
-      return;
-    }
-    catalogMeta = await response.json();
-    precomputeTileSpheres();
-    console.log(`Star catalog: ${catalogMeta!.totalStars} stars in ${catalogMeta!.tileCount} tiles`);
-  } catch {
-    console.warn("Could not load star tile metadata");
+  await initCatalog();
+  const meta = getMeta();
+  if (!meta) {
+    console.warn("Catalog not loaded — run scripts/build-catalog.py to generate");
+    return;
   }
+  tier1LoadDist = meta.labelTierVisibility["1"] ?? tier1LoadDist;
+  precomputeTileSpheres();
+
+  onTileLabelsLoaded((path, labels) => spawnTileLabels(path, labels));
+  onTileLabelsEvicted((path) => despawnTileLabels(path));
+
+  spawnNotableAnchors();
+  // Wire ripple-highlight: anchor → billboard if currently spawned, and
+  // billboard → anchor (so highlighting an anchor lights up its billboard
+  // and vice versa).
+  setCompanionResolver((target) => {
+    return billboardByAnchor.get(target) ?? anchorByBillboard.get(target as THREE.Mesh);
+  });
+  rebuildSystems();
+  notifyLabelsChanged();
 }
 
 export function updateStarfield() {
-  if (!catalogMeta) return;
+  const meta = getMeta();
+  if (!meta) return;
 
   const now = performance.now();
   if (now - lastUpdateTime < UPDATE_INTERVAL) return;
   lastUpdateTime = now;
 
-  // Build frustum from camera
   projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   frustum.setFromProjectionMatrix(projScreenMatrix);
 
   const camPos = camera.position;
 
   for (const [path, tile] of tileEntries) {
-    const visible = shouldLoadTile(path, frustum, camPos);
+    const wantsGeometry = shouldLoadGeometry(path, frustum, camPos);
     const loaded = loadedTiles.get(path);
-    if (visible) {
+    if (wantsGeometry) {
       if (loaded) {
         loaded.points.visible = true;
         loaded.lastUsed = now;
@@ -213,7 +459,30 @@ export function updateStarfield() {
     } else if (loaded) {
       loaded.points.visible = false;
     }
+
+    const wantsLabels = shouldLoadLabels(path, camPos);
+    if (wantsLabels && tile.lbl) {
+      loadTileLabels(path);
+    } else if (!wantsLabels) {
+      const loadedTile = loadedTiles.get(path);
+      if (loadedTile?.labelsLoaded) {
+        despawnTileLabels(path);
+        loadedTile.labelsLoaded = false;
+        evictTileLabels(path);
+      }
+    }
   }
 
   evictOldTiles();
+
+  if (labelSetDirty) {
+    labelSetDirty = false;
+    rebuildSystems();
+    notifyLabelsChanged();
+  }
 }
+
+export const tier1LabelMeshFromDiv = (div: HTMLElement): THREE.Mesh | undefined =>
+  tier1DivToMesh.get(div);
+export const tier1LabelDivFromMesh = (mesh: THREE.Object3D): HTMLElement | undefined =>
+  streamedLabelMap.get(mesh as THREE.Mesh);

@@ -1,9 +1,13 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
-import { LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, NOTABLE_FADE_NEAR, NOTABLE_FADE_FAR } from "./constants.ts";
+import {
+  LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ,
+  NOTABLE_FADE_NEAR, NOTABLE_FADE_FAR,
+} from "./constants.ts";
 import { camera } from "./scene.ts";
 import {
-  selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh, labelsDirty, setLabelsDirty,
+  selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh,
+  labelsDirty, setLabelsDirty,
   updateSystemLabelText,
 } from "./interaction.ts";
 import { starGlowShadow } from "./color.ts";
@@ -17,27 +21,32 @@ function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
   return screenBuf;
 }
 
-function setLabelStyle(div: HTMLElement, opacity: string, zIndex: string, visible: boolean) {
-  div.style.visibility = visible ? "visible" : "hidden";
+function setLabelStyle(div: HTMLElement, opacity: string, zIndex: string) {
   div.style.opacity = opacity;
   div.style.zIndex = zIndex;
 }
 
+function cssLabelChild(target: THREE.Object3D): THREE.Object3D | undefined {
+  for (const c of target.children) if ((c as THREE.Object3D & { isCSS2DObject?: boolean }).isCSS2DObject) return c;
+  return undefined;
+}
+
 const prevCamPos = new THREE.Vector3();
+
+export type DivResolver = (target: THREE.Object3D) => HTMLElement | undefined;
 
 export function updateLabels(
   labelsVisible: boolean,
-  starObjects: THREE.Mesh[],
+  notableAnchors: THREE.Object3D[],
+  interactiveStars: THREE.Object3D[],
   systemGroups: SystemGroup[],
-  meshLabelMap: WeakMap<THREE.Mesh, HTMLElement>,
-  meshToSystem: Map<THREE.Mesh, SystemGroup>,
-  notableObjects: THREE.Mesh[],
-  notableLabelMap: WeakMap<THREE.Mesh, HTMLElement>,
+  meshToSystem: Map<THREE.Object3D, SystemGroup>,
+  divFor: DivResolver,
 ) {
   if (!labelsVisible) return;
   if (!labelsDirty) return;
 
-  const collapsed = new Set<THREE.Mesh>();
+  const collapsed = new Set<THREE.Object3D>();
 
   for (const group of systemGroups) {
     const n = group.meshes.length;
@@ -93,72 +102,79 @@ export function updateLabels(
       const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       const zIndex = Math.round(10000 - dist * 100);
       const el = group.label.element as HTMLElement;
-      setLabelStyle(el, String(Math.max(0.2, opacity)), String(zIndex), true);
+      setLabelStyle(el, String(Math.max(0.2, opacity)), String(zIndex));
       updateSystemLabelText(group);
     } else {
       group.collapsedMembers = [];
       group.label.visible = false;
-      if (hoveredSystem === group) {
-        // Cleared by the interaction module
-      }
     }
   }
 
-  for (const mesh of starObjects) {
-    const div = meshLabelMap.get(mesh);
-    if (!div) continue;
+  // Single pass over all label-bearing objects: notable anchors (tier 0,
+  // always-on fade) + interactive billboards (tier 1, close-only fade).
+  // Tier-0 billboards have no label child, so divFor() returns undefined for
+  // them and they're skipped automatically.
+  //
+  // Toggling target.visible short-circuits the CSS2DRenderer's per-frame
+  // matrix/projection work for out-of-range labels — the main perf lever.
+  function processLabel(target: THREE.Object3D) {
+    const div = divFor(target);
+    if (!div) return;
 
-    const camDist = mesh.position.distanceTo(camera.position);
-    const sys = meshToSystem.get(mesh);
-
-    if (collapsed.has(mesh)) {
-      setLabelStyle(div, "0", "0", false);
-      continue;
-    }
-
-    const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh
+    const camDist = target.position.distanceTo(camera.position);
+    const sys = meshToSystem.get(target);
+    const star = target.userData as Star;
+    const isHighlighted = target === lastHoveredMesh || target === selectedMesh
       || (sys !== undefined && (sys === hoveredSystem || sys === selectedSystem));
-    const star = mesh.userData as Star;
-    const isNotable = !!star.wikipedia;
 
-    if (!isNotable && !isHighlighted) {
-      setLabelStyle(div, "0", "0", false);
-      continue;
-    }
+    // CSS2DObject child; toggled separately from target.visible so a
+    // collapsed system member can hide its individual label while its
+    // billboard hit sphere stays active for canvas selection.
+    const css = cssLabelChild(target);
 
-    if (camDist > LABEL_HIDE_DIST && !isHighlighted) {
-      setLabelStyle(div, "0", "0", false);
-      continue;
+    if (collapsed.has(target)) {
+      if (css) css.visible = false;
+      return;
     }
+    if (css) css.visible = true;
 
     const zIndex = String(Math.round(10000 - camDist * 100));
+    const isTier0 = star.tier === 0;
     const isSystemMemberHighlighted = sys !== undefined && (sys === hoveredSystem || sys === selectedSystem);
+
     if (isHighlighted) {
-      setLabelStyle(div, "1", zIndex, true);
+      target.visible = true;
+      setLabelStyle(div, "1", zIndex);
       if (isSystemMemberHighlighted) {
         div.style.textShadow = starGlowShadow(star.ci);
       }
+      return;
+    }
+
+    if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
+
+    if (isTier0) {
+      const t = THREE.MathUtils.clamp(
+        (camDist - NOTABLE_FADE_NEAR) / (NOTABLE_FADE_FAR - NOTABLE_FADE_NEAR), 0, 1);
+      if (t >= 1) {
+        target.visible = false;
+        return;
+      }
+      target.visible = true;
+      setLabelStyle(div, String(1 - t), zIndex);
     } else {
-      if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
+      if (camDist > LABEL_HIDE_DIST) {
+        target.visible = false;
+        return;
+      }
+      target.visible = true;
       const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
-      setLabelStyle(div, String(Math.max(0.2, opacity)), zIndex, true);
+      setLabelStyle(div, String(Math.max(0.2, opacity)), zIndex);
     }
   }
 
-  for (const mesh of notableObjects) {
-    const div = notableLabelMap.get(mesh);
-    if (!div) continue;
-    const camDist = mesh.position.distanceTo(camera.position);
-    const isHighlighted = mesh === lastHoveredMesh || mesh === selectedMesh;
-    const zIndex = String(Math.round(10000 - camDist * 100));
-    if (isHighlighted) {
-      setLabelStyle(div, "1", zIndex, true);
-    } else {
-      const t = THREE.MathUtils.clamp(
-        (camDist - NOTABLE_FADE_NEAR) / (NOTABLE_FADE_FAR - NOTABLE_FADE_NEAR), 0, 1);
-      setLabelStyle(div, String(1 - t), zIndex, t < 1);
-    }
-  }
+  for (const anchor of notableAnchors) processLabel(anchor);
+  for (const mesh of interactiveStars) processLabel(mesh);
 
   setLabelsDirty(false);
   prevCamPos.copy(camera.position);

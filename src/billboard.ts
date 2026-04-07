@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star } from "./types.ts";
-import { SCALE, LABEL_CSS, HIT_SCREEN_FRACTION } from "./constants.ts";
+import { LABEL_CSS, HIT_SCREEN_FRACTION } from "./constants.ts";
 import { bvToColor } from "./color.ts";
 
 // Billboard meshes add detailed glow when close to camera.
@@ -52,7 +52,45 @@ export const billboardFragmentShader = `
 const quadGeo = new THREE.PlaneGeometry(1, 1);
 const scratchVec3 = new THREE.Vector3();
 
-export function createBillboardMesh(star: Star): THREE.Mesh {
+// Screen-space hit sphere: lets an Object3D be raycast-hit regardless of
+// geometry. `visibilitySource`, if provided, gates the hit on a different
+// object's .visible — used so tier-0 billboards follow their anchor.
+function attachHitSphere(obj: THREE.Object3D, visibilitySource?: THREE.Object3D) {
+  const hitSphere = new THREE.Sphere(new THREE.Vector3(), 0);
+  obj.raycast = (raycaster, intersects) => {
+    const source = visibilitySource ?? obj;
+    if (source.visible === false) return;
+    hitSphere.center.copy(obj.getWorldPosition(scratchVec3));
+    const camDist = hitSphere.center.distanceTo(raycaster.ray.origin);
+    hitSphere.radius = camDist * HIT_SCREEN_FRACTION;
+    const intersection = raycaster.ray.intersectSphere(hitSphere, scratchVec3);
+    if (intersection) {
+      const distance = raycaster.ray.origin.distanceTo(intersection);
+      if (distance >= raycaster.near && distance <= raycaster.far) {
+        intersects.push({ distance, point: intersection.clone(), object: obj });
+      }
+    }
+  };
+}
+
+export function rebindHitSphere(obj: THREE.Object3D, visibilitySource: THREE.Object3D) {
+  attachHitSphere(obj, visibilitySource);
+}
+
+// Persistent label-bearing position holder for tier-0 stars (no mesh, no
+// raycast). At close range a separate billboard mesh spawns alongside to
+// provide the glow + canvas hit target.
+export function createNotableAnchor(star: Star, sx: number, sy: number, sz: number): THREE.Object3D {
+  const anchor = new THREE.Object3D();
+  anchor.position.set(sx, sy, sz);
+  anchor.userData = star;
+  // Start hidden; labels.ts will enable on the first pass. Prevents a
+  // single-frame flash of every notable label at page load.
+  anchor.visible = false;
+  return anchor;
+}
+
+export function createBillboardMesh(star: Star, sceneX: number, sceneY: number, sceneZ: number): THREE.Mesh {
   const color = bvToColor(star.ci);
   const brightness = Math.max(0.8, Math.min(2.5, 0.9 + 0.35 * Math.log10(Math.max(star.lum, 0.001))));
 
@@ -75,30 +113,15 @@ export function createBillboardMesh(star: Star): THREE.Mesh {
 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.scale.set(0.4, 0.4, 1);
-
-  // Screen-space hit sphere for raycasting
-  const hitSphere = new THREE.Sphere(new THREE.Vector3(), 0);
-  mesh.raycast = (raycaster, intersects) => {
-    hitSphere.center.copy(mesh.getWorldPosition(scratchVec3));
-    const camDist = hitSphere.center.distanceTo(raycaster.ray.origin);
-    hitSphere.radius = camDist * HIT_SCREEN_FRACTION;
-    const intersection = raycaster.ray.intersectSphere(hitSphere, scratchVec3);
-    if (intersection) {
-      const distance = raycaster.ray.origin.distanceTo(intersection);
-      if (distance >= raycaster.near && distance <= raycaster.far) {
-        intersects.push({ distance, point: intersection.clone(), object: mesh });
-      }
-    }
-  };
-
-  mesh.position.set(star.x * SCALE, star.z * SCALE, -star.y * SCALE);
+  attachHitSphere(mesh);
+  mesh.position.set(sceneX, sceneY, sceneZ);
   mesh.userData = star;
   return mesh;
 }
 
 export function createStarLabel(
   star: Star,
-  mesh: THREE.Mesh,
+  parent: THREE.Object3D,
   initLabelDrag: (div: HTMLElement) => void,
 ): { div: HTMLElement; label: CSS2DObject } {
   const labelDiv = document.createElement("div");
@@ -107,7 +130,7 @@ export function createStarLabel(
   initLabelDrag(labelDiv);
   const label = new CSS2DObject(labelDiv);
   label.center.set(0.5, 0);
-  label.userData.mesh = mesh;
-  mesh.add(label);
+  label.userData.target = parent;
+  parent.add(label);
   return { div: labelDiv, label };
 }

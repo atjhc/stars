@@ -1,7 +1,13 @@
 {
   "Sol": {
     "wikipedia": "https://en.wikipedia.org/wiki/Sun",
-    "notes": "Our star. Wikipedia article is 'Sun'."
+    "notes": "Our star. Wikipedia article is 'Sun'.",
+    "aliases": [
+      "Sun",
+      "Helios",
+      "Sonne",
+      "Sol"
+    ]
   },
   "Gl 551": {
     "wikipedia": "https://en.wikipedia.org/wiki/Proxima_Centauri",
@@ -633,7 +639,7 @@
   "Gl 566A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Xi_Bo%C3%B6tis",
     "name": "Xi Bootis",
-    "notes": "Wikipedia uses Xi Bootis (Xi Bo\u00f6tis). Nearest visible star in Bootes. BY Draconis variable. Young system (~200 Myr). Both components in one article.",
+    "notes": "Wikipedia uses Xi Bootis (Xi Boötis). Nearest visible star in Bootes. BY Draconis variable. Young system (~200 Myr). Both components in one article.",
     "system": "Xi Bootis"
   },
   "Gl 643": {
@@ -1122,5 +1128,1465 @@
   "Gl 4A": {
     "system": "ADS 48",
     "notes": "Primary component of the ADS 48 multiple system. K6V dwarf, also a spectroscopic binary (Gl 4A/B)."
+  },
+  "Canopus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Canopus",
+    "notes": "Second-brightest star in the night sky and brightest in Carina. An F-type bright giant about 309 light-years away, used as a navigational reference by spacecraft due to its brightness and southern position.",
+    "aliases": [
+      "Suhail",
+      "Alpha Carinae"
+    ]
+  },
+  "Arcturus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Arcturus",
+    "notes": "Brightest star in Bootes and the northern celestial hemisphere. A K-type red giant ~37 light-years away with an unusually high proper motion, belonging to the Arcturus stream of older halo stars.",
+    "aliases": [
+      "Alpha Bootis",
+      "Bear Watcher"
+    ]
+  },
+  "Rigil Kentaurus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Centauri_A",
+    "notes": "Primary of the Alpha Centauri triple system, the closest stellar system to the Sun at 4.37 light-years. A G2V star nearly identical to the Sun in mass and spectrum.",
+    "aliases": [
+      "Alpha Centauri A",
+      "Rigil Kent"
+    ]
+  },
+  "Vega": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Vega",
+    "notes": "Fifth-brightest star in the night sky and the brightest in Lyra. A nearby A0V star used historically as a photometric standard (zero magnitude); hosts a debris disk and was the northern pole star around 12000 BCE.",
+    "aliases": [
+      "Alpha Lyrae",
+      "Wega"
+    ]
+  },
+  "Capella": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Capella",
+    "notes": "Brightest star in Auriga and sixth-brightest in the night sky. Actually a quadruple system, dominated by two yellow giants in a close 104-day orbit, located about 43 light-years away.",
+    "aliases": [
+      "Alpha Aurigae",
+      "Goat Star",
+      "Capra"
+    ]
+  },
+  "Rigel": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Rigel",
+    "notes": "Brightest star in Orion and a blue supergiant about 860 light-years away. One of the most luminous stars visible to the naked eye, with two faint companions; a slow irregular variable.",
+    "aliases": [
+      "Beta Orionis",
+      "Algebar"
+    ]
+  },
+  "Achernar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Achernar",
+    "notes": "Brightest star in Eridanus and ninth-brightest in the night sky. A rapidly rotating Be-type star so flattened by its spin that its equatorial diameter is ~50% greater than its polar diameter.",
+    "aliases": [
+      "Alpha Eridani"
+    ]
+  },
+  "Betelgeuse": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Betelgeuse",
+    "notes": "Red supergiant marking Orion's shoulder, one of the largest stars visible to the naked eye. A semiregular variable that famously dimmed dramatically in 2019-2020; expected to end its life as a supernova within the next ~100,000 years.",
+    "aliases": [
+      "Alpha Orionis",
+      "Hand of Orion"
+    ]
+  },
+  "Hadar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Centauri",
+    "notes": "Second-brightest star in Centaurus and eleventh-brightest in the night sky. A blue giant triple system about 390 light-years away, often used with Alpha Centauri as a pointer to the Southern Cross.",
+    "aliases": [
+      "Beta Centauri",
+      "Agena"
+    ]
+  },
+  "Altair": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Altair",
+    "notes": "Brightest star in Aquila and one of the closest naked-eye stars at ~17 light-years. Forms the Summer Triangle with Vega and Deneb; rotates so rapidly (once every ~9 hours) that it is visibly oblate.",
+    "aliases": [
+      "Alpha Aquilae"
+    ]
+  },
+  "Acrux": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Acrux",
+    "notes": "Brightest star in the Southern Cross and the southernmost first-magnitude star. A multiple system of hot blue subgiants about 320 light-years away.",
+    "aliases": [
+      "Alpha Crucis"
+    ]
+  },
+  "Aldebaran": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Aldebaran",
+    "notes": "Brightest star in Taurus, marking the Bull's eye. An orange giant about 65 light-years away that appears to lie among the Hyades cluster but is actually a foreground star.",
+    "aliases": [
+      "Alpha Tauri",
+      "Bull's Eye"
+    ]
+  },
+  "Spica": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Spica",
+    "notes": "Brightest star in Virgo and one of the nearest massive binary systems. Two hot B-type stars orbit every ~4 days; both are rotationally distorted ellipsoidal variables.",
+    "aliases": [
+      "Alpha Virginis",
+      "Azimech"
+    ]
+  },
+  "Antares": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Antares",
+    "notes": "Red supergiant marking the heart of Scorpius, with a distinctive reddish hue (its name means 'rival of Mars'). A slow irregular variable about 550 light-years away with a hot blue companion.",
+    "aliases": [
+      "Alpha Scorpii",
+      "Heart of the Scorpion"
+    ]
+  },
+  "Pollux": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Pollux_(star)",
+    "notes": "Brightest star in Gemini, an orange giant about 34 light-years away. Hosts a confirmed exoplanet, Pollux b, and is the closest giant star to the Sun.",
+    "aliases": [
+      "Beta Geminorum"
+    ]
+  },
+  "Fomalhaut": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Fomalhaut",
+    "notes": "Brightest star in Piscis Austrinus, an A-type main-sequence star ~25 light-years away. Surrounded by a prominent debris disk and famous for one of the first directly imaged exoplanet candidates (Fomalhaut b).",
+    "aliases": [
+      "Alpha Piscis Austrini",
+      "Lonely Star of Autumn"
+    ]
+  },
+  "Mimosa": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Crucis",
+    "notes": "Second-brightest star in the Southern Cross. A hot blue giant Beta Cephei variable about 280 light-years away in the Scorpius-Centaurus association.",
+    "aliases": [
+      "Beta Crucis",
+      "Becrux"
+    ]
+  },
+  "Deneb": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Deneb",
+    "notes": "Brightest star in Cygnus and one of the most luminous stars known, an A-type supergiant ~1400 light-years distant. Forms the Summer Triangle with Vega and Altair; prototype of the Alpha Cygni class of variable supergiants.",
+    "aliases": [
+      "Alpha Cygni",
+      "Arided"
+    ]
+  },
+  "Toliman": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Centauri_B",
+    "notes": "Secondary of the Alpha Centauri system, a K1V orange dwarf slightly smaller and cooler than the Sun. Orbits Alpha Centauri A every ~80 years at 4.37 light-years from Earth.",
+    "aliases": [
+      "Alpha Centauri B"
+    ]
+  },
+  "Regulus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Regulus",
+    "notes": "Brightest star in Leo, marking the Lion's heart. A hot blue-white B-type star ~79 light-years away; rotates so rapidly it is markedly oblate, with a faint white dwarf companion.",
+    "aliases": [
+      "Alpha Leonis",
+      "Cor Leonis",
+      "Little King"
+    ]
+  },
+  "Adhara": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Adhara",
+    "notes": "Second-brightest star in Canis Major, a hot B-type giant ~430 light-years away. About 4.7 million years ago it passed within ~34 light-years of the Sun and was then the brightest star in Earth's sky at magnitude -3.99.",
+    "aliases": [
+      "Epsilon Canis Majoris",
+      "Undara"
+    ]
+  },
+  "Castor": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Castor_(star)",
+    "notes": "Second-brightest star in Gemini, representing one of the mythological twins. Actually a sextuple star system of three spectroscopic binary pairs.",
+    "aliases": [
+      "Alpha Geminorum"
+    ]
+  },
+  "Gacrux": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gacrux",
+    "notes": "Third-brightest star in Crux (the Southern Cross) and the nearest red giant to the Sun. A semi-regular variable with a distinctly reddish color.",
+    "aliases": [
+      "Gamma Crucis"
+    ]
+  },
+  "Shaula": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Shaula",
+    "notes": "Marks the stinger in the tail of Scorpius and is the second-brightest star in the constellation. A triple system whose primary is a Beta Cephei variable.",
+    "aliases": [
+      "Lambda Scorpii"
+    ]
+  },
+  "Bellatrix": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Bellatrix",
+    "notes": "The 'Amazon Star' marking the left shoulder of Orion. A hot blue giant and one of the closest massive B-type stars to the Sun.",
+    "aliases": [
+      "Gamma Orionis",
+      "Amazon Star"
+    ]
+  },
+  "Elnath": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Tauri",
+    "notes": "Marks the tip of the northern horn of Taurus and was historically shared with Auriga as Gamma Aurigae. A mercury-manganese chemically peculiar B giant.",
+    "aliases": [
+      "Beta Tauri",
+      "El Nath",
+      "Gamma Aurigae"
+    ]
+  },
+  "Miaplacidus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Miaplacidus",
+    "notes": "Second-brightest star in Carina and one of the brightest A-type giants in the southern sky. Its name combines Arabic and Latin roots meaning 'placid waters'.",
+    "aliases": [
+      "Beta Carinae"
+    ]
+  },
+  "Alnilam": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alnilam",
+    "notes": "The central star of Orion's Belt and a luminous blue supergiant roughly 2,000 light-years away. Among the most intrinsically luminous stars visible to the naked eye.",
+    "aliases": [
+      "Epsilon Orionis"
+    ]
+  },
+  "Alnair": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alnair",
+    "notes": "Brightest star in the southern constellation Grus (the Crane). A rapidly rotating hot blue subgiant.",
+    "aliases": [
+      "Alpha Gruis"
+    ]
+  },
+  "Alnitak": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alnitak",
+    "notes": "Easternmost star in Orion's Belt and a hot blue O-type supergiant in a triple system. Illuminates the nearby Flame Nebula.",
+    "aliases": [
+      "Zeta Orionis"
+    ]
+  },
+  "Alioth": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alioth",
+    "notes": "Brightest star in Ursa Major and the third star in the handle of the Big Dipper. A chemically peculiar Ap star with strong magnetic fields and spectral variability.",
+    "aliases": [
+      "Epsilon Ursae Majoris"
+    ]
+  },
+  "Mirfak": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mirfak",
+    "notes": "Brightest star in Perseus and a yellow-white supergiant. Dominates the surrounding Alpha Persei moving cluster.",
+    "aliases": [
+      "Alpha Persei",
+      "Algenib"
+    ]
+  },
+  "Kaus Australis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kaus_Australis",
+    "notes": "Brightest star in Sagittarius, marking the bottom of the archer's bow. A hot blue giant with a debris disk and a faint companion.",
+    "aliases": [
+      "Epsilon Sagittarii"
+    ]
+  },
+  "Dubhe": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Dubhe",
+    "notes": "One of the two 'pointer stars' of the Big Dipper that point toward Polaris. A spectroscopic binary with an orange giant primary, unusual among the Dipper's mostly hot stars.",
+    "aliases": [
+      "Alpha Ursae Majoris"
+    ]
+  },
+  "Wezen": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Wezen",
+    "notes": "A yellow-white supergiant in Canis Major, intrinsically among the most luminous nearby stars at over 1,600 light-years. Its name derives from the Arabic for 'weight'.",
+    "aliases": [
+      "Delta Canis Majoris"
+    ]
+  },
+  "Alkaid": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alkaid",
+    "notes": "Marks the tip of the handle of the Big Dipper and is the easternmost of its seven stars. A hot, fast-rotating blue main-sequence star.",
+    "aliases": [
+      "Eta Ursae Majoris",
+      "Benetnash"
+    ]
+  },
+  "Avior": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Carinae",
+    "notes": "A binary in Carina consisting of an orange giant and a hot blue companion. One of the four bright stars that formed the now-defunct constellation Argo Navis.",
+    "aliases": [
+      "Epsilon Carinae"
+    ]
+  },
+  "Sargas": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Scorpii",
+    "notes": "A bright yellow-white bright giant in the tail of Scorpius. Its ancient Sumerian-derived name is one of the few non-Arabic traditional star names.",
+    "aliases": [
+      "Theta Scorpii",
+      "Girtab"
+    ]
+  },
+  "Menkalinan": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Menkalinan",
+    "notes": "Second-brightest star in Auriga and an eclipsing binary of two nearly identical A-type subgiants. Its name means 'shoulder of the rein-holder' in Arabic.",
+    "aliases": [
+      "Beta Aurigae"
+    ]
+  },
+  "Atria": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Atria",
+    "notes": "Brightest star in Triangulum Australe and an orange bright giant. Its name is a contraction of its Bayer designation Alpha Trianguli Australis.",
+    "aliases": [
+      "Alpha Trianguli Australis"
+    ]
+  },
+  "Alsephina": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Velorum",
+    "notes": "A bright multiple star system in Vela whose primary pair forms an eclipsing binary. The name Alsephina was approved by the IAU in 2018.",
+    "aliases": [
+      "Delta Velorum"
+    ]
+  },
+  "Alhena": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alhena",
+    "notes": "Third-brightest star in Gemini, marking the foot of Pollux. A hot subgiant in a long-period spectroscopic binary.",
+    "aliases": [
+      "Gamma Geminorum",
+      "Almeisan"
+    ]
+  },
+  "Peacock": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Peacock_(star)",
+    "notes": "Brightest star in the southern constellation Pavo (the Peacock). A spectroscopic binary of hot B-type stars; one of the navigational stars used in celestial navigation.",
+    "aliases": [
+      "Alpha Pavonis"
+    ]
+  },
+  "Alshain": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Aquilae",
+    "notes": "Beta Aquilae, a yellow subgiant in the constellation Aquila, forming a recognizable line with Altair and Tarazed. Its name derives from the Arabic phrase for 'the balance' or 'the (peregrine) falcon'."
+  },
+  "Electra": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Electra_(star)",
+    "notes": "A blue-white giant in the Pleiades cluster (M45) in Taurus, named for one of the seven sisters of Greek mythology. It is one of the brightest members of the cluster."
+  },
+  "Grumium": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Draconis",
+    "notes": "Xi Draconis, an orange giant marking part of the head of Draco. The traditional name comes from Latin for 'jaw'."
+  },
+  "Baten Kaitos": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Ceti",
+    "notes": "Zeta Ceti, an orange giant in Cetus whose name is Arabic for 'the belly of the sea-monster'. It is a known barium star."
+  },
+  "Bake-eo": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Ophiuchi",
+    "notes": "Gamma Ophiuchi, a white main-sequence star in Ophiuchus. Its IAU name 'Bake-eo' comes from Tuamotuan navigation tradition.",
+    "aliases": [
+      "Muliphein"
+    ]
+  },
+  "Stellio": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Lacertae",
+    "notes": "Alpha Lacertae, the brightest star in the small constellation Lacerta (the Lizard). It is a white main-sequence star and a member of the Tucana-Horologium moving group."
+  },
+  "Secunda Hyadum": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta1_Tauri",
+    "notes": "Delta-1 Tauri, an orange giant and member of the Hyades cluster in Taurus. The Latin name means 'second of the Hyades'."
+  },
+  "Miram": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Persei",
+    "notes": "Eta Persei, a luminous orange supergiant in Perseus roughly a thousand light-years away. It forms a wide binary with a B-type companion."
+  },
+  "Sualocin": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Delphini",
+    "notes": "Alpha Delphini, the brightest star in Delphinus and a multiple star system. The whimsical name is 'Nicolaus' spelled backward, after Palermo astronomer Niccolo Cacciatore."
+  },
+  "Albali": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Aquarii",
+    "notes": "Epsilon Aquarii, a white giant in Aquarius whose Arabic name means 'the swallower'. It marks part of the water-jar asterism."
+  },
+  "Praecipua": {
+    "wikipedia": "https://en.wikipedia.org/wiki/46_Leonis_Minoris",
+    "notes": "46 Leonis Minoris, the brightest star in Leo Minor, an orange giant about 99 light-years away. Its Latin name means 'the chief'."
+  },
+  "Misam": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kappa_Persei",
+    "notes": "Kappa Persei, an orange giant in Perseus and a spectroscopic binary. The Arabic name refers to the wrist of the Pleiades constellation figure."
+  },
+  "Dalim": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Fornacis",
+    "notes": "Alpha Fornacis, the brightest star in Fornax, a nearby F-type binary roughly 46 light-years away. The Arabic name refers to the ostrich."
+  },
+  "Theemin": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Upsilon2_Eridani",
+    "notes": "Upsilon-2 Eridani, a yellow giant in the river constellation Eridanus. Its name derives from Arabic for 'the two foreheads'."
+  },
+  "Udkadua": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lambda_Andromedae",
+    "notes": "Lambda Andromedae, a yellow giant in Andromeda that is a known RS CVn-type variable and active spectroscopic binary. The IAU name comes from a Chinese asterism."
+  },
+  "Giausar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lambda_Draconis",
+    "notes": "Lambda Draconis, a red giant marking the tip of Draco's tail. The traditional name is of uncertain Persian or Arabic origin."
+  },
+  "Alrescha": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Piscium",
+    "notes": "Alpha Piscium, a close binary in Pisces marking the knot tying the two fish together. The Arabic name means 'the cord' or 'the knot'.",
+    "aliases": [
+      "Al Rischa"
+    ]
+  },
+  "Marfik": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lambda_Ophiuchi",
+    "notes": "Lambda Ophiuchi, a triple star system in Ophiuchus whose Arabic name means 'the elbow' (of the serpent-bearer)."
+  },
+  "Paradys": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Apodis",
+    "notes": "Alpha Apodis, the brightest star in the southern constellation Apus (the Bird of Paradise). It is an orange giant about 500 light-years away."
+  },
+  "Shaomin": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Rho_Leonis",
+    "notes": "Rho Leonis, a distant blue supergiant in Leo and a runaway star likely ejected from a nearby OB association. The IAU name comes from a Chinese asterism."
+  },
+  "Atik": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Omicron_Persei",
+    "notes": "Omicron Persei, a multiple star system of hot blue giants in Perseus, embedded in the Perseus OB2 association. The Arabic name means 'the shoulder'."
+  },
+  "Tusizuo": {
+    "wikipedia": "https://en.wikipedia.org/wiki/109_Herculis",
+    "notes": "109 Herculis, an orange giant in Hercules about 121 light-years distant. The IAU name derives from a Chinese asterism representing seats for nobility."
+  },
+  "Sceptrum": {
+    "wikipedia": "https://en.wikipedia.org/wiki/53_Eridani",
+    "notes": "Orange giant in Eridanus. Its name 'Sceptrum' derives from the obsolete constellation Sceptrum Brandenburgicum.",
+    "aliases": [
+      "Sceptrum Brandenburgicum"
+    ]
+  },
+  "Sadachbia": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Aquarii",
+    "notes": "White main-sequence star in Aquarius. The traditional Arabic name means 'lucky star of hidden things' or 'lucky star of the tents'."
+  },
+  "Maia": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Maia_(star)",
+    "notes": "Blue giant in the Pleiades star cluster in Taurus, named for one of the seven Pleiad sisters of Greek mythology. Surrounded by a reflection nebula, NGC 1432 (the Maia Nebula)."
+  },
+  "Iklil": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Rho_Scorpii",
+    "notes": "Hot blue subgiant/main-sequence star in Scorpius, part of the Scorpius–Centaurus association. The name 'Iklil' is from Arabic for 'crown', referring to the head of the scorpion."
+  },
+  "Rasalas": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Leonis",
+    "notes": "Orange giant in Leo marking the lion's mane. Its name is shortened from the Arabic for 'the northern star of the lion's head'."
+  },
+  "Mesarthim": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Arietis",
+    "notes": "Chemically peculiar Ap silicon star, the brighter component of a famous early-discovered double in Aries (Robert Hooke, 1664). Together with Hamal and Sheratan it formed the ancient 'first point of Aries'."
+  },
+  "Azha": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Eridani",
+    "notes": "Orange giant/subgiant in Eridanus. The name 'Azha' derives from a Persian phrase meaning 'the hatching place', referring to an ostrich's nest."
+  },
+  "Ukdah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Iota_Hydrae",
+    "notes": "Orange giant in Hydra. The name 'Ukdah' comes from the Arabic for 'the knot', referring to a group of stars in the serpent's coils."
+  },
+  "Zubenelhakrabi": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Librae",
+    "notes": "Orange giant in Libra. The traditional Arabic name means 'the scorpion's claw', from the era when Libra's stars were considered part of Scorpius."
+  },
+  "Kitalpha": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Equulei",
+    "notes": "Spectroscopic binary in Equuleus consisting of a G-type giant and an A-type main-sequence star. The name comes from the Arabic for 'piece of the horse'."
+  },
+  "Wurren": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Phoenicis",
+    "notes": "Eclipsing Algol-type binary in Phoenix with a B-type primary. The name 'Wurren' is an Aboriginal Australian (Wardaman) name meaning 'child'."
+  },
+  "Asellus Australis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Cancri",
+    "notes": "Orange giant in Cancer marking the southern 'donkey' flanking the Beehive Cluster (Praesepe). It lies very near the ecliptic and is occasionally occulted by the Moon and planets."
+  },
+  "Arkab Prior": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Sagittarii",
+    "notes": "Blue main-sequence star in Sagittarius forming a wide naked-eye pair with Arkab Posterior (Beta-2 Sgr). 'Arkab' is from Arabic meaning 'tendon (of the archer's heel)'."
+  },
+  "Rukbat": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Sagittarii",
+    "notes": "Blue main-sequence star in Sagittarius. Despite its alpha designation it is not the brightest star in the constellation; the name 'Rukbat' means 'knee' in Arabic."
+  },
+  "Beemim": {
+    "wikipedia": "https://en.wikipedia.org/wiki/43_Eridani",
+    "notes": "Orange giant in Eridanus. Its name 'Beemim' derives from an Arabic asterism meaning 'the two ostriches'."
+  },
+  "Menkib": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Persei",
+    "notes": "Very luminous and hot O-type supergiant runaway star in Perseus, ionising the nearby California Nebula (NGC 1499). The name 'Menkib' is Arabic for 'shoulder'."
+  },
+  "Alcor": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alcor_(star)",
+    "notes": "Famous naked-eye companion to Mizar in the handle of the Big Dipper (Ursa Major), forming a classic eyesight test. Itself a binary, and gravitationally bound to the Mizar system.",
+    "aliases": [
+      "Suha"
+    ]
+  },
+  "Polaris": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Polaris",
+    "notes": "The current North Star, in Ursa Minor, lying within about 1 degree of the north celestial pole. A yellow supergiant and Cepheid variable, it is the brightest member of a triple-star system.",
+    "aliases": [
+      "North Star",
+      "Pole Star",
+      "Stella Polaris",
+      "Cynosura"
+    ]
+  },
+  "Mirzam": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Canis_Majoris",
+    "notes": "A blue-white giant in Canis Major, prototype of the Beta Cephei class of pulsating variables. Its name means 'the announcer', referring to its rising just before Sirius.",
+    "aliases": [
+      "Murzim",
+      "Mirza"
+    ]
+  },
+  "Alphard": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alphard",
+    "notes": "The lone bright star (alpha) of Hydra, an orange giant whose Arabic name means 'the solitary one'. Slightly variable, it shows an unusual barium enrichment in its atmosphere.",
+    "aliases": [
+      "Cor Hydrae",
+      "Solitary One"
+    ]
+  },
+  "Algieba": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Leonis",
+    "notes": "A celebrated binary in Leo consisting of two orange giants, easily split in small telescopes. The primary hosts a confirmed exoplanet, Gamma Leonis Ab.",
+    "aliases": [
+      "Al Gieba",
+      "Algeiba"
+    ]
+  },
+  "Hamal": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Hamal",
+    "notes": "The brightest star of Aries, an orange giant about 66 light-years away. Its name comes from Arabic for 'lamb', and it hosts a confirmed planetary companion.",
+    "aliases": [
+      "Hemal",
+      "Ras Hammel"
+    ]
+  },
+  "Diphda": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Ceti",
+    "notes": "The brightest star in Cetus despite its beta designation, an orange giant that has evolved off the main sequence and shows strong X-ray activity. Its name derives from Arabic for 'the second frog'.",
+    "aliases": [
+      "Deneb Kaitos",
+      "Difda"
+    ]
+  },
+  "Nunki": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sigma_Sagittarii",
+    "notes": "A hot blue main-sequence star in the handle of the Sagittarius Teapot. Its Babylonian-derived name is one of the few star names with Mesopotamian rather than Arabic origin.",
+    "aliases": [
+      "Sadira"
+    ]
+  },
+  "Menkent": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Centauri",
+    "notes": "An orange giant in Centaurus, the closest of that constellation's bright stars after Alpha and Proxima. The name is a modern coinage meaning 'shoulder of the centaur'."
+  },
+  "Saiph": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Saiph",
+    "notes": "A blue supergiant marking the southeast foot of Orion. Despite being similar in luminosity to Rigel, it appears fainter because much of its energy is radiated in the ultraviolet.",
+    "aliases": [
+      "Saif al Jabbar"
+    ]
+  },
+  "Alpheratz": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpheratz",
+    "notes": "The brightest star of Andromeda and a corner of the Great Square of Pegasus, formerly designated Delta Pegasi. It is a spectroscopic binary and the brightest known mercury-manganese star.",
+    "aliases": [
+      "Sirrah",
+      "Sirah",
+      "Alpherat"
+    ]
+  },
+  "Mirach": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mirach",
+    "notes": "A red giant in Andromeda used as a guidepost to find the Andromeda Galaxy. The faint background galaxy NGC 404 lies just off it and is nicknamed 'Mirach's Ghost'.",
+    "aliases": [
+      "Mirac",
+      "Merach"
+    ]
+  },
+  "Tiaki": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Gruis",
+    "notes": "A red giant in the constellation Grus, irregularly variable in brightness. Its modern Maori-derived name was officially adopted by the IAU in 2017.",
+    "aliases": [
+      "Al Dhanab"
+    ]
+  },
+  "Kochab": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kochab",
+    "notes": "An orange giant in Ursa Minor, second-brightest star of the Little Dipper and one of the 'guardians of the pole' along with Pherkad. It served as the pole star around 1500 BC.",
+    "aliases": [
+      "Kocab",
+      "Kochah"
+    ]
+  },
+  "Rasalhague": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Rasalhague",
+    "notes": "The brightest star in Ophiuchus, a rapidly rotating white subgiant in a binary system with a low-mass companion. Its name is Arabic for 'head of the serpent charmer'.",
+    "aliases": [
+      "Ras Alhague"
+    ]
+  },
+  "Algol": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Algol",
+    "notes": "The famous 'Demon Star' of Perseus, the prototypical eclipsing binary whose brightness drops noticeably every 2.87 days. It is actually a triple system and one of the first variable stars discovered.",
+    "aliases": [
+      "Demon Star",
+      "Gorgona"
+    ]
+  },
+  "Almach": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Andromedae",
+    "notes": "A striking telescopic double in Andromeda showing a golden primary and bluish secondary, considered one of the finest binaries in the sky. It is actually a quadruple system.",
+    "aliases": [
+      "Almaach",
+      "Almak",
+      "Alamak"
+    ]
+  },
+  "Denebola": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Denebola",
+    "notes": "A nearby white main-sequence star marking the tail of Leo, only 36 light-years away. It exhibits a strong infrared excess indicating a circumstellar debris disk.",
+    "aliases": [
+      "Deneb Aleet",
+      "Serpha"
+    ]
+  },
+  "Cih": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Cassiopeiae",
+    "notes": "A rapidly rotating blue subgiant in Cassiopeia, the prototype Gamma Cassiopeiae variable that periodically expels a circumstellar disk. Its Chinese-derived name 'Tsih' means 'the whip'.",
+    "aliases": [
+      "Tsih",
+      "Navi"
+    ]
+  },
+  "Naos": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Naos",
+    "notes": "An exceptionally luminous and hot O-type supergiant in Puppis, one of the few naked-eye O stars. It is a runaway star ejected from its birthplace and possesses a powerful stellar wind.",
+    "aliases": [
+      "Suhail Hadar"
+    ]
+  },
+  "Aspidiske": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Aspidiske",
+    "notes": "A white supergiant in Carina, one of the four stars of the asterism known as the False Cross. The name is Greek for 'small shield'.",
+    "aliases": [
+      "Turais",
+      "Scutulum"
+    ]
+  },
+  "Alphecca": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alphecca",
+    "notes": "The brightest star in Corona Borealis, often called the 'jewel' of the Northern Crown. It is an Algol-type eclipsing binary with a Sun-like companion and a debris disk.",
+    "aliases": [
+      "Gemma",
+      "Alphekka",
+      "Gnosia"
+    ]
+  },
+  "Suhail": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Suhail_(star)",
+    "notes": "An orange supergiant in Vela, slowly variable in brightness. The Arabic name 'Suhail' was historically applied to several southern bright stars before being fixed to Lambda Velorum.",
+    "aliases": [
+      "Al Suhail al Wazn"
+    ]
+  },
+  "Mizar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mizar",
+    "notes": "Middle star of the Big Dipper's handle in Ursa Major. Famous naked-eye double with Alcor; Mizar itself was the first telescopic double star ever discovered (1617) and later the first spectroscopic binary identified.",
+    "aliases": [
+      "Mizar A"
+    ]
+  },
+  "Sadr": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sadr_(star)",
+    "notes": "Yellow-white supergiant at the heart of the Northern Cross in Cygnus. Embedded in a rich nebular region known as the Sadr Region (IC 1318)."
+  },
+  "Schedar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Schedar",
+    "notes": "Brightest star in Cassiopeia, an orange giant marking the queen's breast in the W asterism. Name derives from Arabic for 'breast'.",
+    "aliases": [
+      "Shedar",
+      "Shedir"
+    ]
+  },
+  "Eltanin": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Draconis",
+    "notes": "Brightest star in Draco, an orange giant marking the dragon's eye. Used by James Bradley in 1725 to discover stellar aberration, providing the first direct evidence of Earth's motion.",
+    "aliases": [
+      "Etamin",
+      "Zenith Star"
+    ]
+  },
+  "Mintaka": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mintaka",
+    "notes": "Westernmost star of Orion's Belt and a complex multiple system dominated by hot O-type giants. Lies almost exactly on the celestial equator."
+  },
+  "Caph": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Caph",
+    "notes": "Yellow-white subgiant in Cassiopeia and one of the brightest Delta Scuti variables. Marks the western end of the W asterism."
+  },
+  "Dschubba": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Scorpii",
+    "notes": "Hot blue subgiant in Scorpius marking the scorpion's forehead. A noted Be-shell star that brightened dramatically in 2000 after ejecting a circumstellar disk.",
+    "aliases": [
+      "Dzuba",
+      "Iclarcrau"
+    ]
+  },
+  "Larawag": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Scorpii",
+    "notes": "Orange giant in Scorpius marking part of the scorpion's body. The IAU adopted the Wardaman Aboriginal Australian name Larawag in 2017."
+  },
+  "Uridim": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Lupi",
+    "notes": "Brightest star in Lupus, a hot blue subgiant and Beta Cephei variable. A likely member of the Scorpius-Centaurus OB association destined to explode as a supernova."
+  },
+  "Merak": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Merak",
+    "notes": "One of the two 'Pointer Stars' of the Big Dipper that point toward Polaris. A young A-type main-sequence star with a debris disk and a member of the Ursa Major moving group."
+  },
+  "Izar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Izar_(star)",
+    "notes": "Striking double star in Bootes consisting of an orange giant and a blue-white companion, often called 'Pulcherrima' (most beautiful) for its color contrast.",
+    "aliases": [
+      "Pulcherrima",
+      "Mirak"
+    ]
+  },
+  "Enif": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Enif",
+    "notes": "Orange supergiant marking the muzzle of Pegasus and the brightest star in that constellation's western reach. Known for occasional dramatic flare-like brightenings."
+  },
+  "Ankaa": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Ankaa",
+    "notes": "Brightest star in Phoenix, an orange giant in a spectroscopic binary system. Used in celestial navigation as one of the 57 navigational stars."
+  },
+  "Phecda": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Phecda",
+    "notes": "Lower-inner star of the Big Dipper bowl in Ursa Major. A hot A-type main-sequence star and member of the Ursa Major moving group, with an orange-dwarf companion.",
+    "aliases": [
+      "Phad",
+      "Phekda"
+    ]
+  },
+  "Sabik": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Ophiuchi",
+    "notes": "Second-brightest star in Ophiuchus, a close binary of two A-type stars. One of the navigational stars used in celestial navigation."
+  },
+  "Scheat": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Scheat",
+    "notes": "Cool red giant marking the upper-right corner of the Great Square of Pegasus. A semiregular variable whose brightness fluctuates noticeably over weeks."
+  },
+  "Aludra": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Aludra",
+    "notes": "Distant blue supergiant in Canis Major, intrinsically one of the most luminous stars visible to the naked eye. A slowly pulsating Alpha Cygni-type variable."
+  },
+  "Alderamin": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alderamin",
+    "notes": "Brightest star in Cepheus, a rapidly rotating white subgiant nearing the end of its main-sequence life. Due to precession, it will become the north pole star around 7500 CE."
+  },
+  "Markeb": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kappa_Velorum",
+    "notes": "Hot blue subgiant in Vela, one of the four stars of the False Cross asterism often confused with the true Southern Cross."
+  },
+  "Aljanah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Aljanah",
+    "notes": "Orange giant marking one wing of Cygnus the Swan. Has a faint red-dwarf companion and is among the closer giant stars at about 75 light-years.",
+    "aliases": [
+      "Gienah Cygni"
+    ]
+  },
+  "Markab": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Markab",
+    "notes": "Brightest star in Pegasus, marking the southwest corner of the Great Square. A blue-white giant that has exhausted its core hydrogen and is evolving toward the giant branch."
+  },
+  "Menkar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Menkar",
+    "notes": "Red giant marking the nose of Cetus the sea monster. Despite being only the second-brightest in Cetus, its reddish hue and bulk (over 80 solar radii) make it a striking telescopic target."
+  },
+  "Leepwal": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Centauri",
+    "notes": "Bright blue subgiant in Centaurus, also known as Zeta Centauri. The proper name Leepwal comes from a Wardaman (Australian Aboriginal) word meaning 'lightning'.",
+    "aliases": [
+      "Al Nair al Kentaurus"
+    ]
+  },
+  "Zosma": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zosma",
+    "notes": "White main-sequence star marking the hip of Leo. Its name derives from Ancient Greek for 'girdle'.",
+    "aliases": [
+      "Duhr"
+    ]
+  },
+  "Acrab": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Scorpii",
+    "notes": "Multiple star system at the head of Scorpius. The name derives from the Arabic for 'scorpion'.",
+    "aliases": [
+      "Graffias",
+      "Elacrab"
+    ]
+  },
+  "Arneb": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Leporis",
+    "notes": "Yellow-white supergiant and brightest star in Lepus the Hare. Its name comes from the Arabic for 'hare'."
+  },
+  "Gienah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Corvi",
+    "notes": "Brightest star in Corvus, a blue-white giant. The name derives from the Arabic for 'wing' (of the crow).",
+    "aliases": [
+      "Gienah Corvi",
+      "Gienah Ghurab"
+    ]
+  },
+  "Ascella": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Sagittarii",
+    "notes": "Binary system in Sagittarius marking the archer's armpit, from which its Latin name derives."
+  },
+  "Zubeneschamali": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Librae",
+    "notes": "Brightest star in Libra, often described as the only naked-eye star with a greenish tint. The name is Arabic for 'northern claw', a holdover from when Libra was part of Scorpius."
+  },
+  "Unukalhai": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Serpentis",
+    "notes": "Orange giant and brightest star in Serpens, marking the serpent's heart. The name is Arabic for 'neck of the snake'.",
+    "aliases": [
+      "Cor Serpentis"
+    ]
+  },
+  "Sheratan": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Arietis",
+    "notes": "White main-sequence binary in Aries. The name derives from the Arabic for 'the two signs', referring to Beta and Gamma Arietis marking the vernal equinox in antiquity."
+  },
+  "Phact": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Columbae",
+    "notes": "Brightest star in Columba the Dove, a blue subgiant and rapid rotator. Its name is Arabic for 'ring dove'."
+  },
+  "Mahasim": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Aurigae",
+    "notes": "Chemically peculiar Ap silicon star in Auriga, exhibiting a strong magnetic field and spectral variability. The name derives from Arabic for 'wrist'."
+  },
+  "Kraz": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Corvi",
+    "notes": "Yellow bright giant in Corvus. The origin of the name Kraz is uncertain, possibly medieval."
+  },
+  "Ruchbah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Cassiopeiae",
+    "notes": "Eclipsing binary in Cassiopeia forming part of the constellation's distinctive 'W' shape. The name is Arabic for 'knee'.",
+    "aliases": [
+      "Ksora"
+    ]
+  },
+  "Muphrid": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Bootis",
+    "notes": "Yellow subgiant in Bootes, a near neighbor at 37 light-years and a spectroscopic binary. Its name is Arabic for 'the solitary one of the lancer'.",
+    "aliases": [
+      "Saak"
+    ]
+  },
+  "Hassaleh": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Iota_Aurigae",
+    "notes": "Orange bright giant in Auriga. The origin of the name Hassaleh is unknown but it has long been used in star catalogs.",
+    "aliases": [
+      "Kabdhilinan",
+      "Al Kab"
+    ]
+  },
+  "Lesath": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Upsilon_Scorpii",
+    "notes": "Hot blue subgiant marking the stinger of Scorpius, paired visually with Shaula. The name is Arabic for 'sting'."
+  },
+  "Kaus Media": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Sagittarii",
+    "notes": "Orange giant in Sagittarius marking the middle of the archer's bow. Its Latin/Arabic name means 'middle of the bow'.",
+    "aliases": [
+      "Kaus Meridionalis",
+      "Media"
+    ]
+  },
+  "Tarazed": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Aquilae",
+    "notes": "Orange bright giant flanking Altair in Aquila. The name comes from a Persian phrase meaning 'the beam of the scale'.",
+    "aliases": [
+      "Reda"
+    ]
+  },
+  "Yed Prior": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Ophiuchi",
+    "notes": "Red giant in Ophiuchus representing the hand grasping the serpent. 'Yed' is Arabic for 'hand', and 'Prior' indicates it precedes Yed Posterior across the sky."
+  },
+  "Athebyne": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Draconis",
+    "notes": "Yellow giant binary in Draco. The name comes from Arabic for 'two hyenas', referencing an old Bedouin asterism."
+  },
+  "Porrima": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Virginis",
+    "notes": "Famous nearby binary of two nearly identical F-type stars in Virgo, with an orbital period of about 169 years. Named for a Roman goddess of prophecy.",
+    "aliases": [
+      "Arich",
+      "Postvarta"
+    ]
+  },
+  "Hatysa": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Iota_Orionis",
+    "notes": "Hot O-type multiple star system at the tip of Orion's Sword and the brightest member of the Orion Nebula cluster NGC 1980.",
+    "aliases": [
+      "Na'ir al Saif"
+    ]
+  },
+  "Kulou": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Iota_Centauri",
+    "notes": "White main-sequence star in Centaurus. Its proper name Kulou comes from a Chinese asterism meaning 'Sickle'.",
+    "aliases": [
+      "Kú Lóu"
+    ]
+  },
+  "Zubenelgenubi": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Librae",
+    "notes": "Wide double star in Libra whose Arabic name means 'the southern claw', a relic of when Libra's stars were considered the claws of Scorpius. The brighter component is itself a spectroscopic binary."
+  },
+  "Cebalrai": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Ophiuchi",
+    "notes": "Orange giant in Ophiuchus whose Arabic name means 'the shepherd's dog'. It is a suspected variable and shows weak chromospheric activity.",
+    "aliases": [
+      "Cheleb"
+    ]
+  },
+  "Cursa": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Eridani",
+    "notes": "White giant marking the start of the river Eridanus near Rigel's foot. Its name derives from Arabic for 'the footstool' of the central figure of Orion."
+  },
+  "Kornephoros": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Herculis",
+    "notes": "Yellow giant and the brightest star in Hercules despite its beta designation. It is a spectroscopic binary whose Greek name means 'club-bearer'.",
+    "aliases": [
+      "Rutilicus"
+    ]
+  },
+  "Rasalgethi": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Herculis",
+    "notes": "Red supergiant triple system in Hercules whose Arabic name means 'head of the kneeler'. The primary is a semi-regular variable and one of the largest stars known by angular diameter."
+  },
+  "Imai": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Crucis",
+    "notes": "Blue subgiant forming the dimmest of the four main stars of the Southern Cross. Its name comes from a Mursi (Ethiopian) word for a sacred tree."
+  },
+  "Rastaban": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Draconis",
+    "notes": "Yellow bright giant in Draco whose Arabic name means 'head of the serpent'. It forms part of the dragon's head asterism with Eltanin.",
+    "aliases": [
+      "Alwaid"
+    ]
+  },
+  "Nihal": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Leporis",
+    "notes": "Yellow bright giant in Lepus whose Arabic name refers to camels quenching their thirst. It is the second-brightest star in the hare constellation."
+  },
+  "Paikauhale": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Tau_Scorpii",
+    "notes": "Hot blue main-sequence star in Scorpius near Antares, member of the Upper Scorpius association. Its Hawaiian name means 'vagabond'."
+  },
+  "Kaus Borealis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lambda_Sagittarii",
+    "notes": "Orange giant marking the top of the archer's bow in Sagittarius and the lid of the Teapot asterism. Its name is Latinized Arabic for 'northern part of the bow'."
+  },
+  "Tureis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Rho_Puppis",
+    "notes": "Bright Delta Scuti variable in Puppis and prototype of the metallic-line (Am) pulsators. Its name means 'little shield' in Arabic.",
+    "aliases": [
+      "Turais"
+    ]
+  },
+  "Algenib": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Pegasi",
+    "notes": "Hot blue subgiant marking the southwest corner of the Great Square of Pegasus. It is a Beta Cephei pulsating variable."
+  },
+  "Alcyone": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alcyone_(star)",
+    "notes": "Brightest star of the Pleiades open cluster in Taurus. A blue giant multiple system surrounded by a gaseous disk, named for one of the Seven Sisters of Greek myth."
+  },
+  "Deneb Algedi": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Capricorni",
+    "notes": "Eclipsing binary in Capricornus whose Arabic name means 'tail of the goat'. It is the brightest star in the constellation.",
+    "aliases": [
+      "Scheddi"
+    ]
+  },
+  "Vindemiatrix": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Virginis",
+    "notes": "Yellow giant in Virgo whose Latin name means 'the grape gatherer', as its heliacal rising once heralded the wine harvest.",
+    "aliases": [
+      "Almuredin",
+      "Vindemiator"
+    ]
+  },
+  "Fawaris": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Cygni",
+    "notes": "Triple star in Cygnus along the swan's wing, due to become a future northern pole star around the year 11250. Its Arabic name means 'the riders'."
+  },
+  "Tejat": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Geminorum",
+    "notes": "Red giant semi-regular variable marking one of the feet of Castor in Gemini. Also known historically as Tejat Posterior.",
+    "aliases": [
+      "Tejat Posterior",
+      "Calx"
+    ]
+  },
+  "Lang-Exster": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Tucanae",
+    "notes": "Orange giant binary and the brightest star in the southern constellation Tucana. Its name comes from a Wardaman (Australian Aboriginal) word for a peaceful dove."
+  },
+  "Acamar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Eridani",
+    "notes": "Bright double star in Eridanus that once marked the southern end of the river before Achernar became visible to Mediterranean observers. Its Arabic name shares an etymology with Achernar."
+  },
+  "Albaldah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Pi_Sagittarii",
+    "notes": "Triple star system in Sagittarius whose Arabic name means 'the town'. The primary is a yellow-white bright giant."
+  },
+  "Gomeisa": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Canis_Minoris",
+    "notes": "Hot blue main-sequence star in Canis Minor surrounded by a gaseous decretion disk, classified as a Be variable. Its Arabic name refers to the 'weeping one'."
+  },
+  "Fang": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Pi_Scorpii",
+    "notes": "Triple star system in Scorpius forming the head of the scorpion alongside Dschubba and Acrab. The primary is an eclipsing binary of two hot B-type stars in a tight 1.57-day orbit."
+  },
+  "Cor Caroli": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Cor_Caroli",
+    "notes": "Brightest star in Canes Venatici, named 'Heart of Charles' in honor of King Charles I of England. The primary is the prototype Alpha-2 Canum Venaticorum variable, with an unusually strong magnetic field and chemically peculiar spectrum.",
+    "aliases": [
+      "Heart of Charles"
+    ]
+  },
+  "Alniyat": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sigma_Scorpii",
+    "notes": "Multiple star system in Scorpius near Antares, part of the Scorpius OB2 association. The primary is a Beta Cephei pulsating variable.",
+    "aliases": [
+      "Al Niyat"
+    ]
+  },
+  "Sadalsuud": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Aquarii",
+    "notes": "Brightest star in Aquarius, a yellow supergiant about 2200 times more luminous than the Sun. Its name from Arabic means 'luckiest of the lucky'.",
+    "aliases": [
+      "Lucky of Luckies"
+    ]
+  },
+  "Matar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Pegasi",
+    "notes": "Binary star in Pegasus consisting of a bright giant and a companion. Its name derives from Arabic meaning 'the fortunate rain'."
+  },
+  "Algorab": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Corvi",
+    "notes": "Double star in Corvus marking one corner of the constellation's quadrilateral. Its Arabic name means 'the raven'.",
+    "aliases": [
+      "The Raven"
+    ]
+  },
+  "Sadalmelik": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Aquarii",
+    "notes": "Yellow supergiant in Aquarius, roughly 3000 times more luminous than the Sun. Arabic name means 'lucky stars of the king'."
+  },
+  "Zaurak": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Eridani",
+    "notes": "Red giant in Eridanus, a slow irregular variable. Its Arabic name means 'the boat'."
+  },
+  "Ras Elased Australis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Leonis",
+    "notes": "Yellow bright giant in Leo marking the southern star of the Lion's head. About 288 times more luminous than the Sun."
+  },
+  "Tianguan": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Tauri",
+    "notes": "Hot Be-type binary in Taurus marking the tip of the Bull's southern horn, near the Crab Nebula. Surrounded by a circumstellar gas disk.",
+    "aliases": [
+      "Celestial Gate"
+    ]
+  },
+  "Alnasl": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Sagittarii",
+    "notes": "Orange giant in Sagittarius marking the tip of the archer's arrow, pointing toward the Galactic Center. Its Arabic name means 'the arrowhead'.",
+    "aliases": [
+      "Nushaba",
+      "Arrowhead"
+    ]
+  },
+  "Okab": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Aquilae",
+    "notes": "White main-sequence star in Aquila with a faint dwarf companion. Its name comes from Arabic meaning 'the eagle'."
+  },
+  "Xamidimura": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu1_Scorpii",
+    "notes": "Massive eclipsing binary in Scorpius consisting of two hot B-type stars in a 1.4-day orbit. Name comes from the Khoekhoe language meaning 'eyes of the lion'."
+  },
+  "Aldhanab": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Gruis",
+    "notes": "Blue-white giant in Grus marking the head of the Crane. Its Arabic name means 'the tail' (referring to its older placement in Piscis Austrinus)."
+  },
+  "Pherkad": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Ursae_Minoris",
+    "notes": "White bright giant in Ursa Minor, one of the 'Guardians of the Pole' alongside Kochab. Its Arabic name means 'the calf'.",
+    "aliases": [
+      "Pherkad Major"
+    ]
+  },
+  "Furud": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Canis_Majoris",
+    "notes": "Hot blue-white binary in Canis Major. Its Arabic name means 'the bright single ones', originally referring to a group of stars."
+  },
+  "Seginus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Bo%C3%B6tis",
+    "notes": "Delta Scuti pulsating variable in Bootes marking the left shoulder of the Herdsman. A white giant about 34 times more luminous than the Sun.",
+    "aliases": [
+      "Haris"
+    ]
+  },
+  "Dabih": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Capricorni",
+    "notes": "Multiple star system in Capricornus visible as a wide pair to the naked eye. Its Arabic name means 'the slaughterer', referencing ancient ritual sacrifice at its heliacal rising."
+  },
+  "Albireo": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Albireo",
+    "notes": "Famous color-contrast double star marking the head of Cygnus the Swan, with an amber giant primary and a blue-white companion. One of the most popular telescopic doubles in the sky."
+  },
+  "Mebsuta": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Geminorum",
+    "notes": "Yellow supergiant in Gemini, occasionally occulted by the Moon and planets. Roughly 8500 times more luminous than the Sun.",
+    "aliases": [
+      "Melboula"
+    ]
+  },
+  "Tania Australis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Ursae_Majoris",
+    "notes": "Red giant in Ursa Major, the southern of a pair (with Tania Borealis) marking the second leap of the gazelle in Arabic tradition. A semiregular variable."
+  },
+  "Altais": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Draconis",
+    "notes": "Yellow giant in Draco that will become a pole star around AD 11250 due to precession. Its name derives from Arabic meaning 'the goat'.",
+    "aliases": [
+      "Nodus Secundus"
+    ]
+  },
+  "Wazn": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Columbae",
+    "notes": "Beta Columbae in the constellation Columba. An orange giant about 87 light-years away, it is the second-brightest star in this small southern constellation."
+  },
+  "Talitha": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Iota_Ursae_Majoris",
+    "notes": "Iota Ursae Majoris in Ursa Major, marking one of the front paws of the Great Bear. A multiple star system about 48 light-years away with an A7 subgiant primary.",
+    "aliases": [
+      "Talitha Borealis",
+      "Dnoces"
+    ]
+  },
+  "Sarin": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Herculis",
+    "notes": "Delta Herculis in Hercules, an A-type subgiant about 77 light-years away. It is a multiple star system marking the right shoulder of the kneeling hero."
+  },
+  "Pipit": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Nu_Puppis",
+    "notes": "Nu Puppis in the southern constellation Puppis. A B-type giant roughly 370 light-years distant, it is one of the brighter stars of the former Argo Navis."
+  },
+  "Aldhibah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Draconis",
+    "notes": "Zeta Draconis in Draco, a hot B6 giant about 420 light-years away. Its name derives from Arabic for 'the hyenas', and it lies along the dragon's body.",
+    "aliases": [
+      "Nodus III"
+    ]
+  },
+  "Haedus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Aurigae",
+    "notes": "Eta Aurigae in Auriga, a B3 main-sequence star about 233 light-years away. With Zeta Aurigae it forms the asterism of the Kids (Haedi) beside Capella the She-Goat.",
+    "aliases": [
+      "Haedus II"
+    ]
+  },
+  "Xami": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Circini",
+    "notes": "Alpha Circini in the small southern constellation Circinus, the brightest rapidly oscillating Ap star known. It lies about 54 light-years away and shows strong chemical peculiarities."
+  },
+  "Fuyue": {
+    "wikipedia": "https://en.wikipedia.org/wiki/G_Scorpii",
+    "notes": "G Scorpii (HR 6630) in Scorpius, a K-type giant about 132 light-years away. Its proper name comes from a legendary Chinese minister of the Shang dynasty.",
+    "aliases": [
+      "G Scorpii"
+    ]
+  },
+  "Errai": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Cephei",
+    "notes": "Gamma Cephei in Cepheus, an orange subgiant about 45 light-years away with a confirmed exoplanet and an M-dwarf companion. Due to precession it will become the north pole star around AD 3000.",
+    "aliases": [
+      "Alrai",
+      "Er Rai"
+    ]
+  },
+  "Yed Posterior": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Ophiuchi",
+    "notes": "Epsilon Ophiuchi in Ophiuchus, a G8 giant about 107 light-years away. Its name means 'the rear hand', paired with Yed Prior (Delta Ophiuchi) marking the serpent-bearer's left hand."
+  },
+  "Alfirk": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Cephei",
+    "notes": "Beta Cephei in Cepheus, the prototype of the Beta Cephei variable class of pulsating B-type stars. It lies roughly 690 light-years away and is a multiple system."
+  },
+  "Antinous": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Aquilae",
+    "notes": "Theta Aquilae in Aquila, a B9.5 giant about 229 light-years away. The proper name commemorates the obsolete constellation Antinous, once carved from southern Aquila."
+  },
+  "Brachium": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sigma_Librae",
+    "notes": "Sigma Librae in Libra, a red M-type giant about 260 light-years away. Formerly designated Gamma Scorpii, it was reassigned to Libra and named for the scales' arm.",
+    "aliases": [
+      "Cornu",
+      "Zubenalgubi"
+    ]
+  },
+  "Sulafat": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Lyrae",
+    "notes": "Gamma Lyrae in Lyra, a hot blue giant about 620 light-years distant. It marks the southeastern corner of the lyre's parallelogram opposite Vega."
+  },
+  "Skat": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Aquarii",
+    "notes": "Delta Aquarii in Aquarius, a white A3 main-sequence star about 141 light-years away. It is the radiant of the Southern Delta Aquariid meteor shower in late July."
+  },
+  "Edasich": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Iota_Draconis",
+    "notes": "Iota Draconis in Draco, an orange K-type giant about 100 light-years away. It was the first giant star found to host an exoplanet (Hypatia, b)."
+  },
+  "Propus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Geminorum",
+    "notes": "Eta Geminorum in Gemini, a red M3 giant and semiregular variable forming part of an eclipsing triple system. Its name means 'forward foot', marking Castor's leg.",
+    "aliases": [
+      "Tejat Prior",
+      "Praepes"
+    ]
+  },
+  "Megrez": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Ursae_Majoris",
+    "notes": "Delta Ursae Majoris in Ursa Major, the faintest of the seven Big Dipper stars, joining the bowl to the handle. It is an A-type main-sequence star about 81 light-years away with a debris disk.",
+    "aliases": [
+      "Kaffa"
+    ]
+  },
+  "Rhombus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Reticuli",
+    "notes": "Alpha Reticuli, the brightest star in the small southern constellation Reticulum. A G-type bright giant about 160 light-years away."
+  },
+  "Chertan": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Leonis",
+    "notes": "Theta Leonis in Leo, a white A0 main-sequence star about 160 light-years away. It marks the lion's hindquarters in the body of the constellation.",
+    "aliases": [
+      "Coxa",
+      "Chort"
+    ]
+  },
+  "Azmidi": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Puppis",
+    "notes": "Xi Puppis in Puppis, a luminous yellow G-type supergiant roughly 1,100 light-years away. Its traditional name derives from an Arabic phrase referring to its position in the old Argo Navis.",
+    "aliases": [
+      "Asmidiske"
+    ]
+  },
+  "Alzirr": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Xi_Geminorum",
+    "notes": "Xi Geminorum in Gemini, an F-type subgiant about 60 light-years away. Its Arabic name means 'the button', and it lies at the foot of Pollux's twin Castor."
+  },
+  "Muscida": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Omicron_Ursae_Majoris",
+    "notes": "The snout of the Great Bear in Ursa Major. A yellow giant multiple system about 182 light-years away, marking the bear's nose."
+  },
+  "Segin": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Cassiopeiae",
+    "notes": "Easternmost star of the W-shaped Cassiopeia asterism. A hot B-type giant about 466 light-years distant, showing emission-line variability."
+  },
+  "Ashlesha": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Hydrae",
+    "notes": "Multiple star system in the head of Hydra, named for the 9th nakshatra in Hindu astronomy. Located about 129 light-years away.",
+    "aliases": [
+      "Ashlesha Nakshatra"
+    ]
+  },
+  "Heze": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Virginis",
+    "notes": "White main-sequence star in Virgo about 75 light-years away. Notable for a directly imaged brown dwarf companion discovered in 2010."
+  },
+  "Meissa": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Meissa",
+    "notes": "Marks the head of Orion the Hunter. A hot O-type giant roughly 1100 light-years distant, illuminating the Lambda Orionis (Sh2-264) emission nebula."
+  },
+  "Minelauva": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Virginis",
+    "notes": "Red giant in Virgo about 187 light-years away. A semi-regular variable whose name derives from Arabic for 'the grape gatherer'."
+  },
+  "Chamukuy": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Tauri",
+    "notes": "Member of the Hyades open cluster in Taurus, forming the bull's face along with Aldebaran. The name is Yucatec Maya for a small bird."
+  },
+  "Heng": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Nu_Centauri",
+    "notes": "Hot blue subgiant in Centaurus about 405 light-years distant. A Beta Cephei-type pulsating variable."
+  },
+  "Homam": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Pegasi",
+    "notes": "Blue-white main-sequence star in Pegasus about 204 light-years away. Its name comes from Arabic meaning 'lucky star of the high-minded man'."
+  },
+  "Mothallah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Trianguli",
+    "notes": "Brightest star in the small constellation Triangulum, a spectroscopic binary 64 light-years away. Despite its alpha designation, it is fainter than Beta Trianguli."
+  },
+  "Adhafera": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Leonis",
+    "notes": "Yellow-white giant in the Sickle of Leo about 232 light-years away. Its name is Arabic for 'the curl' or 'lock of hair' of the lion's mane."
+  },
+  "Tania Borealis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Lambda_Ursae_Majoris",
+    "notes": "Forms one of the 'Three Leaps of the Gazelle' asterism in Ursa Major. A white subgiant about 226 light-years distant."
+  },
+  "Achird": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Cassiopeiae",
+    "notes": "Nearby Sun-like binary in Cassiopeia just 19 light-years away, with a G-type primary and K-type companion. One of the closest visible naked-eye binary stars."
+  },
+  "Kaffaljidhma": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Ceti",
+    "notes": "Triple star system in Cetus about 80 light-years away. The name is Arabic for 'the part of the hand' of the sea monster."
+  },
+  "Nganurganity": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Sigma_Canis_Majoris",
+    "notes": "Distant red supergiant in Canis Major roughly 1300 light-years away. Named after the Mara people's term for the Pleiades-related dancing brothers in Aboriginal Australian astronomy."
+  },
+  "Alula Borealis": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Nu_Ursae_Majoris",
+    "notes": "Northern member of 'Alula', the First Leap of the Gazelle in Ursa Major. An orange giant about 409 light-years distant."
+  },
+  "Nekkar": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Bo%C3%B6tis",
+    "notes": "Yellow giant marking the head of Boötes the Herdsman, about 235 light-years away. Known to flare occasionally in X-rays."
+  },
+  "Wasat": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Delta_Geminorum",
+    "notes": "Subgiant binary in Gemini about 61 light-years distant. Pluto was discovered very close to this star in 1930; its name is Arabic for 'the middle'."
+  },
+  "Sadalbari": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu_Pegasi",
+    "notes": "Yellow giant in Pegasus about 113 light-years away. Its Arabic name means 'lucky star of the splendid one'."
+  },
+  "Subra": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Omicron_Leonis",
+    "notes": "Spectroscopic binary marking one of Leo's forepaws, about 135 light-years distant. Combines an A-type and F-type giant pair."
+  },
+  "Biham": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta_Pegasi",
+    "notes": "White main-sequence star in Pegasus about 89 light-years away. Its name comes from Arabic meaning 'the lucky star of the two beasts'."
+  },
+  "Sheliak": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Lyrae",
+    "notes": "Prototype of the Beta Lyrae eclipsing binary class, about 900 light-years away in Lyra. The two stars are so close they exchange mass through an accretion stream."
+  },
+  "Tarf": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Cancri",
+    "notes": "Brightest star in Cancer, an orange K-type giant about 290 light-years away. Has a confirmed exoplanet, Beta Cancri b, discovered in 2014."
+  },
+  "Ain": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Tauri",
+    "notes": "Orange giant in Taurus and member of the Hyades cluster, forming the bull's northern eye. Hosts a confirmed exoplanet, the first found in an open cluster.",
+    "aliases": [
+      "Oculus Borealis"
+    ]
+  },
+  "Pipirima": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Mu2_Scorpii",
+    "notes": "Hot blue subgiant in Scorpius forming a naked-eye double with Mu1 Scorpii in the scorpion's tail. Its Tahitian name commemorates twins fleeing into the sky."
+  },
+  "Alkaphrah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Kappa_Ursae_Majoris",
+    "notes": "A double star in Ursa Major composed of two A-type main sequence stars. The name derives from Arabic meaning 'the leap' of the gazelle."
+  },
+  "Algedi": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Capricorni",
+    "notes": "Yellow giant in Capricornus forming a naked-eye optical double with Alpha-1 Capricorni. The name comes from Arabic for 'the kid' (young goat)."
+  },
+  "Zavijava": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Virginis",
+    "notes": "Nearby F-type main sequence star in Virgo about 36 light-years away. Lies near the ecliptic and was used by Einstein in 1922 to confirm general relativity via stellar deflection during a solar eclipse.",
+    "aliases": [
+      "Alaraph"
+    ]
+  },
+  "Nembus": {
+    "wikipedia": "https://en.wikipedia.org/wiki/51_Andromedae",
+    "notes": "Orange giant in Andromeda, originally placed in Perseus by Ptolemy. One of the brightest stars in its constellation despite its Flamsteed-only designation."
+  },
+  "Ginan": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Epsilon_Crucis",
+    "notes": "Orange giant in the Southern Cross, the fifth and faintest star of the asterism, depicted on the Australian and several other southern flags. Its name comes from the Wardaman people of Australia."
+  },
+  "Bharani": {
+    "wikipedia": "https://en.wikipedia.org/wiki/41_Arietis",
+    "notes": "Blue-white main sequence star and brightest member of a small triple system in Aries. Named for the second Hindu lunar mansion (nakshatra)."
+  },
+  "Alpherg": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Piscium",
+    "notes": "Yellow bright giant and the brightest star in Pisces. The name derives from an Arabic phrase meaning 'the pouring out of water'."
+  },
+  "Atlas": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Atlas_(star)",
+    "notes": "Blue giant in the Pleiades cluster in Taurus, a triple system named for the Titan father of the Pleiad sisters in Greek mythology."
+  },
+  "Alfarasalkamil": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Omicron_Andromedae",
+    "notes": "Multiple star system in Andromeda dominated by a B-type giant with a Be-star companion. The Arabic name means 'the perfect horse'."
+  },
+  "Rotanev": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Delphini",
+    "notes": "Brightest star in Delphinus, a binary of two F-type stars about 101 light-years away. Its name is 'Venator' (Latinized Niccolo Cacciatore) spelled backwards, a hidden signature by the 19th-century Palermo astronomer."
+  },
+  "Prima Hyadum": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Tauri",
+    "notes": "Yellow giant in Taurus marking the apex of the V-shaped Hyades cluster, the nearest open cluster to the Sun."
+  },
+  "Zhou": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Serpentis",
+    "notes": "White A-type subgiant in Serpens Caput, with a faint optical companion. Its Chinese name refers to the ancient Zhou state."
+  },
+  "Nusakan": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Beta_Coronae_Borealis",
+    "notes": "Spectroscopic binary in Corona Borealis whose primary is a chemically peculiar Ap star with strong magnetic field variations."
+  },
+  "Thuban": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Thuban",
+    "notes": "White giant in Draco that served as the northern pole star around 2700 BCE during the era of the Egyptian pyramid builders. Slow precession will return it to pole-star status around 21000 CE.",
+    "aliases": [
+      "Adib",
+      "Dragon's Tail"
+    ]
+  },
+  "Safina": {
+    "wikipedia": "https://en.wikipedia.org/wiki/88_Aquarii",
+    "notes": "Orange giant in Aquarius about 250 light-years away. Its name is Arabic for 'the ship', referencing the now-defunct constellation Argo Navis."
+  },
+  "Taiyangshou": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Chi_Ursae_Majoris",
+    "notes": "Orange giant in Ursa Major roughly 200 light-years away. Its Chinese name means 'star of the Sun's longevity'.",
+    "aliases": [
+      "Alkafzah"
+    ]
+  },
+  "Saclateni": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Aurigae",
+    "notes": "Eclipsing binary in Auriga consisting of an orange supergiant and a hot B-type companion, separated by a 2.66-year orbit. One of Auriga's traditional 'Kids' (Haedi) flanking Capella."
+  },
+  "Fulu": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Zeta_Cassiopeiae",
+    "notes": "Hot blue subgiant in Cassiopeia and a slowly-pulsating B-type variable with a measured magnetic field. Lies about 600 light-years away."
+  },
+  "Nashira": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Capricorni",
+    "notes": "Chemically peculiar A-type giant in Capricornus near the ecliptic, occasionally occulted by the Moon and planets. The name is Arabic meaning 'the bearer of good news'."
+  },
+  "Zaniah": {
+    "wikipedia": "https://en.wikipedia.org/wiki/Eta_Virginis",
+    "notes": "Eta Virginis, a close triple-star system in Virgo about 250 light-years away. The Arabic name refers to a corner of the sky."
   }
 }
