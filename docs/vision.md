@@ -1,0 +1,170 @@
+# Long-term vision: full-scale-range star viewer
+
+## The goal
+
+Drake should eventually support seamless zoom across **the full scale range** of stellar visualization:
+
+- **In**: an individual star system, with a detailed Sol-system view as the
+  flagship case (planets, orbits, the Sun's surface, scale of the inner and
+  outer system).
+- **Out**: the entire Milky Way galaxy, with arms, bulge, halo, satellite
+  galaxies — looking the way the Milky Way is *expected* to look, not just
+  the way the catalog data lets us draw it.
+
+The current viewer covers a single slice of this range: roughly 1 ly to 1 kpc,
+with stars treated as point + billboard glow with no internal structure and
+no extragalactic context.
+
+## Why this is hard
+
+Each scale jump is roughly **10³–10⁴×** in linear size, and at every jump the
+rendering, data, and interaction model that worked at the previous scale
+fall apart:
+
+| Scale | Linear range | Dominant primitive | Dominant data source |
+|---|---|---|---|
+| Planetary surface | km – 10⁵ km | Textured meshes, terrain | Mission data, hand authored |
+| Orbital | 10⁶ – 10¹⁰ km | Planet meshes + orbit lines | JPL ephemerides |
+| Stellar system | 10⁻³ – 1 ly | Single star + planet positions | Exoplanet archive, NASA |
+| Solar neighborhood | 1 – 10² ly | Billboards + point cloud | **Current scope (AT-HYG)** |
+| Local interstellar | 10² – 10³ ly | Point cloud only | AT-HYG |
+| Disc / arm | 10³ – 10⁴ ly | Sparse Gaia + procedural fill | Gaia DR3 partial |
+| Galaxy | 10⁴ – 10⁵ ly | Procedural arms, bulge, dust | All procedural |
+
+A single coordinate system, single camera projection, and single rendering
+technique cannot span all these scales — for the inner ones, IEEE 754 float
+precision runs out around 10⁷ m from the origin; for the outer ones, the
+catalog is empty.
+
+## What "support this" probably means
+
+A non-exhaustive list of pieces this would require:
+
+### LOD camera and coordinate system
+
+- **Floating origin**: re-center scene coordinates on the camera target so
+  precision is always best where the user is looking. Already a known pattern
+  for space sims (Outerra, Kerbal Space Program scaled space).
+- **Logarithmic depth buffer or split-frustum rendering**: lets a single
+  camera see both a 1 m crater and a 10⁹ m planet without z-fighting. Three.js
+  has `logarithmicDepthBuffer`, which is a starting point but not sufficient
+  for true planetary scale.
+- **Scale tiers**: distinct "sub-scenes" for surface / orbital / system /
+  neighborhood / galaxy that the camera transitions between, each with its own
+  origin, units, and culling. The camera animation crosses tiers smoothly.
+
+### New rendering pipelines
+
+- **Planet rendering**: oblate ellipsoid with proper tessellation, atmosphere
+  scattering shader, day/night terminator, surface texture LOD (probably
+  quadtree on the cube-sphere), city lights, terrain heightmaps where we
+  have them (Mars, Moon).
+- **Orbits**: ellipses parameterized by Keplerian elements, animated bodies
+  along them, optional time controls.
+- **Stellar surface**: limb-darkened disc, granulation noise, flares for
+  active stars, accurate angular diameter so e.g. Betelgeuse looks huge next
+  to Sirius.
+- **Galactic structure**: density-wave spiral arms, dust lanes, bulge as a
+  triaxial bar, halo as a thick sparse cloud, all driven by an SED-aware
+  shader so the Milky Way "looks right" against an actual external view.
+
+### Procedural fill
+
+The catalog only has stars Gaia could measure parallaxes for — about 1.5 % of
+the ~100–400 billion stars in the galaxy. To make the galaxy look full, we'd
+need to generate the rest:
+
+- **Density-following point sampling** matching the observed luminosity
+  function and arm/bulge density model.
+- **Spectral type sampling** by initial mass function so the procedural stars
+  have realistic color/brightness distribution.
+- **Determinism**: each procedural star should have a stable (seed → ID)
+  mapping so revisiting a region shows the same stars.
+- **Hand-off zone**: where catalog data ends (~3 kpc with current scope, ~10
+  kpc if we extend), procedural stars should blend in without a visible
+  density seam.
+- **No false labels**: procedural stars must be visually indistinguishable
+  but explicitly *not* nameable / selectable / searchable, since they don't
+  represent specific real objects.
+
+### Data acquisition
+
+- **Solar System**: NASA SPICE / Horizons for ephemerides; planetary texture
+  archives for the bodies themselves.
+- **Exoplanets**: NASA Exoplanet Archive — already has confirmed planet
+  parameters for the systems we'd render in detail.
+- **Extended Gaia**: full Gaia DR3 source catalog (~1.8 billion stars) is
+  ~600 GB and would need server-side tiling, or selective import beyond the
+  current 1 kpc cutoff.
+- **Galactic dust**: Lallement / Vergely 3D extinction maps to make the
+  Milky Way's dark lanes visible from outside.
+
+### Interaction and UX
+
+- **Scale-aware navigation**: pinch / scroll should zoom by ratio, not by
+  fixed delta, so 10 kpc → 10 km feels continuous instead of taking a
+  thousand wheel ticks.
+- **Selection persistence across scales**: selecting a star at neighborhood
+  scale should let you smoothly fly down to its planets without losing the
+  selection.
+- **Progressive disclosure**: detail panel content depends on scale — at
+  galaxy scale a star shows "K2V dwarf"; at system scale it shows planets;
+  at planet scale it shows surface features.
+- **Time controls**: at orbital and surface scales, time is meaningful;
+  proper-motion-accurate playback at neighborhood scale would let users see
+  Barnard's Star drift.
+
+## Where today's architecture helps and hurts
+
+**Helps:**
+- The tile streaming model already separates "data we ship" from "data we
+  render". Adding more scales = adding more tile types, not redoing the
+  rendering loop.
+- The tier-based label system already decouples classification from
+  rendering, so introducing new tiers ("planet", "spacecraft", "procedural")
+  is additive rather than rewrites.
+- The augmentations.json + curate workflow scales naturally to new entity
+  types.
+- `catalog.ts` is already a layered loader with eager + lazy paths. New
+  layers (planets, galactic structure) can plug in alongside.
+
+**Hurts / would need replacement:**
+- Single Three.js scene, single camera, single near/far frustum. Would need
+  a multi-scene architecture or a custom render pass per scale tier.
+- Scene-space coordinates pinned to a fixed origin (Sol). Floating origin
+  is invasive — every position-using subsystem (raycast, labels, system
+  centroids) would need to consume a "current origin" instead of world-space.
+- Billboard shader is hardcoded for "all stars look about the same". Star
+  surface rendering is a wholly different shader.
+- The point cloud's `gl_PointSize` clamp [4, 16] is a stopgap for sub-pixel
+  flicker; at galactic scale we'd want true GPU-friendly density rendering
+  (e.g. an instanced impostor pass per density tile, or a stylized arm-glow
+  shader rather than per-star points).
+
+## Pragmatic path forward (if attempted)
+
+The natural staged sequence, biggest payoff first:
+
+1. **Sol-system detail mode** as a separate sub-scene the camera transitions
+   into when selecting Sol (or any star with planet data). Reuses Three.js
+   but with new geometry and a new camera. This is the dogfooded use case
+   and the first place LOD discipline gets enforced.
+2. **Floating origin** retrofit to the existing neighborhood scene. Once
+   this exists, the planetary sub-scene can render in real-world meters
+   without dragging the rest of the viewer's precision down.
+3. **Procedural galactic background** as a static "skybox-like" layer
+   first — a textured/shader-driven Milky Way disc visible from all angles
+   inside the neighborhood scene. No interactivity, just context.
+4. **Galaxy zoom-out tier**: extend the camera's outer range, swap the
+   neighborhood point cloud for an arm-density shader past some distance.
+   Procedural stars appear as a *visual* layer with no individual identity.
+5. **Stellar system tier for non-Sol systems**: for stars with confirmed
+   exoplanets in the NASA archive, render a basic orbital diagram on
+   selection.
+6. **Planet surface rendering**: ambitious. Probably needs its own engine
+   layer or a second renderer entirely.
+
+None of this is on the current roadmap; this document exists so future
+sessions remember the destination when making short-term architectural
+decisions, and so we don't paint ourselves into corners that would block
+the eventual sub-scene / floating-origin retrofit.

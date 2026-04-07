@@ -55,8 +55,9 @@ This produces the unified catalog under `dist/tiles/`:
 - `data/augmentations.json` — Hand-curated overrides: Wikipedia links, names, notes, aliases, system groupings, synthetic companions. Keyable by Gliese ID / HIP / "Sol" OR by IAU proper name; both entries merge with proper-name winning on conflict.
 - `.claude/skills/research/SKILL.md` — Documented workflow for filling tier-0 metadata gaps in batches via research subagents
 - `docs/stars.md` — Star rendering documentation (shader, bloom, sizing)
-- `docs/starfield.md` — Streaming pipeline + binary format
+- `docs/starfield.md` — Streaming pipeline + binary format + tier model + catalog scope rationale
 - `docs/data-corrections.md` — Corrections applied on top of source data
+- `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap; consult before making decisions that would foreclose floating-origin retrofits or LOD/sub-scene splits.
 
 ### Label tiers
 

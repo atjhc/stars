@@ -7,6 +7,35 @@ is a unified streaming pipeline: geometry streams as binary octree tiles for
 fast GPU upload, while metadata (labels, systems) streams in parallel as
 JSON, lazily, only where it's needed.
 
+## Catalog scope: why ≤ 1000 parsecs?
+
+`build-catalog.py` filters AT-HYG to stars with a valid distance ≤ `MAX_DIST_PC = 1000` (about 3260 ly). This is a deliberate cutoff and not the entire AT-HYG dataset:
+
+| Bucket | Rows |
+|---|---|
+| AT-HYG v3.3 raw rows | 2,552,164 |
+| With parseable distance < 100 kpc (sentinel for "unmeasured") | 2,491,331 |
+| **Currently imported (≤ 1000 pc)** | **1,855,430** |
+| Skipped: between 1 and ~100 kpc | ~636,000 |
+| Skipped: no distance / sentinel value | ~61,000 |
+
+The cutoff is chosen for three reasons:
+
+1. **Distance accuracy degrades fast beyond ~1 kpc.** Most AT-HYG distances come from Gaia parallax. Parallax error scales with distance squared: a star at 100 pc has a typical 0.1 % distance error; at 1000 pc that error climbs to ~10 %; beyond a few kpc it becomes unreliable enough that putting the star at a single 3D position is misleading. The dataset includes far-away stars but their positions are essentially educated guesses.
+
+2. **The visualization is a *neighborhood* viewer, not a galaxy map.** Going from 1 kpc to the disc/bulge scale (~10 kpc) is a 1000× volume expansion, but the human eye / camera frustum can't simultaneously meaningfully render both Sirius at ~3 units and a bulge star at ~30,000 units. A galaxy-scale view needs a logarithmic radial scale or LOD-tiered camera, which is a different product. The 1000 pc box keeps every star at a comparable visual scale and lets the camera orbit freely without having to switch coordinate systems.
+
+3. **Download budget**. The 16 byte/star binary format means the imported set is 28 MB of geometry tiles. Doubling the radius to 2 kpc roughly 8× the volume, so ~80 MB; going to the full ~100 kpc range would be ~28 GB and dominated by stars the user would never zoom in on. The 1 kpc cutoff sits at a knee where the geometry download is small enough to ship as static assets without CDN tricks.
+
+### Constraints if you wanted to extend the cutoff
+
+- **Tile bounds**: octree currently fits in a ~6000-unit cube. Doubling the radius means 8× the volume; the tile count and binary size grow linearly with star count. Build script needs no changes — just bump `MAX_DIST_PC`.
+- **Camera far plane**: scene.ts uses a far plane of 20000 scene units (~6500 ly). Already comfortably contains the 1 kpc cutoff. A 2 kpc cutoff would put the farthest stars at ~6000 scene units, still inside the frustum.
+- **Point shader fade**: `smoothstep(4.0, 8.0, rawSize)` already culls sub-pixel points so visual cost is bounded by *what's on screen*, not raw catalog size. Memory cost grows linearly though.
+- **Tier-1 magnitude filter** is the real lever for label clutter. If the catalog grew, the tier-1 mag<6 cutoff would still keep the label layer small.
+
+In short: 1 kpc is the largest box that stays accurate, stays visually meaningful, and stays a reasonable static-site download. Anything larger is a different product.
+
 ## Pipeline
 
 ```
