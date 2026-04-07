@@ -2,8 +2,18 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ,
-  NOTABLE_FADE_NEAR, NOTABLE_FADE_FAR,
+  NOTABLE_FADE_NEAR, NOTABLE_FADE_FAR, SCALE,
 } from "./constants.ts";
+
+const LY_PER_PARSEC = 3.26156;
+const labelsWithSubtitle = new WeakSet<HTMLElement>();
+
+function formatSceneDistance(sceneUnits: number): string {
+  const ly = (sceneUnits / SCALE) * LY_PER_PARSEC;
+  if (ly < 1) return `${ly.toFixed(3)} ly`;
+  if (ly < 10) return `${ly.toFixed(2)} ly`;
+  return `${ly.toFixed(1)} ly`;
+}
 import { camera } from "./scene.ts";
 import {
   selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh,
@@ -145,12 +155,28 @@ export function updateLabels(
     if (isHighlighted) {
       target.visible = true;
       setLabelStyle(div, "1", zIndex);
+
+      // Selected target(s) show distance from camera. Hovered others show
+      // distance from the current selection (star position or system centroid).
+      const isSelectedTarget = target === selectedMesh
+        || (sys !== undefined && sys === selectedSystem);
+      let subtitleDist = camDist;
+      if (!isSelectedTarget) {
+        if (selectedMesh) subtitleDist = target.position.distanceTo(selectedMesh.position);
+        else if (selectedSystem) subtitleDist = target.position.distanceTo(selectedSystem.centroid);
+      }
+      div.innerHTML = `<div>${star.name}</div><div class="system-members">${formatSceneDistance(subtitleDist)}</div>`;
+      labelsWithSubtitle.add(div);
       if (isSystemMemberHighlighted) {
         div.style.textShadow = starGlowShadow(star.ci);
       }
       return;
     }
 
+    if (labelsWithSubtitle.has(div)) {
+      div.textContent = star.name;
+      labelsWithSubtitle.delete(div);
+    }
     if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
 
     if (isTier0) {
