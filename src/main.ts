@@ -3,7 +3,8 @@ import type { Star, SystemGroup } from "./types.ts";
 import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS } from "./constants.ts";
 import {
   scene, camera, renderer, labelRenderer, composer,
-  gridHelper, handleResize,
+  gridHelper, handleResize, bloomPass,
+  beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, onWheel, tickAnimation,
   orbitRadius, setOrbitRadius,
 } from "./scene.ts";
@@ -20,6 +21,7 @@ import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations } from "./constellations.ts";
+import { initDebug, debugEnabled, debug, onDebugChange, onBloomTune, tickDebug } from "./debug.ts";
 import {
   initStarfield, updateStarfield,
   notableObjects, notableLabelMap, notableLabelMeshMap,
@@ -29,6 +31,7 @@ import {
   tier1LabelMeshFromDiv, tier1LabelDivFromMesh,
   streamedLabelMap,
   canonicalTarget,
+  setStarMode, setPointDepthTest,
 } from "./starfield.ts";
 
 // Wait for DOM
@@ -42,6 +45,12 @@ document.addEventListener("touchmove", (e) => {
     e.preventDefault();
   }
 }, { passive: false });
+
+import { makeCollapsible } from "./collapse.ts";
+{
+  const info = document.getElementById("info");
+  if (info) makeCollapsible(info);
+}
 
 let labelsVisible = true;
 
@@ -292,6 +301,34 @@ if (solAnchor) {
   selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
 }
 
+// Debug mode: keyboard toggles for visual bug isolation. Gated on ?debug=1.
+if (debugEnabled) {
+  initDebug();
+  onDebugChange((key, value) => {
+    switch (key) {
+      case "textureGlow":
+        if (value) { debug.flatStars = false; setStarMode("texture"); }
+        else { setStarMode("math"); }
+        break;
+      case "flatStars":
+        if (value) { debug.textureGlow = false; setStarMode("flat"); }
+        else { setStarMode("math"); }
+        break;
+      case "bloom":
+        bloomPass.enabled = value;
+        break;
+      case "depthTest":
+        setPointDepthTest(value);
+        break;
+    }
+  });
+  onBloomTune((params) => {
+    bloomPass.strength = params.strength;
+    bloomPass.radius = params.radius;
+    bloomPass.threshold = params.threshold;
+  });
+}
+
 // Render loop
 function animate(now: number) {
   requestAnimationFrame(animate);
@@ -299,7 +336,14 @@ function animate(now: number) {
   checkCameraMoved();
   updateStarfield();
   updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor);
-  composer.render();
+  if (debugEnabled && debug.directRender) {
+    renderer.render(scene, camera);
+  } else {
+    beginBloomRender();
+    composer.render();
+    endBloomRender();
+  }
   labelRenderer.render(scene, camera);
+  if (debugEnabled) tickDebug();
 }
 animate(performance.now());

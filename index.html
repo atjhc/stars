@@ -21,9 +21,28 @@
   #info {
     position: absolute; top: 16px; left: 16px;
     padding: 12px 16px;
-    font-size: 13px; line-height: 1.6; pointer-events: none;
+    font-size: 13px; line-height: 1.6; pointer-events: auto;
     z-index: 20;
+    background: rgba(0,0,0,0.78); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+    cursor: pointer;
+    min-width: 220px;
   }
+  #info:hover { border-color: rgba(255,255,255,0.4); }
+  #info .info-icon {
+    display: none;
+    align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    font: 600 24px/1 Georgia, 'Times New Roman', serif;
+    color: #ccc;
+    padding: 18px 20px;
+  }
+  #info.collapsed { padding: 0; min-width: 0; }
+  #info.collapsed .info-body { display: none; }
+  #info.collapsed .info-icon { display: inline-flex; }
+  #detail:hover { border-color: rgba(255,255,255,0.4); }
+  #detail { transition: border-color 0.15s; }
   #info h1 { font-size: 16px; margin-bottom: 4px; font-weight: 600; }
   #info .hint { color: #888; font-size: 11px; }
   @media (hover: none) and (pointer: coarse) {
@@ -87,14 +106,41 @@
   }
   #search-results li:hover { background: rgba(255,255,255,0.08); }
   .search-secondary { color: #777; font-size: 11px; margin-left: 6px; }
+  #debug-panel {
+    position: fixed; bottom: 12px; right: 12px; z-index: 100;
+    background: rgba(0,0,0,0.78); border: 1px solid rgba(120,160,220,0.35);
+    border-radius: 8px;
+    color: #cde; font: 11px/1.5 monospace;
+    min-width: 220px;
+    transition: border-color 0.15s;
+    cursor: pointer;
+    -webkit-user-select: text; user-select: text;
+  }
+  #debug-panel * { -webkit-user-select: text; user-select: text; }
+  #debug-panel:hover { border-color: rgba(180,210,255,0.7); }
+  #debug-panel .debug-body {
+    padding: 10px 14px;
+  }
+  #debug-panel .debug-bug {
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 8px;
+    color: #6aaeff;
+  }
+  #debug-panel.collapsed { min-width: 0; }
+  #debug-panel.collapsed .debug-body { display: none; }
+  #debug-panel.collapsed .debug-bug { display: inline-flex; }
 </style>
 </head>
 <body>
 <div id="viewport">
-<div id="info">
-  <h1>Stellar Neighborhood</h1>
-  <div>Stars within ~50 light-years of Sol</div>
-  <div class="hint">Drag to rotate &middot; ⌥+drag to zoom &middot; / search &middot; L labels &middot; G grid &middot; C constellations</div>
+<div id="info" class="collapsed">
+  <div class="info-icon">i</div>
+  <div class="info-body">
+    <h1>Stellar Neighborhood</h1>
+    <div>1.86 million stars within ~3,260 light-years of Sol</div>
+    <div class="hint">Drag to rotate &middot; ⌥+drag to zoom &middot; / search &middot; L labels &middot; G grid &middot; C constellations</div>
+  </div>
 </div>
 <div id="detail"></div>
 <button id="search-btn" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="15" y1="15" x2="21" y2="21"/></svg></button>

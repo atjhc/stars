@@ -5,6 +5,7 @@ import { LABEL_CSS } from "./constants.ts";
 import { scene, camera } from "./scene.ts";
 import { createBillboardMesh, createNotableAnchor, createStarLabel, rebindHitSphere } from "./billboard.ts";
 import { setCompanionResolver, setLabelsDirty } from "./interaction.ts";
+import { GLOW_GLSL, createStarGlowTexture } from "./starShader.ts";
 import {
   initCatalog, getMeta, getNotable, getSystems, getTileLabels,
   loadTileLabels, evictTileLabels,
@@ -37,34 +38,98 @@ const pointVertexShader = `
       gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
       return;
     }
-    gl_PointSize = clamp(rawSize, 4.0, 16.0);
+    // Bigger min/max so the interior is dominated by fully-covered pixels.
+    // With tiny ~4 px points, almost every pixel is an MSAA-edge pixel whose
+    // coverage fraction flickers sub-pixel; bloom amplifies those steps into
+    // visible halo wobble.
+    gl_PointSize = clamp(rawSize * 2.0, 10.0, 32.0);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
 
-const pointFragmentShader = `
+// Three star rendering modes. Texture is the default — its mipmap filter
+// pre-smooths the steep core gradient, killing sub-pixel flicker that bloom
+// would otherwise amplify. Math and flat are kept for debug comparison.
+export type StarMode = "texture" | "math" | "flat";
+
+const FRAG_MAIN = `
   varying vec3 vColor;
   varying float vBrightness;
-  void main() {
-    vec2 uv = gl_PointCoord - 0.5;
-    float d = length(uv) * 2.0;
-    float core = exp(-d * d * 30.0);
-    float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
-    float outerGlow = exp(-d * 4.0) * 0.3;
-    float intensity = (core + halo * 0.4 + outerGlow) * vBrightness * 2.5;
-    vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, core * vBrightness));
-    gl_FragColor = vec4(color * intensity, intensity);
-  }
 `;
 
-const pointMaterial = new THREE.ShaderMaterial({
-  vertexShader: pointVertexShader,
-  fragmentShader: pointFragmentShader,
-  transparent: true,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-  depthTest: true,
-});
+const starGlowTexture = createStarGlowTexture(256);
+
+const fragments: Record<StarMode, string> = {
+  math: `
+    ${FRAG_MAIN}
+    ${GLOW_GLSL}
+    void main() {
+      vec2 uv = gl_PointCoord - 0.5;
+      float d = length(uv) * 2.0;
+      vec2 g = glowAt(d);
+      float intensity = g.x * vBrightness * 2.5;
+      vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, g.y * vBrightness));
+      gl_FragColor = vec4(color * intensity, intensity);
+    }
+  `,
+  texture: `
+    uniform sampler2D uGlowTex;
+    ${FRAG_MAIN}
+    void main() {
+      vec4 tex = texture2D(uGlowTex, gl_PointCoord);
+      float intensity = tex.r * vBrightness * 2.5;
+      vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, tex.g * vBrightness));
+      gl_FragColor = vec4(color * intensity, intensity);
+    }
+  `,
+  flat: `
+    ${FRAG_MAIN}
+    void main() {
+      vec2 uv = gl_PointCoord - 0.5;
+      float d = length(uv) * 2.0;
+      if (d > 1.0) discard;
+      gl_FragColor = vec4(vColor * vBrightness, 1.0);
+    }
+  `,
+};
+
+function makePointMaterial(mode: StarMode): THREE.ShaderMaterial {
+  const flat = mode === "flat";
+  return new THREE.ShaderMaterial({
+    uniforms: mode === "texture" ? { uGlowTex: { value: starGlowTexture } } : {},
+    vertexShader: pointVertexShader,
+    fragmentShader: fragments[mode],
+    transparent: !flat,
+    blending: flat ? THREE.NormalBlending : THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: true,
+  });
+}
+
+const pointMaterials: Record<StarMode, THREE.ShaderMaterial> = {
+  texture: makePointMaterial("texture"),
+  math: makePointMaterial("math"),
+  flat: makePointMaterial("flat"),
+};
+
+let currentMode: StarMode = "texture";
+let currentPointMaterial: THREE.ShaderMaterial = pointMaterials.texture;
+
+export function setStarMode(mode: StarMode) {
+  if (mode === currentMode) return;
+  currentMode = mode;
+  currentPointMaterial = pointMaterials[mode];
+  for (const loaded of loadedTiles.values()) {
+    loaded.points.material = currentPointMaterial;
+  }
+}
+
+export function setPointDepthTest(enabled: boolean) {
+  for (const mat of Object.values(pointMaterials)) {
+    mat.depthTest = enabled;
+    mat.needsUpdate = true;
+  }
+}
 
 interface LoadedTile {
   geometry: THREE.BufferGeometry;
@@ -360,7 +425,7 @@ async function loadTile(path: string, tile: TileMeta) {
     geometry.setAttribute("brightness", new THREE.BufferAttribute(brightnesses, 1));
     geometry.setAttribute("starColor", new THREE.BufferAttribute(colors, 3));
 
-    const points = new THREE.Points(geometry, pointMaterial);
+    const points = new THREE.Points(geometry, currentPointMaterial);
     points.frustumCulled = false;
     pointsGroup.add(points);
 

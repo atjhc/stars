@@ -18,6 +18,10 @@ export const GRID_DIVISIONS = 65;
 export const GRID_FADE_RADIUS = 30.0;
 export const HIT_SCREEN_FRACTION = 0.02;
 
+export const BLOOM_STRENGTH = 0.3;
+export const BLOOM_RADIUS = 0.4;
+export const BLOOM_THRESHOLD = 0.1;
+
 export const LABEL_CSS = `
   color: rgba(255,255,255,0.7); font-size: 10px;
   pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;

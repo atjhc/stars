@@ -2,10 +2,19 @@
 
 ## Overview
 
-Stars are rendered as camera-facing billboard quads using a custom GLSL shader
-material. Each star's appearance is computed entirely in the fragment shader — no
-textures are used. All stars share the same base quad size (0.4 units); visual
-differences come from per-instance brightness and color.
+Stars are rendered in two complementary paths:
+
+1. **Streamed point cloud** (`THREE.Points`) — every star in a loaded tile
+   renders as a single `GL_POINTS` primitive sized in the vertex shader.
+   This is the baseline always-on path.
+2. **Billboard quad** — spawned alongside tier-0 and in-range tier-1 stars
+   for detailed glow at close range.
+
+Both paths share the same radial glow profile (`src/starShader.ts`
+`GLOW_GLSL`): a Gaussian core + inverse-square halo + soft exponential outer
+glow. The point path samples that profile from a pre-baked mipmapped
+texture by default (`StarMode.texture`), which is critical for flicker-free
+bloom — see "Sub-pixel flicker" below.
 
 ## Architecture
 
@@ -177,17 +186,78 @@ Stars use `THREE.AdditiveBlending` with `depthWrite: false`. Additive blending
 means stars only add light — they never occlude each other, and overlapping halos
 naturally combine.
 
+## Point cloud sizing
+
+The `THREE.Points` vertex shader (`src/starfield.ts`) computes
+`gl_PointSize` from per-star brightness and camera distance, clamped to
+`[10, 32]` px:
+
+```glsl
+float rawSize = max(2.0, vBrightness * 4.0) * (500.0 / dist);
+gl_PointSize = clamp(rawSize * 2.0, 10.0, 32.0);
+```
+
+The 10 px minimum is deliberately large. Smaller points have almost every
+pixel on the rasterized edge, where MSAA coverage fraction flickers as the
+point moves sub-pixel. Bloom amplifies that step into visible halo wobble.
+A 10 px minimum gives enough interior "fully-covered" pixels that the
+intensity stays stable across frames.
+
+## Sub-pixel flicker and the texture-sampled glow
+
+The natural implementation — evaluate the glow profile in the fragment
+shader — produces visible halo flicker under bloom on slowly-moving stars.
+Root cause: the core is `exp(-d² · 30)`, a very steep gradient. Under
+sub-pixel sample jitter, neighboring frames land on different points of
+the gradient, changing fragment output. Bloom's Gaussian blur propagates
+that change outward, making it visible as a wobbling halo.
+
+The fix is to bake the glow profile once into a mipmapped `CanvasTexture`
+(`createStarGlowTexture` in `src/starShader.ts`) and sample it with
+trilinear filtering. The mipmap chain pre-filters the steep core across
+pixel footprints, so sub-pixel jitter produces bounded, smooth output.
+
+`StarMode.math` (evaluate in shader) and `StarMode.flat` (flat disc) are
+still available via the debug panel for visual comparison.
+
 ## Post-Processing Bloom
 
-An `UnrealBloomPass` is applied as post-processing to create natural light
-bleeding from bright stars:
+An `UnrealBloomPass` is applied to create light bleeding from bright stars:
 
-1. **Brightness extraction**: Pixels above a luminance threshold are isolated
-2. **Multi-pass Gaussian blur**: Separable horizontal/vertical blur
-3. **Additive composite**: Blurred brightness is added back to the original scene
+1. **Brightness extraction**: pixels above a luminance threshold are isolated
+2. **Multi-pass Gaussian blur**: separable horizontal/vertical blur on a mip chain
+3. **Additive composite**: blurred brightness is added back to the scene
 
-Stars are assigned to `BLOOM_LAYER` (layer 1) so bloom parameters can be tuned
-independently if selective bloom is added later.
+Current tuned parameters (`src/constants.ts`): `strength = 0.3`,
+`radius = 0.4`, `threshold = 0.1`.
+
+### HDR + MSAA composer render target
+
+The composer renders into a custom `WebGLRenderTarget` with
+`{ samples: 8, type: HalfFloatType }`:
+
+- **8× MSAA** eliminates geometry-edge coverage aliasing that would
+  otherwise accumulate into bloom flicker alongside the shader-gradient
+  flicker described above.
+- **HalfFloat** precision avoids the posterized contour banding visible
+  on bright-star halos when the composer RT is the default 8-bit type —
+  bloom blur accumulates many small contributions whose quantization
+  error shows up as visible step contours.
+
+The bloom pass's internal horizontal/vertical blur targets are also
+flipped to `HalfFloatType` for the same reason.
+
+### Bloom overscan
+
+`UnrealBloomPass` clamps blur samples to the edge of its render target.
+At screen edges that biases the kernel sum upward, making stars at the
+edge of the viewport bloom brighter than stars in the middle.
+
+Fix: render into a target ~1.2× larger than the viewport
+(`BLOOM_OVERSCAN = 1.2` in `src/scene.ts`) by temporarily widening the
+camera FOV in `beginBloomRender()`. Bloom runs on the oversized buffer
+with real scene data in the gutter. A final `ShaderPass` crops the
+center `1/OVERSCAN` region back to viewport size for display.
 
 ## References
 

@@ -3,6 +3,7 @@ import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star } from "./types.ts";
 import { LABEL_CSS, HIT_SCREEN_FRACTION } from "./constants.ts";
 import { bvToColor } from "./color.ts";
+import { GLOW_GLSL } from "./starShader.ts";
 
 // Billboard meshes add detailed glow when close to camera.
 // At distance they fade to zero, letting the point cloud take over.
@@ -37,14 +38,12 @@ export const billboardFragmentShader = `
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vBrightness;
+  ${GLOW_GLSL}
   void main() {
-    vec2 uv = (vUv - 0.5) * 2.0;
-    float d = length(uv);
-    float core = exp(-d * d * 30.0);
-    float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
-    float outerGlow = exp(-d * 4.0) * 0.3;
-    float intensity = (core + halo * 0.4 + outerGlow) * vBrightness;
-    vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, core * vBrightness));
+    float d = length((vUv - 0.5) * 2.0);
+    vec2 g = glowAt(d);
+    float intensity = g.x * vBrightness;
+    vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, g.y * vBrightness));
     gl_FragColor = vec4(color * intensity, intensity);
   }
 `;
