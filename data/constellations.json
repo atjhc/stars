@@ -1,0 +1,121 @@
+{
+  "Orion": {
+    "iau": "Ori",
+    "description": "The Hunter, one of the most recognizable constellations. Anchored by the bright shoulders Betelgeuse and Bellatrix, the feet Rigel and Saiph, and the three-star Belt Mintaka–Alnilam–Alnitak.",
+    "lines": [
+      ["Meissa", "Betelgeuse"],
+      ["Meissa", "Bellatrix"],
+      ["Betelgeuse", "Bellatrix"],
+      ["Bellatrix", "Mintaka"],
+      ["Betelgeuse", "Alnitak"],
+      ["Mintaka", "Alnilam"],
+      ["Alnilam", "Alnitak"],
+      ["Mintaka", "Rigel"],
+      ["Alnitak", "Saiph"],
+      ["Rigel", "Saiph"]
+    ]
+  },
+
+  "Big Dipper": {
+    "iau": "UMa",
+    "description": "The seven-star asterism in Ursa Major (Great Bear), one of the most familiar shapes in the northern sky. Dubhe and Merak are the 'pointers' that aim toward Polaris.",
+    "lines": [
+      ["Dubhe", "Merak"],
+      ["Merak", "Phecda"],
+      ["Phecda", "Megrez"],
+      ["Megrez", "Dubhe"],
+      ["Megrez", "Alioth"],
+      ["Alioth", "Mizar"],
+      ["Mizar", "Alkaid"]
+    ]
+  },
+
+  "Cassiopeia": {
+    "iau": "Cas",
+    "description": "The Queen, a distinctive 'W' (or 'M' depending on orientation) of five bright stars in the northern circumpolar sky.",
+    "lines": [
+      ["Caph", "Schedar"],
+      ["Schedar", "Cih"],
+      ["Cih", "Ruchbah"],
+      ["Ruchbah", "Segin"]
+    ]
+  },
+
+  "Crux": {
+    "iau": "Cru",
+    "description": "The Southern Cross, the smallest constellation but one of the most recognizable, depicted on several southern-hemisphere flags. Acrux and Gacrux form the long axis; Mimosa and Imai form the cross-bar.",
+    "lines": [
+      ["Acrux", "Gacrux"],
+      ["Mimosa", "Imai"],
+      ["Imai", "Ginan"]
+    ]
+  },
+
+  "Northern Cross": {
+    "iau": "Cyg",
+    "description": "The cruciform asterism of Cygnus the Swan, with Deneb at the tail and Albireo at the beak. One leg of the Summer Triangle along with Vega and Altair.",
+    "lines": [
+      ["Deneb", "Sadr"],
+      ["Sadr", "Albireo"],
+      ["Sadr", "Aljanah"],
+      ["Sadr", "Fawaris"]
+    ]
+  },
+
+  "Lyra": {
+    "iau": "Lyr",
+    "description": "The Lyre, a small but bright constellation dominated by Vega — the brightest star in the northern celestial hemisphere and one corner of the Summer Triangle.",
+    "lines": [
+      ["Vega", "Sheliak"],
+      ["Sheliak", "Sulafat"],
+      ["Vega", "Sulafat"]
+    ]
+  },
+
+  "Leo": {
+    "iau": "Leo",
+    "description": "The Lion, with the curved 'Sickle' asterism marking the lion's mane and head, and a triangle of stars (Denebola, Zosma, Chertan) marking the hindquarters and tail.",
+    "lines": [
+      ["Regulus", "Algieba"],
+      ["Algieba", "Adhafera"],
+      ["Adhafera", "Rasalas"],
+      ["Rasalas", "Ras Elased Australis"],
+      ["Regulus", "Chertan"],
+      ["Chertan", "Zosma"],
+      ["Zosma", "Algieba"],
+      ["Chertan", "Denebola"],
+      ["Zosma", "Denebola"]
+    ]
+  },
+
+  "Scorpius": {
+    "iau": "Sco",
+    "description": "The Scorpion, with red supergiant Antares at its heart and a long curving tail ending in the stinger stars Shaula and Lesath. One of the few constellations that genuinely resembles its namesake.",
+    "lines": [
+      ["Acrab", "Dschubba"],
+      ["Dschubba", "Fang"],
+      ["Dschubba", "Alniyat"],
+      ["Alniyat", "Antares"],
+      ["Antares", "Paikauhale"],
+      ["Paikauhale", "Larawag"],
+      ["Larawag", "Xamidimura"],
+      ["Xamidimura", "Iklil"],
+      ["Iklil", "Sargas"],
+      ["Sargas", "Fuyue"],
+      ["Fuyue", "Shaula"],
+      ["Shaula", "Lesath"]
+    ]
+  },
+
+  "Canis Major": {
+    "iau": "CMa",
+    "description": "The Greater Dog, hosting Sirius, the brightest star in the night sky. The body is outlined by Mirzam, Adhara, Wezen, and Aludra.",
+    "lines": [
+      ["Mirzam", "Sirius A"],
+      ["Sirius A", "Adhara"],
+      ["Adhara", "Wezen"],
+      ["Wezen", "Aludra"],
+      ["Adhara", "Furud"]
+    ]
+  }
+}

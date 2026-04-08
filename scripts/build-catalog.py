@@ -427,10 +427,32 @@ def main(csv_path: str, aug_path: str, out_dir: str):
     with open(os.path.join(out_dir, "systems.json"), "w") as f:
         json.dump(systems, f)
 
+    # Constellations: copy data/constellations.json into the tile output dir
+    # so it ships alongside the rest of the catalog. Validate every star
+    # reference resolves to a known notable name; warn on any that don't.
+    cons_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "constellations.json")
+    constellations = {}
+    cons_lines = 0
+    if os.path.exists(cons_path):
+        with open(cons_path) as f:
+            constellations = json.load(f)
+        notable_names = {s["name"] for s in notable}
+        unresolved = set()
+        for cname, cdata in constellations.items():
+            for a, b in cdata.get("lines", []):
+                if a not in notable_names: unresolved.add(a)
+                if b not in notable_names: unresolved.add(b)
+                cons_lines += 1
+        if unresolved:
+            print(f"WARNING: {len(unresolved)} unresolved constellation star refs: {sorted(unresolved)}", file=sys.stderr)
+        with open(os.path.join(out_dir, "constellations.json"), "w") as f:
+            json.dump(constellations, f)
+
     print(f"Geometry: {total_bin_bytes / 1024 / 1024:.1f} MB across {len(tiles)} tiles")
     print(f"Labels:   {total_lbl_bytes / 1024 / 1024:.2f} MB across {tiles_with_labels} tile label files")
     print(f"Notable:  {len(notable)} tier-0 stars")
     print(f"Systems:  {len(systems)} groupings")
+    print(f"Constellations: {len(constellations)} ({cons_lines} lines)")
 
     sizes = sorted(len(t["stars"]) for t in tiles.values())
     print(f"Stars/tile: min={sizes[0]}, median={sizes[len(sizes)//2]}, max={sizes[-1]}")

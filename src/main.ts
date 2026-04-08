@@ -19,6 +19,7 @@ import {
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
+import { initConstellations, toggleConstellations } from "./constellations.ts";
 import {
   initStarfield, updateStarfield,
   notableObjects, notableLabelMap, notableLabelMeshMap,
@@ -263,6 +264,8 @@ window.addEventListener("keydown", (e) => {
     doUpdateLabelVisibility();
   } else if (e.key === "g") {
     gridHelper.visible = !gridHelper.visible;
+  } else if (e.key === "c") {
+    toggleConstellations();
   }
 });
 
@@ -281,6 +284,7 @@ await initStarfield();
 registerLabelMap(notableLabelMap);
 registerLabelMap(streamedLabelMap);
 wireSystemLabels();
+await initConstellations();
 
 const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
 if (solAnchor) {
