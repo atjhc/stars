@@ -117,5 +117,315 @@
       ["Wezen", "Aludra"],
       ["Adhara", "Furud"]
     ]
+  },
+
+  "Canis Minor": {
+    "iau": "CMi",
+    "description": "The Lesser Dog, a tiny constellation whose only bright stars are Procyon (eighth-brightest in the sky) and Gomeisa.",
+    "lines": [
+      ["Procyon A", "Gomeisa"]
+    ]
+  },
+
+  "Gemini": {
+    "iau": "Gem",
+    "description": "The Twins, with the heads of Castor and Pollux side by side and two parallel lines of stars trailing off representing their bodies.",
+    "lines": [
+      ["Castor", "Pollux"],
+      ["Castor", "Mebsuta"],
+      ["Mebsuta", "Propus"],
+      ["Propus", "Tejat"],
+      ["Pollux", "Wasat"],
+      ["Wasat", "Alhena"],
+      ["Wasat", "Alzirr"]
+    ]
+  },
+
+  "Taurus": {
+    "iau": "Tau",
+    "description": "The Bull, with the V-shaped Hyades cluster forming the face, red giant Aldebaran as the glaring eye, and two long horns ending at Elnath and Tianguan.",
+    "lines": [
+      ["Prima Hyadum", "Secunda Hyadum"],
+      ["Secunda Hyadum", "Chamukuy"],
+      ["Chamukuy", "Aldebaran"],
+      ["Aldebaran", "Ain"],
+      ["Aldebaran", "Elnath"],
+      ["Aldebaran", "Tianguan"]
+    ]
+  },
+
+  "Auriga": {
+    "iau": "Aur",
+    "description": "The Charioteer, a large pentagon of bright stars sharing Elnath with Taurus. Capella, the sixth-brightest star in the sky, dominates.",
+    "lines": [
+      ["Capella", "Menkalinan"],
+      ["Menkalinan", "Mahasim"],
+      ["Mahasim", "Elnath"],
+      ["Elnath", "Hassaleh"],
+      ["Hassaleh", "Capella"],
+      ["Capella", "Haedus"],
+      ["Haedus", "Saclateni"]
+    ]
+  },
+
+  "Perseus": {
+    "iau": "Per",
+    "description": "The Hero, holding the severed head of Medusa (Algol, the 'Demon Star', a famous eclipsing binary). Mirfak anchors the central curve.",
+    "lines": [
+      ["Mirfak", "Algol"],
+      ["Algol", "Misam"],
+      ["Mirfak", "Miram"],
+      ["Mirfak", "Atik"],
+      ["Atik", "Menkib"]
+    ]
+  },
+
+  "Andromeda": {
+    "iau": "And",
+    "description": "The Chained Princess. A chain of three bright stars — Alpheratz, Mirach, Almach — runs away from the Great Square of Pegasus.",
+    "lines": [
+      ["Alpheratz", "Mirach"],
+      ["Mirach", "Almach"]
+    ]
+  },
+
+  "Pegasus": {
+    "iau": "Peg",
+    "description": "The Winged Horse, marked by the Great Square (Markab, Scheat, Alpheratz, Algenib) forming the body. Enif marks the horse's nose.",
+    "lines": [
+      ["Markab", "Scheat"],
+      ["Scheat", "Alpheratz"],
+      ["Alpheratz", "Algenib"],
+      ["Algenib", "Markab"],
+      ["Markab", "Homam"],
+      ["Homam", "Biham"],
+      ["Biham", "Enif"],
+      ["Scheat", "Matar"],
+      ["Matar", "Sadalbari"]
+    ]
+  },
+
+  "Aries": {
+    "iau": "Ari",
+    "description": "The Ram. A small zodiacal constellation marked by a simple arc of three stars: Hamal, Sheratan, and Mesarthim.",
+    "lines": [
+      ["Hamal", "Sheratan"],
+      ["Sheratan", "Mesarthim"]
+    ]
+  },
+
+  "Virgo": {
+    "iau": "Vir",
+    "description": "The Maiden, the second-largest constellation in the sky. Anchored by the blue supergiant Spica, with Porrima and Vindemiatrix extending the wheat-sheaf the figure carries.",
+    "lines": [
+      ["Spica", "Heze"],
+      ["Heze", "Porrima"],
+      ["Porrima", "Zaniah"],
+      ["Zaniah", "Zavijava"],
+      ["Porrima", "Minelauva"],
+      ["Minelauva", "Vindemiatrix"]
+    ]
+  },
+
+  "Libra": {
+    "iau": "Lib",
+    "description": "The Scales, the only zodiac constellation named for an object rather than a creature. Zubenelgenubi ('southern claw') and Zubeneschamali ('northern claw') recall its former role as part of Scorpius.",
+    "lines": [
+      ["Zubenelgenubi", "Zubeneschamali"],
+      ["Zubenelgenubi", "Brachium"],
+      ["Zubeneschamali", "Zubenelhakrabi"]
+    ]
+  },
+
+  "Sagittarius": {
+    "iau": "Sgr",
+    "description": "The Archer, whose brightest stars form the famous 'Teapot' asterism pointed toward the center of the Milky Way.",
+    "lines": [
+      ["Alnasl", "Kaus Media"],
+      ["Kaus Media", "Kaus Australis"],
+      ["Kaus Australis", "Ascella"],
+      ["Ascella", "Nunki"],
+      ["Nunki", "Kaus Borealis"],
+      ["Kaus Borealis", "Kaus Media"],
+      ["Nunki", "Albaldah"]
+    ]
+  },
+
+  "Capricornus": {
+    "iau": "Cap",
+    "description": "The Sea-Goat, a faint but ancient zodiacal figure forming a rough triangle in the southern sky.",
+    "lines": [
+      ["Algedi", "Dabih"],
+      ["Dabih", "Nashira"],
+      ["Nashira", "Deneb Algedi"],
+      ["Deneb Algedi", "Algedi"]
+    ]
+  },
+
+  "Aquarius": {
+    "iau": "Aqr",
+    "description": "The Water-Bearer, one of the oldest recognized constellations. Sadalmelik and Sadalsuud are the two luckiest stars in the sky by traditional Arabic names.",
+    "lines": [
+      ["Sadalmelik", "Sadalsuud"],
+      ["Sadalmelik", "Sadachbia"],
+      ["Sadalsuud", "Albali"],
+      ["Sadalmelik", "Skat"]
+    ]
+  },
+
+  "Aquila": {
+    "iau": "Aql",
+    "description": "The Eagle, with Altair at the head flanked by Tarazed and Alshain. Altair is the twelfth-brightest star in the sky and one corner of the Summer Triangle.",
+    "lines": [
+      ["Tarazed", "Altair"],
+      ["Altair", "Alshain"],
+      ["Altair", "Okab"],
+      ["Altair", "Antinous"]
+    ]
+  },
+
+  "Delphinus": {
+    "iau": "Del",
+    "description": "The Dolphin, a small diamond-shaped constellation. Sualocin and Rotanev encode Nicolaus Venator (Niccolò Cacciatore) when read backwards.",
+    "lines": [
+      ["Sualocin", "Rotanev"]
+    ]
+  },
+
+  "Boötes": {
+    "iau": "Boo",
+    "description": "The Herdsman, a kite-shaped constellation anchored by brilliant orange Arcturus, the fourth-brightest star in the sky.",
+    "lines": [
+      ["Arcturus", "Muphrid"],
+      ["Arcturus", "Izar"],
+      ["Izar", "Nekkar"],
+      ["Nekkar", "Seginus"],
+      ["Seginus", "Arcturus"]
+    ]
+  },
+
+  "Hercules": {
+    "iau": "Her",
+    "description": "The Strong Man, a large but relatively faint constellation named for the mythological hero.",
+    "lines": [
+      ["Rasalgethi", "Kornephoros"],
+      ["Kornephoros", "Sarin"]
+    ]
+  },
+
+  "Ophiuchus": {
+    "iau": "Oph",
+    "description": "The Serpent-Bearer, a large constellation occasionally called the 13th zodiac sign since the ecliptic passes through it.",
+    "lines": [
+      ["Rasalhague", "Cebalrai"],
+      ["Cebalrai", "Sabik"],
+      ["Sabik", "Yed Posterior"],
+      ["Yed Posterior", "Yed Prior"],
+      ["Yed Prior", "Marfik"],
+      ["Marfik", "Rasalhague"]
+    ]
+  },
+
+  "Draco": {
+    "iau": "Dra",
+    "description": "The Dragon, a long winding circumpolar constellation whose tail once contained the pole star Thuban ~4,800 years ago.",
+    "lines": [
+      ["Eltanin", "Rastaban"],
+      ["Rastaban", "Grumium"],
+      ["Grumium", "Eltanin"],
+      ["Eltanin", "Altais"],
+      ["Altais", "Athebyne"],
+      ["Athebyne", "Aldhibah"],
+      ["Aldhibah", "Edasich"],
+      ["Edasich", "Thuban"],
+      ["Thuban", "Giausar"]
+    ]
+  },
+
+  "Cepheus": {
+    "iau": "Cep",
+    "description": "The King, a house-shaped constellation near the north celestial pole.",
+    "lines": [
+      ["Alderamin", "Alfirk"],
+      ["Alfirk", "Errai"]
+    ]
+  },
+
+  "Cetus": {
+    "iau": "Cet",
+    "description": "The Sea Monster (or Whale), a large sprawling southern constellation from the Perseus myth.",
+    "lines": [
+      ["Menkar", "Kaffaljidhma"],
+      ["Kaffaljidhma", "Baten Kaitos"],
+      ["Baten Kaitos", "Diphda"]
+    ]
+  },
+
+  "Eridanus": {
+    "iau": "Eri",
+    "description": "The River, an enormous winding constellation beginning near Rigel (in Orion) and flowing down to brilliant Achernar in the far south.",
+    "lines": [
+      ["Cursa", "Zaurak"],
+      ["Zaurak", "Delta Eridani"],
+      ["Delta Eridani", "Epsilon Eridani"],
+      ["Achernar", "Acamar"]
+    ]
+  },
+
+  "Lepus": {
+    "iau": "Lep",
+    "description": "The Hare, crouching at the feet of Orion.",
+    "lines": [
+      ["Arneb", "Nihal"]
+    ]
+  },
+
+  "Hydra": {
+    "iau": "Hya",
+    "description": "The Water Snake, the largest of the 88 modern constellations by area. Alphard ('the solitary one') is its only bright star.",
+    "lines": [
+      ["Ashlesha", "Alphard"],
+      ["Alphard", "Ukdah"]
+    ]
+  },
+
+  "Centaurus": {
+    "iau": "Cen",
+    "description": "The Centaur, home to the closest stellar system to Sol (Alpha Centauri) and the second-brightest star in the constellation, Hadar.",
+    "lines": [
+      ["Rigil Kentaurus", "Toliman"],
+      ["Rigil Kentaurus", "Hadar"],
+      ["Hadar", "Menkent"]
+    ]
+  },
+
+  "Carina": {
+    "iau": "Car",
+    "description": "The Keel of the ship Argo. Canopus is the second-brightest star in the night sky.",
+    "lines": [
+      ["Canopus", "Avior"],
+      ["Avior", "Aspidiske"],
+      ["Aspidiske", "Miaplacidus"],
+      ["Aspidiske", "Tureis"]
+    ]
+  },
+
+  "Vela": {
+    "iau": "Vel",
+    "description": "The Sails of the ship Argo, forming part of the 'False Cross' asterism often mistaken for the Southern Cross.",
+    "lines": [
+      ["Alsephina", "Markeb"],
+      ["Markeb", "Suhail"],
+      ["Suhail", "Alsephina"]
+    ]
+  },
+
+  "Grus": {
+    "iau": "Gru",
+    "description": "The Crane, a southern constellation introduced by Dutch navigators in the late 16th century.",
+    "lines": [
+      ["Alnair", "Tiaki"],
+      ["Tiaki", "Aldhanab"]
+    ]
   }
 }

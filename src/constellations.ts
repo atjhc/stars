@@ -55,9 +55,10 @@ function buildLineGeometry(): void {
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
 
   const material = new THREE.LineBasicMaterial({
-    color: 0x6688aa,
+    color: 0x88aadd,
     transparent: true,
-    opacity: 0.45,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
 
