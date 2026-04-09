@@ -332,6 +332,22 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
         synth_count += 1
     print(f"Injected {synth_count} synthetic companions")
 
+    # Promote every member of a multi-star system to match the highest tier
+    # among its siblings. Without this, a tier-1 companion like Proxima
+    # Centauri can fail to render when its tile is frustum-culled, leaving
+    # its tier-0 siblings (Rigil Kentaurus, Toliman) uncollapsed and
+    # overlapping. Eagerly promoted members are then spawned as notable
+    # anchors at boot and always participate in their system group.
+    members_by_system: dict[str, list[dict]] = defaultdict(list)
+    for s in stars:
+        if s.get("system"):
+            members_by_system[s["system"]].append(s)
+    for sys_members in members_by_system.values():
+        if any(m["tier"] == 0 for m in sys_members):
+            for m in sys_members:
+                if m["tier"] != 0:
+                    m["tier"] = 0
+
     min_xyz = [min(s["s" + a] for s in stars) for a in "xyz"]
     max_xyz = [max(s["s" + a] for s in stars) for a in "xyz"]
     half = max(max_xyz[i] - min_xyz[i] for i in range(3)) / 2 * 1.01

@@ -92,9 +92,13 @@ visual cost:
   from `notable.json` and lives in the scene forever. It carries the
   `CSS2DObject` label and the star's `userData`.
 - A **billboard mesh** (`Mesh` with the billboard shader + screen-space hit
-  sphere) spawns only when the tile containing the star enters tier-1 range,
-  providing the colored close-range glow and the canvas raycast target.
-  It's despawned when the tile evicts.
+  sphere) is spawned *alongside* the anchor at boot — also from `notable.json`,
+  which bakes the scene-space position, luminosity, and color index needed
+  for the shader. This means canvas hover works for every notable star
+  regardless of whether its octree tile is currently streamed. The billboard
+  shader fades its visible glow out past `camDist ≈ 40`, so distant tier-0
+  billboards are visually invisible; the point cloud handles their appearance
+  while the eager billboard provides only the raycast hit target.
 
 Raycast hits on a tier-0 billboard are normalized back to the anchor via
 `canonicalTarget()` so hover/select identity is consistent regardless of

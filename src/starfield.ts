@@ -223,6 +223,12 @@ export function canonicalTarget(obj: THREE.Object3D): THREE.Object3D {
   return anchorByBillboard.get(obj as THREE.Mesh) ?? obj;
 }
 
+// Tier-0 anchors AND their billboards are spawned eagerly at boot from the
+// pre-loaded notable.json. The billboard stays alive regardless of whether
+// the star's octree tile is currently streamed in — otherwise you couldn't
+// hover a notable star whose tile is outside the camera frustum (the tier-0
+// label would still show from the anchor, but canvas raycast would find no
+// mesh to hit).
 function spawnNotableAnchors() {
   const notable = getNotable();
   for (const n of notable) {
@@ -236,20 +242,14 @@ function spawnNotableAnchors() {
     notableLabelMeshMap.set(div, anchor);
     const ref = refKey(n.tile, n.i);
     meshByRef.set(ref, anchor);
-  }
-}
 
-function spawnTier0Billboard(row: LabelRow, path: string, sx: number, sy: number, sz: number): THREE.Mesh | null {
-  const anchor = meshByRef.get(refKey(path, row.i));
-  if (!anchor) return null;
-  const mesh = createBillboardMesh(row, sx, sy, sz);
-  // Hit-test against the anchor's visibility: the billboard is only
-  // selectable while its always-on label is currently rendered.
-  rebindHitSphere(mesh, anchor);
-  billboardsGroup.add(mesh);
-  billboardByAnchor.set(anchor, mesh);
-  anchorByBillboard.set(mesh, anchor);
-  return mesh;
+    const billboard = createBillboardMesh(n, sx, sy, sz);
+    rebindHitSphere(billboard, anchor);
+    billboardsGroup.add(billboard);
+    billboardByAnchor.set(anchor, billboard);
+    anchorByBillboard.set(billboard, anchor);
+    allInteractiveStars.push(billboard);
+  }
 }
 
 function spawnTier1Billboard(row: LabelRow, path: string, sx: number, sy: number, sz: number): THREE.Mesh {
@@ -271,24 +271,18 @@ function spawnTileLabels(path: string, labels: LabelRow[]) {
   tile.labelsLoaded = true;
   const meshes: THREE.Mesh[] = [];
   for (const row of labels) {
+    // Tier-0 is already handled by spawnNotableAnchors — skip.
+    if (row.tier === 0) continue;
     const i = row.i;
     const sx = tile.positions[i * 3];
     const sy = tile.positions[i * 3 + 1];
     const sz = tile.positions[i * 3 + 2];
-
-    let mesh: THREE.Mesh | null = null;
-    if (row.tier === 0) {
-      mesh = spawnTier0Billboard(row, path, sx, sy, sz);
-      if (mesh) allInteractiveStars.push(mesh);
-    } else {
-      mesh = spawnTier1Billboard(row, path, sx, sy, sz);
-      const ref = refKey(path, i);
-      meshByRef.set(ref, mesh);
-      allInteractiveStars.push(mesh);
-      tier1Meshes.push(mesh);
-      canonicalTargets.push(mesh);
-    }
-    if (mesh) meshes.push(mesh);
+    const mesh = spawnTier1Billboard(row, path, sx, sy, sz);
+    meshByRef.set(refKey(path, i), mesh);
+    allInteractiveStars.push(mesh);
+    tier1Meshes.push(mesh);
+    canonicalTargets.push(mesh);
+    meshes.push(mesh);
   }
   spawnedByTile.set(path, meshes);
   if (meshes.length > 0) {
@@ -305,26 +299,19 @@ function despawnTileLabels(path: string) {
     const idx = allInteractiveStars.indexOf(mesh);
     if (idx >= 0) allInteractiveStars.splice(idx, 1);
 
-    const anchor = anchorByBillboard.get(mesh);
-    if (anchor) {
-      // Tier-0 billboard: detach from anchor but keep anchor in meshByRef.
-      billboardByAnchor.delete(anchor);
-      anchorByBillboard.delete(mesh);
-    } else {
-      // Tier-1 billboard: remove label div from DOM and unregister everywhere.
-      const div = streamedLabelMap.get(mesh);
-      if (div) {
-        div.remove();
-        streamedLabelMap.delete(mesh);
-        tier1DivToMesh.delete(div);
-      }
-      const star = mesh.userData as Star & { tile?: string };
-      if (star.tile !== undefined) meshByRef.delete(refKey(star.tile, star.i));
-      const t1idx = tier1Meshes.indexOf(mesh);
-      if (t1idx >= 0) tier1Meshes.splice(t1idx, 1);
-      const cidx = canonicalTargets.indexOf(mesh);
-      if (cidx >= 0) canonicalTargets.splice(cidx, 1);
+    const div = streamedLabelMap.get(mesh);
+    if (div) {
+      div.remove();
+      streamedLabelMap.delete(mesh);
+      tier1DivToMesh.delete(div);
     }
+    const star = mesh.userData as Star & { tile?: string };
+    if (star.tile !== undefined) meshByRef.delete(refKey(star.tile, star.i));
+    const t1idx = tier1Meshes.indexOf(mesh);
+    if (t1idx >= 0) tier1Meshes.splice(t1idx, 1);
+    const cidx = canonicalTargets.indexOf(mesh);
+    if (cidx >= 0) canonicalTargets.splice(cidx, 1);
+
     (mesh.material as THREE.Material).dispose();
     mesh.geometry.dispose();
   }
@@ -343,14 +330,18 @@ function rebuildSystems() {
   const catalog = getSystems();
   for (const [name, members] of Object.entries(catalog)) {
     if (members.length < 2) continue;
+    // Build from whichever members are currently resolvable. Tier-0 anchors
+    // are always present, but tier-1 companions (e.g. Proxima in the Alpha
+    // Centauri system) only register once their tile streams in — without
+    // this we'd leave the already-present notables uncollapsed and
+    // overlapping until the full system arrived. rebuildSystems fires
+    // again on labelSetDirty when more members stream in.
     const meshes: THREE.Object3D[] = [];
-    let allPresent = true;
     for (const m of members) {
       const mesh = meshByRef.get(refKey(m.tile, m.i));
-      if (!mesh) { allPresent = false; break; }
-      meshes.push(mesh);
+      if (mesh) meshes.push(mesh);
     }
-    if (!allPresent) continue;
+    if (meshes.length < 2) continue;
 
     const labelDiv = document.createElement("div");
     labelDiv.style.cssText = LABEL_CSS;

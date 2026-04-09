@@ -146,6 +146,10 @@ export function updateLabels(
     const css = cssLabelChild(target);
 
     if (collapsed.has(target)) {
+      // Keep the anchor visible so the tier-0 billboard's hit sphere stays
+      // active — clicking a collapsed member's orb routes to selectSystem
+      // via meshToSystem. Only the individual label child is hidden.
+      target.visible = true;
       if (css) css.visible = false;
       return;
     }
