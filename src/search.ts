@@ -1,5 +1,5 @@
-import * as THREE from "three";
-import type { Star, SystemGroup } from "./types.ts";
+import type { SearchEntry } from "./catalog.ts";
+import { getSearchIndex } from "./catalog.ts";
 import { MAX_SEARCH_RESULTS } from "./constants.ts";
 
 const searchEl = document.getElementById("search")!;
@@ -9,7 +9,7 @@ const searchBtn = document.getElementById("search-btn")!;
 
 let searchOpen = false;
 let selectedIndex = 0;
-let filteredStars: { star: Star; mesh: THREE.Object3D }[] = [];
+let filteredEntries: SearchEntry[] = [];
 
 function openSearch() {
   searchOpen = true;
@@ -27,66 +27,57 @@ function closeSearch() {
   searchInput.blur();
 }
 
-function starMatchesQuery(star: Star, q: string): boolean {
-  if (star.name.toLowerCase().includes(q)) return true;
-  if (star.system?.toLowerCase().includes(q)) return true;
-  if (star.aliases?.some((a) => a.toLowerCase().includes(q))) return true;
-  return false;
-}
-
-function updateSearchResults(query: string, starObjects?: THREE.Object3D[]) {
+function updateSearchResults(query: string) {
   const q = query.toLowerCase().trim();
-  filteredStars = [];
-  if (q.length > 0 && starObjects) {
-    const seen = new Set<THREE.Object3D>();
+  filteredEntries = [];
+  if (q.length === 0) {
+    selectedIndex = 0;
+    return;
+  }
+  const index = getSearchIndex();
 
-    for (const mesh of starObjects) {
-      const star = mesh.userData as Star;
-      const nameMatch = star.name.toLowerCase().includes(q);
-      const sysMatch = star.system?.toLowerCase().includes(q) ?? false;
-      if (!nameMatch && !sysMatch) continue;
-      seen.add(mesh);
-      filteredStars.push({ star, mesh });
-      if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
+  const seen = new Set<SearchEntry>();
+  for (const entry of index) {
+    if (entry.n.toLowerCase().includes(q) || entry.sy?.toLowerCase().includes(q)) {
+      seen.add(entry);
+      filteredEntries.push(entry);
+      if (filteredEntries.length >= MAX_SEARCH_RESULTS) break;
     }
+  }
 
-    if (filteredStars.length < MAX_SEARCH_RESULTS) {
-      const seenSystems = new Set<string>();
-      for (const mesh of starObjects) {
-        if (seen.has(mesh)) continue;
-        const star = mesh.userData as Star;
-        if (!star.aliases?.some((a) => a.toLowerCase().includes(q))) continue;
-        if (star.system) {
-          if (seenSystems.has(star.system)) continue;
-          seenSystems.add(star.system);
-        }
-        filteredStars.push({ star, mesh });
-        if (filteredStars.length >= MAX_SEARCH_RESULTS) break;
+  if (filteredEntries.length < MAX_SEARCH_RESULTS) {
+    const seenSystems = new Set<string>();
+    for (const entry of index) {
+      if (seen.has(entry)) continue;
+      if (!entry.a?.some((a) => a.toLowerCase().includes(q))) continue;
+      if (entry.sy) {
+        if (seenSystems.has(entry.sy)) continue;
+        seenSystems.add(entry.sy);
       }
+      filteredEntries.push(entry);
+      if (filteredEntries.length >= MAX_SEARCH_RESULTS) break;
     }
   }
   selectedIndex = 0;
 }
 
-function findMatchSource(star: Star, q: string): string | null {
-  if (star.name.toLowerCase().includes(q)) return null;
-  if (star.system?.toLowerCase().includes(q)) return star.system;
-  const alias = star.aliases?.find((a) => a.toLowerCase().includes(q));
-  if (alias) return alias;
-  return null;
+function findMatchSource(entry: SearchEntry, q: string): string | null {
+  if (entry.n.toLowerCase().includes(q)) return null;
+  if (entry.sy?.toLowerCase().includes(q)) return entry.sy;
+  const alias = entry.a?.find((a) => a.toLowerCase().includes(q));
+  return alias ?? null;
 }
 
-function renderSearchResults(meshToSystem: Map<THREE.Object3D, SystemGroup>) {
+function renderSearchResults() {
   searchResults.innerHTML = "";
   const q = searchInput.value.toLowerCase().trim();
-  filteredStars.forEach((entry, i) => {
+  filteredEntries.forEach((entry, i) => {
     const li = document.createElement("li");
-    const sys = meshToSystem.get(entry.mesh);
-    const primaryName = sys ? sys.name : entry.star.name;
-    const matchSource = findMatchSource(entry.star, q);
+    const primaryName = entry.sy ?? entry.n;
+    const matchSource = findMatchSource(entry, q);
     const secondary = matchSource && matchSource !== primaryName
       ? matchSource
-      : (sys && entry.star.name !== sys.name ? entry.star.name : null);
+      : (entry.sy && entry.n !== entry.sy ? entry.n : null);
 
     if (secondary) {
       li.innerHTML = `${primaryName} <span class="search-secondary">${secondary}</span>`;
@@ -101,14 +92,10 @@ function renderSearchResults(meshToSystem: Map<THREE.Object3D, SystemGroup>) {
 
 let selectResult = (_index: number) => {};
 
-export function setupSearch(
-  starObjects: THREE.Object3D[],
-  meshToSystem: Map<THREE.Object3D, SystemGroup>,
-  onSelect: (mesh: THREE.Object3D) => void,
-) {
+export function setupSearch(onSelect: (entry: SearchEntry) => void) {
   selectResult = (index: number) => {
-    if (index < 0 || index >= filteredStars.length) return;
-    onSelect(filteredStars[index].mesh);
+    if (index < 0 || index >= filteredEntries.length) return;
+    onSelect(filteredEntries[index]);
     closeSearch();
   };
 
@@ -123,8 +110,8 @@ export function setupSearch(
   });
 
   searchInput.addEventListener("input", () => {
-    updateSearchResults(searchInput.value, starObjects);
-    renderSearchResults(meshToSystem);
+    updateSearchResults(searchInput.value);
+    renderSearchResults();
   });
 
   window.addEventListener("keydown", (e) => {
@@ -143,12 +130,12 @@ export function setupSearch(
       closeSearch();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      selectedIndex = Math.min(selectedIndex + 1, filteredStars.length - 1);
-      renderSearchResults(meshToSystem);
+      selectedIndex = Math.min(selectedIndex + 1, filteredEntries.length - 1);
+      renderSearchResults();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       selectedIndex = Math.max(selectedIndex - 1, 0);
-      renderSearchResults(meshToSystem);
+      renderSearchResults();
     } else if (e.key === "Enter") {
       e.preventDefault();
       selectResult(selectedIndex);

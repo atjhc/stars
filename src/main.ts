@@ -25,14 +25,16 @@ import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debu
 import {
   initStarfield, updateStarfield,
   notableObjects, notableLabelMap, notableLabelMeshMap,
-  allInteractiveStars, tier1Meshes, canonicalTargets,
+  allInteractiveStars, tier1Meshes,
   systemGroups, meshToSystem,
   setInitLabelDrag, onLabelsChanged,
   tier1LabelMeshFromDiv, tier1LabelDivFromMesh,
   streamedLabelMap,
   canonicalTarget,
   setStarMode, setPointDepthTest,
+  requestTileFocus,
 } from "./starfield.ts";
+import { animateTo } from "./scene.ts";
 
 // Wait for DOM
 await new Promise<void>((resolve) => {
@@ -283,9 +285,15 @@ window.addEventListener("resize", () => {
   setLabelsDirty(true);
 });
 
-// Search reads the live canonicalTargets array on each query.
-setupSearch(canonicalTargets, meshToSystem, (mesh) => {
-  selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+// Search is driven by the global names.json index (every tier-0/tier-1
+// star, not just the currently-streamed set). When the user picks an
+// entry whose tile isn't loaded, we force-load the tile and upgrade the
+// selection to a real mesh once it spawns.
+setupSearch((entry) => {
+  animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+  requestTileFocus(entry.t, entry.i, (mesh) => {
+    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+  });
 });
 
 // Boot the catalog + starfield, then select Sol once notables are loaded.

@@ -61,11 +61,27 @@ export interface SystemMember {
   name: string;
 }
 
+// Global search entry. Short keys to minimize the JSON payload; see
+// build-catalog.py for the producer. Covers every tier-0 and tier-1 star.
+export interface SearchEntry {
+  n: string;                    // primary name
+  t: string;                    // tile path
+  i: number;                    // index in tile
+  p: [number, number, number];  // scene-space position
+  mg: number;                   // apparent mag
+  M: number;                    // absolute mag
+  d: number;                    // distance (pc)
+  sp?: string;                  // spectral type
+  a?: string[];                 // aliases
+  sy?: string;                  // system name
+}
+
 const TILE_BASE_URL = "/tiles/";
 
 let meta: CatalogMeta | null = null;
 let notable: NotableEntry[] = [];
 let systems: Record<string, SystemMember[]> = {};
+let searchIndex: SearchEntry[] = [];
 
 const tileLabelCache = new Map<string, LabelRow[]>();
 const tileLabelLoading = new Set<string>();
@@ -79,22 +95,25 @@ export function onTileLabelsLoaded(fn: TileLabelListener) { loadListeners.push(f
 export function onTileLabelsEvicted(fn: TileEvictListener) { evictListeners.push(fn); }
 
 export async function initCatalog(): Promise<void> {
-  const [m, n, s] = await Promise.all([
+  const [m, n, s, idx] = await Promise.all([
     fetch(`${TILE_BASE_URL}meta.json`).then((r) => r.json()),
     fetch(`${TILE_BASE_URL}notable.json`).then((r) => r.json()),
     fetch(`${TILE_BASE_URL}systems.json`).then((r) => r.json()),
+    fetch(`${TILE_BASE_URL}names.json`).then((r) => r.json()),
   ]);
   meta = m;
   notable = n;
   systems = s;
+  searchIndex = idx;
   console.log(
-    `Catalog: ${meta!.totalStars} stars, ${meta!.tileCount} tiles, ${notable.length} notable, ${Object.keys(systems).length} systems`,
+    `Catalog: ${meta!.totalStars} stars, ${meta!.tileCount} tiles, ${notable.length} notable, ${Object.keys(systems).length} systems, ${searchIndex.length} searchable`,
   );
 }
 
 export function getMeta(): CatalogMeta | null { return meta; }
 export function getNotable(): NotableEntry[] { return notable; }
 export function getSystems(): Record<string, SystemMember[]> { return systems; }
+export function getSearchIndex(): SearchEntry[] { return searchIndex; }
 export function getTileLabels(path: string): LabelRow[] | undefined { return tileLabelCache.get(path); }
 
 export function loadTileLabels(path: string): void {

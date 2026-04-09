@@ -190,11 +190,8 @@ const tier1DivToMesh = new WeakMap<HTMLElement, THREE.Mesh>();
 // Anchors are NOT in this list — distant tier-0 hover goes through the label DOM.
 export const allInteractiveStars: THREE.Object3D[] = [];
 
-// Tier-1 billboards only, for label rendering + search (avoids anchor/billboard duplication).
+// Tier-1 billboards only, for label rendering (avoids anchor/billboard duplication).
 export const tier1Meshes: THREE.Object3D[] = [];
-
-// Live canonical list for search: notable anchors + tier-1 billboards.
-export const canonicalTargets: THREE.Object3D[] = [];
 
 // (tile, index) → anchor | tier-1 billboard, for system resolution.
 const meshByRef = new Map<string, THREE.Object3D>();
@@ -237,7 +234,6 @@ function spawnNotableAnchors() {
     const { div } = createStarLabel(n, anchor, initLabelDragFn ?? (() => {}));
     notableAnchorsGroup.add(anchor);
     notableObjects.push(anchor);
-    canonicalTargets.push(anchor);
     notableLabelMap.set(anchor, div);
     notableLabelMeshMap.set(div, anchor);
     const ref = refKey(n.tile, n.i);
@@ -281,13 +277,22 @@ function spawnTileLabels(path: string, labels: LabelRow[]) {
     meshByRef.set(refKey(path, i), mesh);
     allInteractiveStars.push(mesh);
     tier1Meshes.push(mesh);
-    canonicalTargets.push(mesh);
     meshes.push(mesh);
   }
   spawnedByTile.set(path, meshes);
   if (meshes.length > 0) {
     labelSetDirty = true;
     setLabelsDirty(true);
+  }
+
+  if (pendingSelection && pendingSelection.tile === path) {
+    const mesh = meshByRef.get(refKey(path, pendingSelection.i));
+    if (mesh) {
+      const resolve = pendingSelection.onResolved;
+      pendingSelection = null;
+      forcedTiles.delete(path);
+      resolve(mesh);
+    }
   }
 }
 
@@ -309,8 +314,6 @@ function despawnTileLabels(path: string) {
     if (star.tile !== undefined) meshByRef.delete(refKey(star.tile, star.i));
     const t1idx = tier1Meshes.indexOf(mesh);
     if (t1idx >= 0) tier1Meshes.splice(t1idx, 1);
-    const cidx = canonicalTargets.indexOf(mesh);
-    if (cidx >= 0) canonicalTargets.splice(cidx, 1);
 
     (mesh.material as THREE.Material).dispose();
     mesh.geometry.dispose();
@@ -396,7 +399,26 @@ function precomputeTileSpheres() {
   }
 }
 
+// Tiles the user has explicitly targeted via search. They load regardless
+// of frustum / cull distance and are exempt from LRU eviction until
+// released. Entries are cleared once their pending selection resolves.
+const forcedTiles = new Set<string>();
+type PendingSelection = { tile: string; i: number; onResolved: (mesh: THREE.Object3D) => void };
+let pendingSelection: PendingSelection | null = null;
+
+export function requestTileFocus(
+  tile: string,
+  i: number,
+  onResolved: (mesh: THREE.Object3D) => void,
+) {
+  const existing = meshByRef.get(refKey(tile, i));
+  if (existing) { onResolved(existing); return; }
+  forcedTiles.add(tile);
+  pendingSelection = { tile, i, onResolved };
+}
+
 function shouldLoadGeometry(path: string, tile: TileMeta, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
+  if (forcedTiles.has(path)) return true;
   const meta = getMeta();
   if (!meta) return false;
   const cullDist = meta.buckets[tile.bucket]?.cullDist ?? null;
@@ -409,6 +431,7 @@ function shouldLoadGeometry(path: string, tile: TileMeta, frustum: THREE.Frustum
 }
 
 function shouldLoadLabels(path: string, camPos: THREE.Vector3): boolean {
+  if (forcedTiles.has(path)) return true;
   const sphere = tileSpheres.get(path);
   if (!sphere) return false;
   // Load labels if the tile's bounding sphere overlaps the tier-1 range.
@@ -479,6 +502,7 @@ function evictOldTiles() {
   const meta = getMeta();
   const evictable = [...loadedTiles.entries()]
     .filter(([path]) => meta?.buckets[meta.tiles[path].bucket]?.cullDist !== null)
+    .filter(([path]) => !forcedTiles.has(path))
     .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
   const toEvict = evictable.slice(0, loadedTiles.size - MAX_LOADED_TILES);
   for (const [path] of toEvict) evictGeometryTile(path);

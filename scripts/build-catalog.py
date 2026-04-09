@@ -415,6 +415,10 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
     }
 
     notable: list[dict] = []
+    # Flat global search index over every named (tier 0 or 1) star. Short
+    # field names keep the JSON payload small; the runtime fetches it once
+    # at boot and treats it as a plain POJO array.
+    search_index: list[dict] = []
     systems: dict[str, list] = defaultdict(list)
     total_bin_bytes = 0
     total_lbl_bytes = 0
@@ -467,6 +471,23 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
                     "pos": [round(s["sx"], 4), round(s["sy"], 4), round(s["sz"], 4)],
                 })
 
+            search_entry: dict = {
+                "n": s["name"],
+                "t": path,
+                "i": i,
+                "p": [round(s["sx"], 4), round(s["sy"], 4), round(s["sz"], 4)],
+                "mg": round(s["mag"], 2),
+                "M": round(s["absmag"], 2),
+                "d": round(s["dist"], 4),
+            }
+            if s["spect"]:
+                search_entry["sp"] = s["spect"]
+            if s["aliases"]:
+                search_entry["a"] = s["aliases"]
+            if s["system"]:
+                search_entry["sy"] = s["system"]
+            search_index.append(search_entry)
+
             if s["system"]:
                 systems[s["system"]].append({"tile": path, "i": i, "name": s["name"]})
 
@@ -499,6 +520,8 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
         json.dump(notable, f)
     with open(os.path.join(out_dir, "systems.json"), "w") as f:
         json.dump(systems, f)
+    with open(os.path.join(out_dir, "names.json"), "w") as f:
+        json.dump(search_index, f, separators=(",", ":"))
 
     # Constellations: copy data/constellations.json into the tile output dir
     # so it ships alongside the rest of the catalog. Validate every star
@@ -524,6 +547,7 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
     print(f"Geometry: {total_bin_bytes / 1024 / 1024:.1f} MB across {len(tiles)} tiles")
     print(f"Labels:   {total_lbl_bytes / 1024 / 1024:.2f} MB across {tiles_with_labels} tile label files")
     print(f"Notable:  {len(notable)} tier-0 stars")
+    print(f"Search:   {len(search_index)} named stars in names.json ({os.path.getsize(os.path.join(out_dir, 'names.json')) / 1024:.0f} KB)")
     print(f"Systems:  {len(systems)} groupings")
     print(f"Constellations: {len(constellations)} ({cons_lines} lines)")
 
