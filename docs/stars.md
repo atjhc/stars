@@ -186,22 +186,60 @@ Stars use `THREE.AdditiveBlending` with `depthWrite: false`. Additive blending
 means stars only add light — they never occlude each other, and overlapping halos
 naturally combine.
 
-## Point cloud sizing
+## Point cloud sizing and visibility
 
-The `THREE.Points` vertex shader (`src/starfield.ts`) computes
-`gl_PointSize` from per-star brightness and camera distance, clamped to
-`[10, 32]` px:
+The `THREE.Points` vertex shader (`src/starfield.ts`) renders every
+streamed star from every bucket (bright and medium) with a single
+physically-motivated formula driven by **apparent magnitude**.
+
+The brightness byte in each tile's 16-byte record stores absolute
+magnitude linearly: `byte = (absmag + 10) · 10`, clamped to `[0, 255]`
+— i.e. one byte covers M ∈ [−10, +15.5] with 0.1-mag resolution. The
+vertex shader decodes it and computes apparent magnitude from the camera
+distance using the distance modulus:
 
 ```glsl
-float rawSize = max(2.0, vBrightness * 4.0) * (500.0 / dist);
-gl_PointSize = clamp(rawSize * 2.0, 10.0, 32.0);
+float absMag = (brightness / 10.0) - 10.0;
+float dist   = max(-mvPosition.z, 1.0);
+float appMag = absMag + 5.0 * log(dist / 30.0) / 2.302585;  // 30 units = 10 pc
 ```
+
+The cutoff is driven by a `uMagLimit` uniform (default 7.5, tunable via
+the debug panel — a dark-sky naked-eye cutoff is 6.5; higher values
+simulate a more sensitive "eye" revealing more stars while preserving
+physically-correct relative brightness). Stars fainter than the limit
+are culled immediately. Brighter stars get larger points and higher
+intensity:
+
+```glsl
+if (appMag > uMagLimit) { gl_Position = vec4(2, 2, 2, 1); return; }
+float visibility = 1.0 - smoothstep(uMagLimit - 1.5, uMagLimit, appMag);
+vBrightness = visibility * max(0.1, (uMagLimit - appMag) * 0.25);
+gl_PointSize = clamp((uMagLimit + 9.5) - appMag, 10.0, 32.0);
+```
+
+With the default `uMagLimit = 7.5`:
+
+| Apparent magnitude | Point size | Intensity factor | Notes |
+|---|---|---|---|
+| −5 (Venus-bright supergiant)   | 22 px | 3.1  | saturated core |
+| 0  (Vega, Rigel)               | 17 px | 1.9  | bright, prominent |
+| 3  (moderate naked-eye)        | 14 px | 1.1  | clear point |
+| 5  (naked-eye limit, dark sky) | 12 px | 0.63 | faint |
+| 7  (below dark-sky limit)      | 10 px | 0.13 (fading) | visible under the default eye |
+| 7.5+                           | —     | 0    | culled |
 
 The 10 px minimum is deliberately large. Smaller points have almost every
 pixel on the rasterized edge, where MSAA coverage fraction flickers as the
 point moves sub-pixel. Bloom amplifies that step into visible halo wobble.
 A 10 px minimum gives enough interior "fully-covered" pixels that the
 intensity stays stable across frames.
+
+Because the shader is driven by apparent magnitude, the **bright bucket**
+(always-loaded) and **medium bucket** (streamed) can share a single
+shader — a distant bright supergiant computes its own apparent mag from
+the camera's real distance and gets a large point, while a nearby dim red
+dwarf computes a mag close to the cutoff and gets a small, dim one.
 
 ## Sub-pixel flicker and the texture-sampled glow
 

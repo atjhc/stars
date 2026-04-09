@@ -25,6 +25,7 @@ Usage:
 """
 
 import csv
+import gzip
 import json
 import math
 import os
@@ -38,6 +39,21 @@ MAX_DEPTH = 6
 MAX_DIST_PC = 1000                 # ~3260 ly
 NOTABLE_VISIBILITY_UNITS = 100000  # tier-0 labels: effectively always visible
 NAMED_VISIBILITY_UNITS = 150       # tier-1 labels: ~50 ly close-only window
+
+# Absolute-magnitude buckets. Each bucket gets its own tileset with its own
+# runtime cull distance, chosen so that stars in the bucket stay visible
+# (apparent mag ≤ NAKED_EYE_MAG) out to the cull distance. Bright stars have
+# huge visibility radii but are rare, so the "bright" bucket is tiny enough
+# to ship as a single always-loaded file (no spatial subdivision, no cull).
+BRIGHT_ABSMAG = 0.0                # M < 0 → bright bucket
+NAKED_EYE_MAG = 6.5                # below this apparent mag → visible
+
+# Medium bucket cull distance: d = 10 pc · 10^((m - M)/5)
+# For M=NAKED_EYE_MAG, distance where a star becomes invisible is 10 pc.
+# The brightest medium star has M=BRIGHT_ABSMAG=0, so
+#   d_max = 10 · 10^((6.5 - 0)/5) ≈ 199.5 pc.
+# In scene units (SCALE=3 per pc): 199.5 · 3 ≈ 598.
+MEDIUM_CULL_UNITS = round(10 * 10 ** ((NAKED_EYE_MAG - BRIGHT_ABSMAG) / 5) * SCALE)
 
 # Tier-0 (notable, always-visible label): IAU-named bright stars, plus any
 # star explicitly marked `"notable": true` in augmentations.json, minus any
@@ -82,10 +98,10 @@ def lum_from_absmag(absmag: float) -> float:
 
 
 def brightness_byte(absmag: float) -> int:
-    """0-255 byte matching the billboard brightness curve."""
-    lum = lum_from_absmag(absmag)
-    val = max(0.8, min(2.5, 0.9 + 0.35 * math.log10(max(lum, 0.001)))) / 2.5
-    return int(val * 255)
+    """The point vertex shader recovers absmag from this byte and computes
+    apparent magnitude per-frame from the camera distance. Linear encoding
+    (byte = (absmag + 10) * 10) covers M ∈ [-10, +15.5] at 0.1-mag resolution."""
+    return max(0, min(255, round((absmag + 10.0) * 10.0)))
 
 
 def get_key(row: dict) -> str:
@@ -187,92 +203,103 @@ class OctreeNode:
             c.collect(tiles, f"{path}_{i}")
 
 
-def main(csv_path: str, aug_path: str, out_dir: str):
+def open_csv(path: str):
+    return gzip.open(path, "rt") if path.endswith(".gz") else open(path)
+
+
+def iter_concatenated_rows(paths: list[str]):
+    """AT-HYG ships its full catalog split across multiple files: part 1 has
+    the CSV header, subsequent parts are pure data continuations. We must
+    treat them as a single logical stream so DictReader sees one header."""
+    def line_stream():
+        for p in paths:
+            with open_csv(p) as f:
+                yield from f
+
+    return csv.DictReader(line_stream())
+
+
+def main(aug_path: str, out_dir: str, csv_paths: list[str]):
     with open(aug_path) as f:
         augmentations: dict = json.load(f)
 
-    print(f"Reading {csv_path}...")
     stars: list[dict] = []
     skipped = 0
-    with open(csv_path) as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            try:
-                d = row.get("dist", "").strip()
-                if not d:
-                    skipped += 1
-                    continue
-                dist = float(d)
-                if dist < 0 or dist > MAX_DIST_PC or dist >= 100000:
-                    skipped += 1
-                    continue
-                x0 = row.get("x0", "").strip()
-                y0 = row.get("y0", "").strip()
-                z0 = row.get("z0", "").strip()
-                if not (x0 and y0 and z0):
-                    skipped += 1
-                    continue
 
-                cx, cy, cz = float(x0), float(y0), float(z0)
-                sx = cx * SCALE
-                sy = cz * SCALE
-                sz = -cy * SCALE
-
-                mag = float(row.get("mag", "").strip() or 10.0)
-                absmag = float(row.get("absmag", "").strip() or 10.0)
-                ci = float(row.get("ci", "").strip() or 0.656)
-
-                key = get_key(row)
-                proper = row.get("proper", "").strip()
-                # Merge catalog-key and proper-name augmentation entries so a
-                # curated Vega entry keyed by proper name takes precedence over
-                # a stale Gliese-keyed entry. Proper-name entry wins on conflict.
-                aug = {}
-                if key in augmentations:
-                    aug.update(augmentations[key])
-                if proper and proper in augmentations:
-                    aug.update(augmentations[proper])
-                primary, aliases, has_proper = get_names(row)
-
-                if aug.get("name"):
-                    if primary and primary != aug["name"]:
-                        aliases.insert(0, primary)
-                    primary = aug["name"]
-
-                # Merge curator-supplied aliases (traditional/cultural names)
-                # in front of the auto-generated catalog-ID aliases, skipping
-                # duplicates and the primary name itself.
-                for extra in aug.get("aliases", []) or []:
-                    if extra and extra != primary and extra not in aliases:
-                        aliases.insert(0, extra)
-
-                explicit_notable = aug.get("notable")
-                if explicit_notable is True:
-                    tier = 0
-                elif explicit_notable is False:
-                    tier = 2
-                elif has_proper and mag < NOTABLE_MAG_THRESHOLD:
-                    tier = 0
-                elif primary and (mag < NAMED_MAG_THRESHOLD or aug.get("system")):
-                    tier = 1
-                else:
-                    tier = 2
-
-                stars.append({
-                    "sx": sx, "sy": sy, "sz": sz,
-                    "dist": dist, "mag": mag, "absmag": absmag, "ci": ci,
-                    "spect": row.get("spect", "").strip(),
-                    "key": key,
-                    "name": primary,
-                    "aliases": aliases,
-                    "tier": tier,
-                    "wikipedia": aug.get("wikipedia"),
-                    "notes": aug.get("notes"),
-                    "system": aug.get("system"),
-                    "synthetic": False,
-                })
-            except (ValueError, KeyError):
+    print(f"Reading {len(csv_paths)} file(s): {', '.join(csv_paths)}")
+    for row in iter_concatenated_rows(csv_paths):
+        try:
+            d = row.get("dist", "").strip()
+            if not d:
                 skipped += 1
+                continue
+            dist = float(d)
+            if dist < 0 or dist > MAX_DIST_PC or dist >= 100000:
+                skipped += 1
+                continue
+            x0 = row.get("x0", "").strip()
+            y0 = row.get("y0", "").strip()
+            z0 = row.get("z0", "").strip()
+            if not (x0 and y0 and z0):
+                skipped += 1
+                continue
+
+            cx, cy, cz = float(x0), float(y0), float(z0)
+            sx = cx * SCALE
+            sy = cz * SCALE
+            sz = -cy * SCALE
+
+            mag = float(row.get("mag", "").strip() or 10.0)
+            absmag = float(row.get("absmag", "").strip() or 10.0)
+            ci = float(row.get("ci", "").strip() or 0.656)
+
+            key = get_key(row)
+            proper = row.get("proper", "").strip()
+            # Proper-name augmentation entries win over catalog-key ones so a
+            # curated Vega entry takes precedence over a stale Gliese-keyed one.
+            aug = {}
+            if key in augmentations:
+                aug.update(augmentations[key])
+            if proper and proper in augmentations:
+                aug.update(augmentations[proper])
+            primary, aliases, has_proper = get_names(row)
+
+            if aug.get("name"):
+                if primary and primary != aug["name"]:
+                    aliases.insert(0, primary)
+                primary = aug["name"]
+
+            for extra in aug.get("aliases", []) or []:
+                if extra and extra != primary and extra not in aliases:
+                    aliases.insert(0, extra)
+
+            explicit_notable = aug.get("notable")
+            if explicit_notable is True:
+                tier = 0
+            elif explicit_notable is False:
+                tier = 2
+            elif has_proper and mag < NOTABLE_MAG_THRESHOLD:
+                tier = 0
+            elif primary and (mag < NAMED_MAG_THRESHOLD or aug.get("system")):
+                tier = 1
+            else:
+                tier = 2
+
+            stars.append({
+                "sx": sx, "sy": sy, "sz": sz,
+                "dist": dist, "mag": mag, "absmag": absmag, "ci": ci,
+                "spect": row.get("spect", "").strip(),
+                "key": key,
+                "name": primary,
+                "aliases": aliases,
+                "tier": tier,
+                "wikipedia": aug.get("wikipedia"),
+                "notes": aug.get("notes"),
+                "system": aug.get("system"),
+                "synthetic": False,
+            })
+        except (ValueError, KeyError):
+            skipped += 1
     print(f"Loaded {len(stars)} stars (skipped {skipped})")
 
     existing_keys = {s["key"] for s in stars}
@@ -311,18 +338,40 @@ def main(csv_path: str, aug_path: str, out_dir: str):
     cnt = [(min_xyz[i] + max_xyz[i]) / 2 for i in range(3)]
     print(f"Bounds: ({min_xyz[0]:.0f},{min_xyz[1]:.0f},{min_xyz[2]:.0f}) to ({max_xyz[0]:.0f},{max_xyz[1]:.0f},{max_xyz[2]:.0f})")
 
-    print(f"Building octree (max {MAX_STARS_PER_TILE} stars/tile, max depth {MAX_DEPTH})...")
+    # Split stars into brightness buckets. The bright bucket (M < 0) is small
+    # and visible out to the full catalog radius, so it ships as a single
+    # always-loaded file. The medium bucket (M >= 0) is octree-tiled with the
+    # distance-based streaming pipeline.
+    bright_stars = [s for s in stars if s["absmag"] < BRIGHT_ABSMAG]
+    medium_stars = [s for s in stars if s["absmag"] >= BRIGHT_ABSMAG]
+    print(f"Bucket split: bright={len(bright_stars)}  medium={len(medium_stars)}")
+
+    tiles: dict = {}
+
+    # Bright bucket: one flat tile, path key "bright".
+    tiles["bright"] = {
+        "stars": bright_stars,
+        "min": (min_xyz[0], min_xyz[1], min_xyz[2]),
+        "max": (max_xyz[0], max_xyz[1], max_xyz[2]),
+        "depth": 0,
+        "bucket": "bright",
+    }
+
+    # Medium bucket: octree as before.
+    print(f"Building medium octree (max {MAX_STARS_PER_TILE} stars/tile, max depth {MAX_DEPTH})...")
     root = OctreeNode(
         tuple(cnt[i] - half for i in range(3)),
         tuple(cnt[i] + half for i in range(3)),
     )
-    for s in stars:
+    for s in medium_stars:
         root.add(s)
     root.build()
-
-    tiles: dict = {}
-    root.collect(tiles)
-    print(f"Generated {len(tiles)} tiles")
+    med_tiles: dict = {}
+    root.collect(med_tiles)
+    for path, tile in med_tiles.items():
+        tile["bucket"] = "medium"
+        tiles[path] = tile
+    print(f"Generated {len(tiles)} tiles total (bright: 1, medium: {len(med_tiles)})")
 
     os.makedirs(out_dir, exist_ok=True)
 
@@ -334,6 +383,13 @@ def main(csv_path: str, aug_path: str, out_dir: str):
         "labelTierVisibility": {
             "0": NOTABLE_VISIBILITY_UNITS,
             "1": NAMED_VISIBILITY_UNITS,
+        },
+        # cullDist: null means always-loaded (bright bucket). Otherwise a
+        # scene-unit distance at which the tile's bounding sphere must be
+        # closer than the camera for it to stream in.
+        "buckets": {
+            "bright": {"cullDist": None},
+            "medium": {"cullDist": MEDIUM_CULL_UNITS},
         },
         "bounds": {
             "min": [cnt[i] - half for i in range(3)],
@@ -417,6 +473,7 @@ def main(csv_path: str, aug_path: str, out_dir: str):
             "min": list(tile["min"]),
             "max": list(tile["max"]),
             "depth": tile["depth"],
+            "bucket": tile["bucket"],
             "labelCounts": labels_in_tile,
         }
 
@@ -459,7 +516,7 @@ def main(csv_path: str, aug_path: str, out_dir: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print(f"Usage: {sys.argv[0]} <athyg_v33.csv> <augmentations.json> <output_dir>", file=sys.stderr)
+    if len(sys.argv) < 4:
+        print(f"Usage: {sys.argv[0]} <augmentations.json> <output_dir> <athyg_v33.csv[.gz]>...", file=sys.stderr)
         sys.exit(1)
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3:])

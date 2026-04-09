@@ -5,12 +5,19 @@
 // loadTileLabels() / evictTileLabels(). Geometry tiles remain owned by
 // starfield.ts; this module is purely metadata.
 
+export type BucketName = "bright" | "medium";
+
+export interface BucketMeta {
+  cullDist: number | null;
+}
+
 export interface CatalogMeta {
   tileCount: number;
   totalStars: number;
   bytesPerStar: number;
   format: string;
   labelTierVisibility: { "0": number; "1": number };
+  buckets: Record<BucketName, BucketMeta>;
   bounds: { min: [number, number, number]; max: [number, number, number] };
   tiles: Record<string, TileMeta>;
 }
@@ -22,6 +29,7 @@ export interface TileMeta {
   min: [number, number, number];
   max: [number, number, number];
   depth: number;
+  bucket: BucketName;
   labelCounts: { "0": number; "1": number };
 }
 

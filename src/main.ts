@@ -21,7 +21,7 @@ import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations } from "./constellations.ts";
-import { initDebug, debugEnabled, debug, onDebugChange, onBloomTune, tickDebug } from "./debug.ts";
+import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debug.ts";
 import {
   initStarfield, updateStarfield,
   notableObjects, notableLabelMap, notableLabelMeshMap,
@@ -321,11 +321,6 @@ if (debugEnabled) {
         setPointDepthTest(value);
         break;
     }
-  });
-  onBloomTune((params) => {
-    bloomPass.strength = params.strength;
-    bloomPass.radius = params.radius;
-    bloomPass.threshold = params.threshold;
   });
 }
 

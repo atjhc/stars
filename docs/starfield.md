@@ -235,6 +235,43 @@ The runtime rebuilds `SystemGroup` objects whenever the set of currently-spawned
 billboards changes; only systems whose members are all present render their
 collapsing-cluster label.
 
+## Brightness buckets
+
+Stars are split by absolute magnitude into two buckets with independent
+streaming policies. This is what lets distant naked-eye stars render from
+any camera position without streaming in their (otherwise far-out-of-range)
+spatial tiles.
+
+| Bucket | Criteria | Stars | Tileset | Cull distance |
+|---|---|---|---|---|
+| **bright** | `absmag < 0` | ~40k | single `tile_bright.bin` (~620 KB), no octree | none — always loaded |
+| **medium** | `absmag ≥ 0` | ~1.82M | octree (~180 tiles) | scene-unit distance chosen from the m=6.5 naked-eye limit for an M=0 star (~200 pc × SCALE) |
+
+Physical basis: apparent magnitude `m = M + 5·log₁₀(d/10pc)`, so for a fixed
+naked-eye cutoff (m ≈ 6.5), each absolute-magnitude bucket has a well-defined
+max distance at which its stars become invisible. The bucket boundary at
+M = 0 puts anything visible beyond ~200 pc into the bright bucket, which is
+rare enough (~2% of the catalog) to ship as a single always-loaded file.
+
+Buckets are orthogonal to **label tiers** — a tier-0 notable lives in
+whichever brightness bucket its absolute magnitude puts it in. About 60% of
+notables are in the bright bucket (Vega, Deneb, Betelgeuse, …); the rest
+(Sun-like and dimmer nearby stars) are in medium and stream in with their
+tiles as before.
+
+### Meta.json schema addition
+
+```json
+"buckets": {
+  "bright": { "cullDist": null },
+  "medium": { "cullDist": 598 }
+}
+```
+
+Each tile entry gains a `bucket: "bright" | "medium"` field. Runtime code
+in `starfield.ts` looks up `meta.buckets[tile.bucket].cullDist` per tile;
+`null` means "always load, never evict".
+
 ## Octree tiling
 
 Stars are spatially partitioned into an adaptive octree:
@@ -259,8 +296,11 @@ Owns all tile lifecycle: geometry tiles, label tiles, billboard meshes, and
 dynamic `SystemGroup` rebuilding. Per-frame (every 500 ms it):
 
 1. Computes the camera frustum and tests each tile's bounding sphere.
-2. Loads any tile's geometry whose center is within 800 scene units (and in
-   the frustum), via `fetch()` → `DataView` → `BufferGeometry` → `THREE.Points`.
+2. For each tile, looks up its bucket's cull distance from
+   `meta.buckets[tile.bucket].cullDist`. If `null` (the `bright` bucket),
+   the tile is always loaded regardless of camera position. Otherwise the
+   tile loads when its center is within the bucket cull distance and in
+   the frustum, via `fetch()` → `DataView` → `BufferGeometry` → `THREE.Points`.
 3. Independently triggers `loadTileLabels(path)` for any tile whose center is
    within `meta.labelTierVisibility["1"]` (default 150 units, ~50 ly).
 4. When a label tile arrives **and** its geometry tile is loaded, walks the
@@ -269,7 +309,8 @@ dynamic `SystemGroup` rebuilding. Per-frame (every 500 ms it):
    skipped here — they were spawned eagerly from `notable.json` at boot.
 5. When a tile is evicted (LRU past 80 loaded tiles, or it leaves the tier-1
    radius), despawns its billboards, disposes their materials/geometries, and
-   removes their entries from the global interactive list.
+   removes their entries from the global interactive list. Always-loaded
+   buckets (`cullDist === null`) are exempt from LRU eviction.
 6. Rebuilds `SystemGroup` objects whenever the membership of the spawned-set
    changes — only systems with all members currently present become groups.
 
@@ -305,10 +346,14 @@ off-screen).
 ## Building
 
 ```sh
-curl -L -O "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v3/athyg_v33.csv.gz"
-gunzip athyg_v33.csv.gz
-python3 scripts/build-catalog.py athyg_v33.csv data/augmentations.json dist/tiles/
+curl -L -o athyg_v33-1.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-1.csv.gz"
+curl -L -o athyg_v33-2.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-2.csv.gz"
+python3 scripts/build-catalog.py data/augmentations.json dist/tiles/ \
+  athyg_v33-1.csv.gz athyg_v33-2.csv.gz
 ```
+
+(AT-HYG v3.3 ships its full catalog split across two files with only part 1
+carrying a header row; the build script concatenates them transparently.)
 
 ## Curating tier-0 metadata
 

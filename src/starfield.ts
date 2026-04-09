@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star, SystemGroup } from "./types.ts";
-import { LABEL_CSS } from "./constants.ts";
+import { LABEL_CSS, SCALE } from "./constants.ts";
 import { scene, camera } from "./scene.ts";
 import { createBillboardMesh, createNotableAnchor, createStarLabel, rebindHitSphere } from "./billboard.ts";
 import { setCompanionResolver, setLabelsDirty } from "./interaction.ts";
@@ -16,10 +16,14 @@ import {
 const BYTES_PER_STAR = 16;
 const MAX_LOADED_TILES = 80;
 const TILE_BASE_URL = "/tiles/";
-const GEOMETRY_LOAD_DIST = 800;
 let tier1LoadDist = 150;
 
+// The brightness byte encodes absolute magnitude linearly as
+// `byte = (absmag + 10) * 10` (see build-catalog.py `brightness_byte`).
+// Apparent magnitude is recovered per-vertex via the distance modulus;
+// 30 scene units = 10 pc at SCALE=3. 1.50515 = 5 / log2(10).
 const pointVertexShader = `
+  uniform float uMagLimit;
   attribute float brightness;
   attribute vec3 starColor;
   varying vec3 vColor;
@@ -27,22 +31,21 @@ const pointVertexShader = `
 
   void main() {
     vColor = starColor;
-    vBrightness = brightness / 255.0;
+    float absMag = brightness * 0.1 - 10.0;
+
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    float dist = -mvPosition.z;
-    float baseSize = max(2.0, vBrightness * 4.0);
-    float rawSize = baseSize * (500.0 / dist);
-    float fadeFactor = smoothstep(4.0, 8.0, rawSize);
-    vBrightness *= fadeFactor;
-    if (fadeFactor < 0.01) {
+    float dist = max(-mvPosition.z, 1.0);
+    float appMag = absMag + 1.50515 * log2(dist * (1.0 / 30.0));
+
+    if (appMag > uMagLimit) {
       gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
       return;
     }
-    // Bigger min/max so the interior is dominated by fully-covered pixels.
-    // With tiny ~4 px points, almost every pixel is an MSAA-edge pixel whose
-    // coverage fraction flickers sub-pixel; bloom amplifies those steps into
-    // visible halo wobble.
-    gl_PointSize = clamp(rawSize * 2.0, 10.0, 32.0);
+
+    float visibility = 1.0 - smoothstep(uMagLimit - 1.5, uMagLimit, appMag);
+    vBrightness = visibility * max(0.1, (uMagLimit - appMag) * 0.25);
+    gl_PointSize = clamp((uMagLimit + 9.5) - appMag, 10.0, 32.0);
+
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -93,10 +96,31 @@ const fragments: Record<StarMode, string> = {
   `,
 };
 
+export const DEFAULT_MAG_LIMIT = 7.5;
+
+// Single source of truth shared between every point material and the
+// tier-0 label fade. Mutate .value directly (or via setMagLimit).
+export const magLimitUniform: THREE.IUniform<number> = { value: DEFAULT_MAG_LIMIT };
+
+export function setMagLimit(value: number) {
+  magLimitUniform.value = value;
+}
+
+// Apparent magnitude from absolute magnitude and a scene-space distance.
+// Shared with the point vertex shader (which inlines the same distance
+// modulus) so the TS and GLSL sides can't drift.
+const LOG10 = Math.log(10);
+export function apparentMag(absMag: number, sceneDist: number): number {
+  const distPc = Math.max(sceneDist, 1) / SCALE;
+  return absMag + 5 * Math.log(distPc / 10) / LOG10;
+}
+
 function makePointMaterial(mode: StarMode): THREE.ShaderMaterial {
   const flat = mode === "flat";
+  const uniforms: Record<string, THREE.IUniform> = { uMagLimit: magLimitUniform };
+  if (mode === "texture") uniforms.uGlowTex = { value: starGlowTexture };
   return new THREE.ShaderMaterial({
-    uniforms: mode === "texture" ? { uGlowTex: { value: starGlowTexture } } : {},
+    uniforms,
     vertexShader: pointVertexShader,
     fragmentShader: fragments[mode],
     transparent: !flat,
@@ -381,11 +405,16 @@ function precomputeTileSpheres() {
   }
 }
 
-function shouldLoadGeometry(path: string, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
+function shouldLoadGeometry(path: string, tile: TileMeta, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
+  const meta = getMeta();
+  if (!meta) return false;
+  const cullDist = meta.buckets[tile.bucket]?.cullDist ?? null;
+  // cullDist === null → always-loaded bucket (bright). Skip frustum + range.
+  if (cullDist === null) return true;
   const sphere = tileSpheres.get(path);
   if (!sphere) return false;
   if (!frustum.intersectsSphere(sphere)) return false;
-  return sphere.center.distanceTo(camPos) < GEOMETRY_LOAD_DIST;
+  return sphere.center.distanceTo(camPos) < cullDist;
 }
 
 function shouldLoadLabels(path: string, camPos: THREE.Vector3): boolean {
@@ -456,8 +485,11 @@ function evictGeometryTile(path: string) {
 
 function evictOldTiles() {
   if (loadedTiles.size <= MAX_LOADED_TILES) return;
-  const entries = [...loadedTiles.entries()].sort((a, b) => a[1].lastUsed - b[1].lastUsed);
-  const toEvict = entries.slice(0, loadedTiles.size - MAX_LOADED_TILES);
+  const meta = getMeta();
+  const evictable = [...loadedTiles.entries()]
+    .filter(([path]) => meta?.buckets[meta.tiles[path].bucket]?.cullDist !== null)
+    .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+  const toEvict = evictable.slice(0, loadedTiles.size - MAX_LOADED_TILES);
   for (const [path] of toEvict) evictGeometryTile(path);
 }
 
@@ -511,7 +543,7 @@ export function updateStarfield() {
   const camPos = camera.position;
 
   for (const [path, tile] of tileEntries) {
-    const wantsGeometry = shouldLoadGeometry(path, frustum, camPos);
+    const wantsGeometry = shouldLoadGeometry(path, tile, frustum, camPos);
     const loaded = loadedTiles.get(path);
     if (wantsGeometry) {
       if (loaded) {

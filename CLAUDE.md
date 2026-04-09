@@ -16,19 +16,41 @@ Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deplo
 
 ### Updating star data
 
+AT-HYG v3.3 ships its full catalog as two part-files (only part 1 has a
+header; the script concatenates them into a single logical stream).
+
 ```sh
-curl -L -O "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v3/athyg_v33.csv.gz"
-gunzip athyg_v33.csv.gz
-python3 scripts/build-catalog.py athyg_v33.csv data/augmentations.json dist/tiles/
+curl -L -o athyg_v33-1.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-1.csv.gz"
+curl -L -o athyg_v33-2.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-2.csv.gz"
+
+python3 scripts/build-catalog.py data/augmentations.json dist/tiles/ \
+  athyg_v33-1.csv.gz athyg_v33-2.csv.gz
 ```
 
-This produces the unified catalog under `dist/tiles/`:
+`.csv` and `.csv.gz` inputs are both accepted.
 
-- `meta.json` — tile manifest, label tier visibility radii
+Output under `dist/tiles/`:
+
+- `meta.json` — tile manifest, label tier visibility, bucket cull distances
 - `notable.json` — all tier-0 (notable) labels, eager-loaded at runtime
 - `systems.json` — system groupings
-- `tile_<path>.bin` — geometry tile (16 bytes/star, streams to GPU)
+- `tile_bright.bin` — brightness bucket: M < 0 stars, always loaded, no cull
+- `tile_<octree_path>.bin` — medium bucket (M ≥ 0), spatially tiled
 - `tile_<path>.lbl.json` — sparse tier-0 + tier-1 label rows for the tile (lazy)
+
+### Brightness buckets
+
+Stars are split by absolute magnitude, each bucket with its own streaming
+policy. This lets distant naked-eye stars render from any camera position
+without needing to stream in their enormous distant tiles.
+
+- **bright** (M < 0): ~40k stars, single always-loaded file (~620 KB). No
+  distance cull — Vega, Deneb, Betelgeuse, etc. always render.
+- **medium** (M ≥ 0): ~1.8M stars, octree-tiled and streamed. Cull distance
+  is the apparent-mag m=6.5 limit for an M=0 star (~200 pc × SCALE).
+
+Buckets are orthogonal to label tiers — a tier-0 notable lives in whichever
+brightness bucket its absolute magnitude puts it in.
 
 ### Source modules
 

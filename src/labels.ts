@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
-  LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ,
-  NOTABLE_FADE_NEAR, NOTABLE_FADE_FAR, SCALE,
+  LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, SCALE,
 } from "./constants.ts";
+import { apparentMag, magLimitUniform } from "./starfield.ts";
 
 const LY_PER_PARSEC = 3.26156;
 const labelsWithSubtitle = new WeakSet<HTMLElement>();
@@ -55,6 +55,9 @@ export function updateLabels(
 ) {
   if (!labelsVisible) return;
   if (!labelsDirty) return;
+
+  const magLimit = magLimitUniform.value;
+  const tier0FadeStart = magLimit - 1.5;
 
   const collapsed = new Set<THREE.Object3D>();
 
@@ -180,8 +183,10 @@ export function updateLabels(
     if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
 
     if (isTier0) {
-      const t = THREE.MathUtils.clamp(
-        (camDist - NOTABLE_FADE_NEAR) / (NOTABLE_FADE_FAR - NOTABLE_FADE_NEAR), 0, 1);
+      // Tier-0 labels fade over the same 1.5-mag window the shader uses,
+      // so label visibility tracks actual point visibility exactly.
+      const appMag = apparentMag(star.absmag ?? 10, camDist);
+      const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 1.5, 0, 1);
       if (t >= 1) {
         target.visible = false;
         return;

@@ -1,11 +1,13 @@
 // Debug mode: activated by URL query `?debug=1`.
 //
 // Provides a small on-screen panel and keyboard shortcuts for toggling
-// rendering features and tuning bloom parameters during visual bug
-// investigations. Features listen via `onDebugChange(fn)` / `onBloomTune(fn)`.
+// rendering features and tuning numeric parameters. Toggle features
+// listen via `onDebugChange(fn)`; scalar tuning is applied directly
+// from the binding table below.
 
-import { camera, target, orbitRadius, orbitPhi, orbitTheta } from "./scene.ts";
+import { camera, target, orbitRadius, orbitPhi, orbitTheta, bloomPass } from "./scene.ts";
 import { BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD } from "./constants.ts";
+import { DEFAULT_MAG_LIMIT, setMagLimit } from "./starfield.ts";
 import { makeCollapsible } from "./collapse.ts";
 
 type ToggleKey =
@@ -15,11 +17,9 @@ type ToggleKey =
   | "depthTest"     // depth test on star materials
   | "directRender"; // bypass composer and render directly
 
-export interface BloomParams {
-  strength: number;
-  radius: number;
-  threshold: number;
-}
+type ScalarKey =
+  | "bloom_strength" | "bloom_radius" | "bloom_threshold"
+  | "mag_limit";
 
 interface DebugState {
   textureGlow: boolean;
@@ -30,6 +30,7 @@ interface DebugState {
   bloom_strength: number;
   bloom_radius: number;
   bloom_threshold: number;
+  mag_limit: number;
 }
 
 const initialState: DebugState = {
@@ -41,34 +42,20 @@ const initialState: DebugState = {
   bloom_strength: BLOOM_STRENGTH,
   bloom_radius: BLOOM_RADIUS,
   bloom_threshold: BLOOM_THRESHOLD,
+  mag_limit: DEFAULT_MAG_LIMIT,
 };
 
 export const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";
 export const debug: DebugState = { ...initialState };
 
 const toggleListeners: Array<(key: ToggleKey, value: boolean) => void> = [];
-const bloomListeners: Array<(params: BloomParams) => void> = [];
 
 export function onDebugChange(fn: (key: ToggleKey, value: boolean) => void) {
   toggleListeners.push(fn);
 }
 
-export function onBloomTune(fn: (params: BloomParams) => void) {
-  bloomListeners.push(fn);
-}
-
 function notifyToggle(key: ToggleKey, value: boolean) {
   for (const fn of toggleListeners) fn(key, value);
-  renderStatic();
-}
-
-function notifyBloom() {
-  const params = {
-    strength: debug.bloom_strength,
-    radius: debug.bloom_radius,
-    threshold: debug.bloom_threshold,
-  };
-  for (const fn of bloomListeners) fn(params);
   renderStatic();
 }
 
@@ -80,22 +67,29 @@ const toggles: Array<{ shiftNum: number; label: string; prop: ToggleKey }> = [
   { shiftNum: 5, label: "direct render", prop: "directRender" },
 ];
 
-// Bloom parameter bindings: key + step + clamp.
-type BloomParam = "bloom_strength" | "bloom_radius" | "bloom_threshold";
-interface BloomBinding {
+interface TuneBinding {
   downKey: string;
   upKey: string;
-  prop: BloomParam;
+  prop: ScalarKey;
   label: string;
+  section: "bloom" | "eye";
   step: number;
   min: number;
   max: number;
+  apply: (value: number) => void;
 }
 
-const bloomBindings: BloomBinding[] = [
-  { downKey: "[", upKey: "]", prop: "bloom_strength", label: "strength", step: 0.1, min: 0, max: 3 },
-  { downKey: ";", upKey: "'", prop: "bloom_radius", label: "radius", step: 0.05, min: 0, max: 2 },
-  { downKey: ",", upKey: ".", prop: "bloom_threshold", label: "threshold", step: 0.02, min: 0, max: 1 },
+const applyBloom = () => {
+  bloomPass.strength = debug.bloom_strength;
+  bloomPass.radius = debug.bloom_radius;
+  bloomPass.threshold = debug.bloom_threshold;
+};
+
+const tuneBindings: TuneBinding[] = [
+  { downKey: "[", upKey: "]", prop: "bloom_strength", label: "strength", section: "bloom", step: 0.1, min: 0, max: 3, apply: applyBloom },
+  { downKey: ";", upKey: "'", prop: "bloom_radius", label: "radius", section: "bloom", step: 0.05, min: 0, max: 2, apply: applyBloom },
+  { downKey: ",", upKey: ".", prop: "bloom_threshold", label: "threshold", section: "bloom", step: 0.02, min: 0, max: 1, apply: applyBloom },
+  { downKey: "-", upKey: "=", prop: "mag_limit", label: "mag limit", section: "eye", step: 0.25, min: 2, max: 10, apply: setMagLimit },
 ];
 
 let panel: HTMLDivElement | null = null;
@@ -132,12 +126,14 @@ function renderStatic() {
       return `<div style="opacity:${on ? 1 : 0.5}">${check} Shift+${t.shiftNum}  ${t.label}</div>`;
     })
     .join("");
-  const bloomLines = bloomBindings
-    .map((b) => `<div>${b.downKey} ${b.upKey}  ${b.label} = ${fmt(debug[b.prop])}</div>`)
-    .join("");
+  const lineFor = (b: TuneBinding) =>
+    `<div>${b.downKey} ${b.upKey}  ${b.label} = ${fmt(debug[b.prop])}</div>`;
+  const bloomLines = tuneBindings.filter((b) => b.section === "bloom").map(lineFor).join("");
+  const eyeLines = tuneBindings.filter((b) => b.section === "eye").map(lineFor).join("");
   staticEl.innerHTML =
     toggleLines +
     `<div style="margin-top:6px;opacity:0.7">bloom tuning:</div>${bloomLines}` +
+    `<div style="margin-top:6px;opacity:0.7">eye:</div>${eyeLines}` +
     `<div style="margin-top:6px;opacity:0.7">camera:</div>`;
 }
 
@@ -197,13 +193,12 @@ export function initDebug() {
       }
     }
 
-    // Bloom parameter tuning
-    for (const b of bloomBindings) {
+    for (const b of tuneBindings) {
       if (e.key === b.downKey || e.key === b.upKey) {
         const dir = e.key === b.upKey ? 1 : -1;
-        const next = Math.min(b.max, Math.max(b.min, debug[b.prop] + dir * b.step));
-        debug[b.prop] = next;
-        notifyBloom();
+        debug[b.prop] = Math.min(b.max, Math.max(b.min, debug[b.prop] + dir * b.step));
+        b.apply(debug[b.prop]);
+        renderStatic();
         e.preventDefault();
         return;
       }
