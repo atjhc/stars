@@ -67,6 +67,16 @@ A non-exhaustive list of pieces this would require:
 - **Galactic structure**: density-wave spiral arms, dust lanes, bulge as a
   triaxial bar, halo as a thick sparse cloud, all driven by an SED-aware
   shader so the Milky Way "looks right" against an actual external view.
+- **Compact objects (black holes, neutron stars)**: a dedicated sub-scene
+  per target that ray-marches null geodesics through a Schwarzschild (or
+  Kerr) metric in a GLSL fragment shader, sampling a cubemap captured from
+  the object's position. Produces real gravitational lensing, photon ring,
+  Einstein ring, and — with an added procedural emission model — a
+  Doppler-beamed accretion disk. This is the same sub-scene coordinate
+  problem planets have (a stellar-mass event horizon is ~10⁻¹⁸ pc, 18
+  orders of magnitude below neighborhood pixel scale) so it can't be a
+  shader pass in the main scene; it has to be its own scale tier, entered
+  on selection. See "Compact-object rendering" below for more detail.
 
 ### Procedural fill
 
@@ -168,3 +178,102 @@ None of this is on the current roadmap; this document exists so future
 sessions remember the destination when making short-term architectural
 decisions, and so we don't paint ourselves into corners that would block
 the eventual sub-scene / floating-origin retrofit.
+
+## Compact-object rendering (black holes, neutron stars)
+
+Drake's catalog radius contains a handful of confirmed stellar-mass black
+holes — Gaia BH1 (~480 pc), Gaia BH3 (~590 pc), A0620-00 (~1,000 pc) —
+and the neutron-star population is considerably larger. These deserve a
+dedicated rendering tier because gravitational lensing is the one
+visualization where general relativity is actually *visible* instead of
+just a footnote.
+
+### Rendering approach
+
+The state of the art for real-time GR visualization is per-pixel geodesic
+ray tracing in a fragment shader. SpaceEngine's implementation (see
+https://spaceengine.org/articles/visualizing-general-relativity/) uses a
+Hamiltonian formulation that avoids computing all 64 Christoffel symbols
+— you only need 4 gradient components of `H = ½·gⁱʲ·pᵢpⱼ`, obtained by
+numerical differentiation of the metric tensor function:
+
+```
+dp_i/dτ = -∂H/∂x^i
+dx^i/dτ =  g^ij · p_j
+```
+
+Ray initialization for null geodesics: `p = Metric(x) · vec4(1, normalize(dir))`.
+Typical cost ~256 integration steps per pixel with adaptive timestep
+proportional to local curvature. The metric is pluggable: Schwarzschild is
+5 lines, Kerr-Newman in Kerr-Schild coordinates is ~20. Reference
+implementation: https://github.com/The-Order-of-the-Simulation/SpaceTimePathTracer.
+
+### Why it needs a sub-scene
+
+A ~10 M☉ stellar black hole has an event horizon of ~30 km ≈ 10⁻¹⁸ pc. At
+Drake's neighborhood scale (SCALE = 3 units/pc), every BH is more than 15
+orders of magnitude below one pixel — there's literally no geometry to
+render *at* its catalog position in the main scene. Entering the object
+has to transition the camera into a local coordinate frame where the
+event horizon is a few scene units and the external neighborhood is
+compressed onto a captured environment map.
+
+This is structurally the same sub-scene problem planets have, and the
+solutions line up:
+
+- Floating origin centered on the compact object.
+- Transition animation from main-scene scale into local scale.
+- A background environment captured on entry (either a one-time cubemap
+  snapshotted from the BH's position, or — if the user moves inside the
+  sub-scene — a per-frame re-render of the distant starfield into the 6
+  cubemap faces).
+- On exit, reverse the transition.
+
+### Background sampling strategies (trade-offs)
+
+1. **Static cubemap captured on entry** — simplest. Render the neighborhood
+   point cloud once into a cubemap from the BH's position, never update.
+   Camera can orbit the BH inside the sub-scene; lensing samples the
+   cubemap. Fails to update parallax if the user moves off the BH's
+   position, but that can be prevented UX-wise (orbit only).
+2. **Per-frame cubemap refresh** — 6× the cost of the main scene's star
+   render, but handles arbitrary camera motion in the sub-scene. Mobile
+   would probably cap this.
+3. **Ray-trace directly against the catalog** — not viable for 1.8 M
+   points per ray.
+
+Start with (1).
+
+### Minimum viable BH mode
+
+1. **Catalog entries** for the known nearby compact objects (Gaia BH1,
+   Gaia BH3, A0620-00, some neutron stars from ATNF or similar). They
+   live alongside stars in `notable.json` with a `kind: "blackhole"` or
+   `kind: "neutron_star"` discriminator.
+2. **Clickable marker** at the catalog position using an existing
+   billboard + special shader (glow with a dark core and photon ring
+   stylized, no real lensing) so the object is visible and selectable
+   at neighborhood scale.
+3. **Sub-scene entry on selection**: camera fade, mode switch, capture
+   the cubemap, instantiate the geodesic shader on a screen-filling quad
+   (or better, a bounding sphere mesh).
+4. **Schwarzschild integrator** as the first metric. Accretion disk
+   optional but cheap to add as a procedural texture sampled when the
+   ray crosses the equatorial plane inside some r_max.
+5. **Exit affordance**: ESC or "back" button restores the main scene.
+
+### Performance sanity check
+
+A screen-space Schwarzschild integrator at 1080p over a 400 × 400 pixel
+bounding region is ~160k pixels × 256 steps = ~40M integration steps per
+frame. A modern desktop GPU does this comfortably; mobile may need 128
+steps or a Newtonian-approximation fast path (see the Starless reference
+linked from the SpaceEngine article).
+
+### Why this fits the sub-scene work already on the list
+
+The blocker for BH rendering isn't the integrator — it's the coordinate
+frame, camera transition, and environment capture, which are exactly the
+pieces needed for the Sol-system and per-star-system tiers above. Done in
+that order, BH rendering falls out as one more sub-scene consumer of the
+LOD infrastructure, not a separate system.
