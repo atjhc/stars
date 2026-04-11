@@ -96,18 +96,30 @@ export function updateSystemLabelText(group: SystemGroup) {
   }
 }
 
+const DEFAULT_CLUSTER_GLOW = "0 0 12px rgba(130,170,255,0.7), 0 0 4px rgba(100,150,220,0.5)";
+
 function applySystemLabelGlow(group: SystemGroup) {
-  if (group.meshes.length === 0) return;
-  let brightestStar = group.meshes[0].userData as Star;
-  for (const m of group.meshes) {
-    const s = m.userData as Star;
-    if (s.lum > brightestStar.lum) brightestStar = s;
+  const el = group.label.element as HTMLElement;
+  if (group.meshes.length > 0) {
+    let brightestStar = group.meshes[0].userData as Star;
+    for (const m of group.meshes) {
+      const s = m.userData as Star;
+      if (s.lum > brightestStar.lum) brightestStar = s;
+    }
+    el.style.textShadow = starGlowShadow(brightestStar.ci);
+  } else {
+    el.style.textShadow = DEFAULT_CLUSTER_GLOW;
   }
-  (group.label.element as HTMLElement).style.textShadow = starGlowShadow(brightestStar.ci);
 }
 
+// Default text-shadow from CLUSTER_LABEL_CSS — must match constants.ts.
+const DEFAULT_CLUSTER_SHADOW = "0 0 8px rgba(100,150,220,0.6), 0 0 3px #000";
+
 function removeSystemLabelGlow(group: SystemGroup) {
-  (group.label.element as HTMLElement).style.textShadow = "";
+  const el = group.label.element as HTMLElement;
+  // Clusters: restore the default glow (the original was inline via cssText,
+  // so setting "" would destroy it permanently).
+  el.style.textShadow = group.kind === "cluster" ? DEFAULT_CLUSTER_SHADOW : "";
 }
 
 export function showSystemMembers(group: SystemGroup) {

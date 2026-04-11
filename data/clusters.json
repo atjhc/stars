@@ -123,11 +123,18 @@
     "notes": "Rich open cluster in Carina at ~472 pc. One of the brightest open clusters in the sky with ~3400 confirmed members. Age ~300 Myr. Named for its resemblance to scattered silver coins."
   },
   "NGC 6633": {
-    "aliases": [],
+    "aliases": ["Tweedledum Cluster"],
     "type": "open",
     "seed_stars": [],
     "wikipedia": "https://en.wikipedia.org/wiki/NGC_6633",
-    "notes": "Open cluster in Ophiuchus at ~390 pc. A moderately rich cluster visible in binoculars. Age ~600 Myr."
+    "notes": "Open cluster in Ophiuchus at ~390 pc. A moderately rich cluster visible in binoculars. Age ~600 Myr. Paired with IC 4756 ('Tweedledum and Tweedledee')."
+  },
+  "IC 4756": {
+    "aliases": ["Tweedledee Cluster", "Graff's Cluster"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/IC_4756",
+    "notes": "Open cluster in Serpens at ~467 pc. Paired with NGC 6633 as 'Tweedledum and Tweedledee' — two similar-age clusters at similar distances in adjacent constellations. Age ~800 Myr, with ~700 confirmed members."
   },
   "NGC 2287": {
     "aliases": ["M41", "Messier 41"],
@@ -135,6 +142,13 @@
     "seed_stars": [],
     "wikipedia": "https://en.wikipedia.org/wiki/Messier_41",
     "notes": "Open cluster in Canis Major at ~715 pc, about 4° south of Sirius. Contains several red giants. Age ~200 Myr."
+  },
+  "NGC 6281": {
+    "aliases": [],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/NGC_6281",
+    "notes": "Open cluster in Scorpius at ~521 pc, near μ Scorpii (Xamidimura). Age ~300 Myr, with ~750 confirmed members. Visible in binoculars as a compact knot of stars in the tail of the Scorpion."
   },
   "NGC 2168": {
     "aliases": ["M35", "Messier 35"],

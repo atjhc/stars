@@ -623,6 +623,10 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
         if meta_for:
             entry.update({k: v for k, v in meta_for.items() if v is not None})
         systems[name] = entry
+    # Ensure every cluster has an entry even if no named members resolved.
+    for cname, cmeta in cluster_meta.items():
+        if cname not in systems:
+            systems[cname] = {"members": [], **{k: v for k, v in cmeta.items() if v is not None}}
 
     # Emit one synthetic search entry per cluster so "Pleiades" and "M45"
     # return the cluster directly (no per-member dedup needed).
