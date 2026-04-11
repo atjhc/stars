@@ -290,6 +290,7 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
                 "dist": dist, "mag": mag, "absmag": absmag, "ci": ci,
                 "spect": row.get("spect", "").strip(),
                 "key": key,
+                "gaia_id": row.get("gaia", "").strip(),
                 "name": primary,
                 "aliases": aliases,
                 "tier": tier,
@@ -332,21 +333,118 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
         synth_count += 1
     print(f"Injected {synth_count} synthetic companions")
 
-    # Promote every member of a multi-star system to match the highest tier
-    # among its siblings. Without this, a tier-1 companion like Proxima
-    # Centauri can fail to render when its tile is frustum-culled, leaving
-    # its tier-0 siblings (Rigil Kentaurus, Toliman) uncollapsed and
-    # overlapping. Eagerly promoted members are then spawned as notable
-    # anchors at boot and always participate in their system group.
+    # Resolve star clusters (data/clusters.json). For each cluster, compute
+    # the centroid from its seed stars (looked up by proper name in the
+    # loaded catalog), then find every catalog star within `radius_pc` of
+    # that centroid and assign them to the cluster as its `system`. Cluster
+    # membership overrides any prior system assignment (clusters dominate
+    # binary systems for label collapse purposes).
+    data_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    clusters_path = os.path.join(data_dir, "data", "clusters.json")
+    members_path = os.path.join(data_dir, "data", "cluster-members", "hunt2023.json")
+    cluster_meta: dict[str, dict] = {}
+    if os.path.exists(clusters_path):
+        with open(clusters_path) as f:
+            clusters_raw = json.load(f)
+
+        # Load Gaia DR3 membership from Hunt & Reffert (2023) if available.
+        # Falls back to spatial-radius heuristic if the membership file is
+        # missing, but precise membership is strongly preferred.
+        gaia_members: dict[str, set[str]] = {}
+        if os.path.exists(members_path):
+            with open(members_path) as f:
+                raw_members = json.load(f)
+            for cname, ids in raw_members.items():
+                gaia_members[cname] = set(ids)
+            print(f"Loaded cluster membership: {', '.join(f'{k}={len(v)}' for k,v in gaia_members.items())}")
+
+        stars_by_gaia: dict[str, dict] = {}
+        for s in stars:
+            gid = s.get("gaia_id", "")
+            if gid:
+                stars_by_gaia[gid] = s
+
+        for cname, cdef in clusters_raw.items():
+            member_ids = gaia_members.get(cname)
+            sum_x = sum_y = sum_z = 0.0
+            member_count = 0
+
+            if member_ids:
+                # Precise membership via Gaia DR3 source IDs, supplemented
+                # by hand-curated seed stars (bright stars often have poor
+                # Gaia astrometry and get excluded from automated clustering).
+                stars_by_name = {s["name"]: s for s in stars if s.get("name")}
+                seed_names = set(cdef.get("seed_stars", []))
+                for s in stars:
+                    gid = s.get("gaia_id", "")
+                    is_gaia_member = gid and gid in member_ids
+                    is_seed = s.get("name") in seed_names
+                    if not is_gaia_member and not is_seed:
+                        continue
+                    s["system"] = cname
+                    sum_x += s["sx"]
+                    sum_y += s["sy"]
+                    sum_z += s["sz"]
+                    member_count += 1
+            else:
+                # Fallback: spatial radius around seed star centroid.
+                stars_by_name = {s["name"]: s for s in stars if s.get("name")}
+                seeds = [stars_by_name.get(n) for n in cdef.get("seed_stars", [])]
+                seeds = [s for s in seeds if s]
+                if not seeds:
+                    print(f"WARNING: cluster {cname!r} has no resolvable seed stars; skipping", file=sys.stderr)
+                    continue
+                cx = sum(s["sx"] for s in seeds) / len(seeds)
+                cy = sum(s["sy"] for s in seeds) / len(seeds)
+                cz = sum(s["sz"] for s in seeds) / len(seeds)
+                r = cdef["radius_pc"] * SCALE
+                r_sq = r * r
+                for s in stars:
+                    dx, dy, dz = s["sx"] - cx, s["sy"] - cy, s["sz"] - cz
+                    if dx * dx + dy * dy + dz * dz > r_sq:
+                        continue
+                    s["system"] = cname
+                    sum_x += s["sx"]
+                    sum_y += s["sy"]
+                    sum_z += s["sz"]
+                    member_count += 1
+
+            if member_count > 0:
+                cx = sum_x / member_count
+                cy = sum_y / member_count
+                cz = sum_z / member_count
+            else:
+                cx = cy = cz = 0.0
+
+            cluster_meta[cname] = {
+                "kind": "cluster",
+                "type": cdef.get("type", "open"),
+                "aliases": cdef.get("aliases", []),
+                "wikipedia": cdef.get("wikipedia"),
+                "notes": cdef.get("notes"),
+                "centroid": [round(cx, 4), round(cy, 4), round(cz, 4)],
+            }
+            src = "Gaia DR3" if member_ids else "spatial"
+            print(f"Cluster {cname!r}: {member_count} members ({src})")
+
+    # Promote every named member of a multi-star (binary/trinary) system to
+    # tier-0. Cluster members are NOT mass-promoted — only members that
+    # already independently qualify as tier-0 (IAU proper name + bright)
+    # stay notable; the rest stream in as tier-1 when their tile loads.
     members_by_system: dict[str, list[dict]] = defaultdict(list)
     for s in stars:
         if s.get("system"):
             members_by_system[s["system"]].append(s)
-    for sys_members in members_by_system.values():
-        if any(m["tier"] == 0 for m in sys_members):
-            for m in sys_members:
-                if m["tier"] != 0:
-                    m["tier"] = 0
+    for sys_name, sys_members in members_by_system.items():
+        if sys_name in cluster_meta:
+            continue
+        if not any(m["tier"] == 0 for m in sys_members):
+            continue
+        for m in sys_members:
+            if m["tier"] == 2 and not m.get("name"):
+                continue
+            if m["tier"] != 0:
+                m["tier"] = 0
 
     min_xyz = [min(s["s" + a] for s in stars) for a in "xyz"]
     max_xyz = [max(s["s" + a] for s in stars) for a in "xyz"]
@@ -419,7 +517,7 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
     # field names keep the JSON payload small; the runtime fetches it once
     # at boot and treats it as a plain POJO array.
     search_index: list[dict] = []
-    systems: dict[str, list] = defaultdict(list)
+    systems_members: dict[str, list] = defaultdict(list)
     total_bin_bytes = 0
     total_lbl_bytes = 0
     tiles_with_labels = 0
@@ -489,7 +587,7 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             search_index.append(search_entry)
 
             if s["system"]:
-                systems[s["system"]].append({"tile": path, "i": i, "name": s["name"]})
+                systems_members[s["system"]].append({"tile": path, "i": i, "name": s["name"]})
 
         bin_path = os.path.join(out_dir, bin_filename)
         with open(bin_path, "wb") as f:
@@ -513,6 +611,33 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             "bucket": tile["bucket"],
             "labelCounts": labels_in_tile,
         }
+
+    # Assemble the new systems.json shape: every system entry carries its
+    # members PLUS optional top-level metadata (wikipedia, notes, kind,
+    # aliases). Clusters have all the metadata; binary systems typically
+    # have only members.
+    systems: dict[str, dict] = {}
+    for name, members in systems_members.items():
+        entry: dict = {"members": members}
+        meta_for = cluster_meta.get(name)
+        if meta_for:
+            entry.update({k: v for k, v in meta_for.items() if v is not None})
+        systems[name] = entry
+
+    # Emit one synthetic search entry per cluster so "Pleiades" and "M45"
+    # return the cluster directly (no per-member dedup needed).
+    for cname, cmeta in cluster_meta.items():
+        centroid = cmeta["centroid"]
+        search_index.append({
+            "n": cname,
+            "k": "c",
+            "sy": cname,
+            "p": centroid,
+            "mg": 0,
+            "M": 0,
+            "d": 0,
+            "a": cmeta.get("aliases") or [],
+        })
 
     with open(os.path.join(out_dir, "meta.json"), "w") as f:
         json.dump(meta, f)

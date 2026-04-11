@@ -34,6 +34,11 @@ export let lastHoveredMesh: THREE.Object3D | null = null;
 export let labelsDirty = true;
 
 export function setLabelsDirty(v: boolean) { labelsDirty = v; }
+export function setHoveredSystem(g: SystemGroup | null) { hoveredSystem = g; }
+export function setSelectedSystem(g: SystemGroup | null) {
+  selectedSystem = g;
+  rebuildSelectedGroupMembers();
+}
 
 function applyLabelGlow(div: HTMLElement, target: THREE.Object3D) {
   const star = target.userData as Star;
@@ -73,14 +78,17 @@ const lastSystemLabelState = new WeakMap<SystemGroup, string>();
 
 export function updateSystemLabelText(group: SystemGroup) {
   const isActive = hoveredSystem === group || selectedSystem === group;
-  const members = isActive
+  // Clusters never show member names in their label — there are too
+  // many and the names are independently visible.
+  const showMembers = isActive && group.kind !== "cluster";
+  const members = showMembers
     ? (group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes)
     : [];
-  const key = isActive ? members.map((m) => (m.userData as Star).name).join(",") : "";
+  const key = showMembers ? members.map((m) => (m.userData as Star).name).join(",") : "";
   if (lastSystemLabelState.get(group) === key) return;
   lastSystemLabelState.set(group, key);
   const el = group.label.element as HTMLElement;
-  if (isActive) {
+  if (showMembers) {
     const names = members.map((m) => (m.userData as Star).name);
     el.innerHTML = `<div>${group.name}</div><div class="system-members">${names.join(" · ")}</div>`;
   } else {
@@ -89,6 +97,7 @@ export function updateSystemLabelText(group: SystemGroup) {
 }
 
 function applySystemLabelGlow(group: SystemGroup) {
+  if (group.meshes.length === 0) return;
   let brightestStar = group.meshes[0].userData as Star;
   for (const m of group.meshes) {
     const s = m.userData as Star;
@@ -115,10 +124,23 @@ export function hideSystemMembers(group: SystemGroup) {
   labelsDirty = true;
 }
 
-// Hover
+// Set of meshes in the currently selected system, rebuilt on selection
+// change. O(1) lookup in hover handlers instead of linear .includes().
+let selectedGroupMembers = new Set<THREE.Object3D>();
+
+function rebuildSelectedGroupMembers() {
+  selectedGroupMembers = selectedSystem
+    ? new Set(selectedSystem.meshes)
+    : new Set();
+}
+
+function isInSelectedGroup(target: THREE.Object3D): boolean {
+  return selectedGroupMembers.has(target);
+}
+
 export function showHover(target: THREE.Object3D) {
   if (lastHoveredMesh === target) return;
-  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
+  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh && !isInSelectedGroup(lastHoveredMesh)) {
     unhighlightStar(lastHoveredMesh);
     const prevLabel = getLabelDiv(lastHoveredMesh);
     if (prevLabel) removeLabelGlow(prevLabel);
@@ -131,7 +153,7 @@ export function showHover(target: THREE.Object3D) {
 }
 
 export function hideHover() {
-  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh) {
+  if (lastHoveredMesh && lastHoveredMesh !== selectedMesh && !isInSelectedGroup(lastHoveredMesh)) {
     unhighlightStar(lastHoveredMesh);
     const label = getLabelDiv(lastHoveredMesh);
     if (label) removeLabelGlow(label);
@@ -172,18 +194,23 @@ export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) 
   selectedMesh = null;
   if (selectedSystem && selectedSystem !== group) hideSystemMembers(selectedSystem);
   selectedSystem = group;
+  rebuildSelectedGroupMembers();
   showSystemMembers(group);
   labelsDirty = true;
 
-  let nearest = group.meshes[0];
-  let nearestDist = Infinity;
-  for (const m of group.meshes) {
-    const d = m.position.distanceTo(camera.position);
-    if (d < nearestDist) { nearest = m; nearestDist = d; }
+  if (group.kind === "cluster") {
+    animateTo(group.centroid);
+  } else {
+    let nearest = group.meshes[0];
+    let nearestDist = Infinity;
+    for (const m of group.meshes) {
+      const d = m.position.distanceTo(camera.position);
+      if (d < nearestDist) { nearest = m; nearestDist = d; }
+    }
+    const focusTarget = nearest.position.distanceTo(group.centroid) < 0.5
+      ? group.centroid : nearest.position;
+    animateTo(focusTarget);
   }
-  const focusTarget = nearest.position.distanceTo(group.centroid) < 0.5
-    ? group.centroid : nearest.position;
-  animateTo(focusTarget);
   lastHoveredMesh = null;
   updateDetailPanel();
 }
@@ -194,7 +221,7 @@ export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void
     const prevLabel = getLabelDiv(selectedMesh);
     if (prevLabel) removeLabelGlow(prevLabel);
   }
-  if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; }
+  if (selectedSystem) { hideSystemMembers(selectedSystem); selectedSystem = null; rebuildSelectedGroupMembers(); }
   selectedMesh = target;
   highlightStar(target);
   const label = getLabelDiv(target);

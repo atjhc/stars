@@ -61,12 +61,24 @@ export interface SystemMember {
   name: string;
 }
 
+export interface SystemData {
+  members: SystemMember[];
+  kind?: "cluster";
+  type?: string;
+  aliases?: string[];
+  wikipedia?: string;
+  notes?: string;
+  centroid?: [number, number, number];
+  radius?: number;
+}
+
 // Global search entry. Short keys to minimize the JSON payload; see
-// build-catalog.py for the producer. Covers every tier-0 and tier-1 star.
+// build-catalog.py for the producer. Covers every tier-0 and tier-1 star
+// plus one synthetic entry per cluster.
 export interface SearchEntry {
   n: string;                    // primary name
-  t: string;                    // tile path
-  i: number;                    // index in tile
+  t?: string;                   // tile path (absent for synthetic cluster entries)
+  i?: number;                   // index in tile (absent for synthetic cluster entries)
   p: [number, number, number];  // scene-space position
   mg: number;                   // apparent mag
   M: number;                    // absolute mag
@@ -74,13 +86,14 @@ export interface SearchEntry {
   sp?: string;                  // spectral type
   a?: string[];                 // aliases
   sy?: string;                  // system name
+  k?: "c";                      // kind: "c" for cluster
 }
 
 const TILE_BASE_URL = "/tiles/";
 
 let meta: CatalogMeta | null = null;
 let notable: NotableEntry[] = [];
-let systems: Record<string, SystemMember[]> = {};
+let systems: Record<string, SystemData> = {};
 let searchIndex: SearchEntry[] = [];
 
 const tileLabelCache = new Map<string, LabelRow[]>();
@@ -112,7 +125,7 @@ export async function initCatalog(): Promise<void> {
 
 export function getMeta(): CatalogMeta | null { return meta; }
 export function getNotable(): NotableEntry[] { return notable; }
-export function getSystems(): Record<string, SystemMember[]> { return systems; }
+export function getSystems(): Record<string, SystemData> { return systems; }
 export function getSearchIndex(): SearchEntry[] { return searchIndex; }
 export function getTileLabels(path: string): LabelRow[] | undefined { return tileLabelCache.get(path); }
 

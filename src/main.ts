@@ -10,13 +10,14 @@ import {
 } from "./scene.ts";
 import {
   selectedSystem, hoveredSystem,
-  setLabelsDirty,
+  setLabelsDirty, setHoveredSystem,
   registerLabelMap,
   highlightStar,
   hoverTarget, unhoverAll,
   selectTarget, selectSystem, selectStar,
   showSystemMembers, hideSystemMembers,
 } from "./interaction.ts";
+import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
@@ -120,10 +121,16 @@ function wireSystemLabels() {
     wiredSystems.add(group);
     const labelDiv = group.label.element as HTMLElement;
     labelDiv.addEventListener("mouseenter", () => {
-      if (selectedSystem !== group) showSystemMembers(group);
+      if (selectedSystem !== group) {
+        setHoveredSystem(group);
+        showSystemMembers(group);
+      }
     });
     labelDiv.addEventListener("mouseleave", () => {
-      if (hoveredSystem === group && selectedSystem !== group) hideSystemMembers(group);
+      if (hoveredSystem === group && selectedSystem !== group) {
+        hideSystemMembers(group);
+        setHoveredSystem(null);
+      }
     });
     labelDiv.addEventListener("mouseup", () => {
       if (dragDistance >= CLICK_THRESHOLD) return;
@@ -134,6 +141,9 @@ function wireSystemLabels() {
 onLabelsChanged(() => {
   wireSystemLabels();
   setLabelsDirty(true);
+  if (pendingClusterSelect) {
+    if (trySelectCluster(pendingClusterSelect)) pendingClusterSelect = null;
+  }
 });
 
 // Mouse controls
@@ -286,15 +296,42 @@ window.addEventListener("resize", () => {
 });
 
 // Search is driven by the global names.json index (every tier-0/tier-1
-// star, not just the currently-streamed set). When the user picks an
+// star plus one synthetic entry per cluster). When the user picks an
 // entry whose tile isn't loaded, we force-load the tile and upgrade the
-// selection to a real mesh once it spawns.
-setupSearch((entry) => {
+// selection to a real mesh once it spawns. Cluster entries resolve to
+// the live SystemGroup by name.
+let pendingClusterSelect: string | null = null;
+
+function trySelectCluster(name: string): boolean {
+  const group = systemGroups.find((g) => g.name === name);
+  if (!group) return false;
+  selectSystem(group, updateDetailPanel);
+  return true;
+}
+
+function handleSearchSelect(entry: SearchEntry) {
+  pendingClusterSelect = null;
   animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
-  requestTileFocus(entry.t, entry.i, (mesh) => {
-    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
-  });
-});
+  if (entry.k === "c") {
+    if (!trySelectCluster(entry.n)) {
+      // Group doesn't exist yet — member tiles haven't streamed.
+      // Force-load a member tile; when rebuildSystems fires, the
+      // onLabelsChanged callback retries the selection.
+      pendingClusterSelect = entry.n;
+      const member = getSearchIndex().find((e) => e.sy === entry.n && e.t);
+      if (member?.t && member.i !== undefined) {
+        requestTileFocus(member.t, member.i, () => {});
+      }
+    }
+    return;
+  }
+  if (entry.t !== undefined && entry.i !== undefined) {
+    requestTileFocus(entry.t, entry.i, (mesh) => {
+      selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+    });
+  }
+}
+setupSearch(handleSearchSelect);
 
 // Boot the catalog + starfield, then select Sol once notables are loaded.
 await initStarfield();

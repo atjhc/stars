@@ -22,28 +22,51 @@ function renderNotes(text: string | undefined): string {
 }
 
 function updateSystemDetailPanel(group: SystemGroup) {
+  const isCluster = group.kind === "cluster";
+
+  // Clusters have their own curated blurb + wikipedia at the group level;
+  // binary systems aggregate from members instead.
+  const groupWiki = group.wikipedia;
+  const groupNotes = group.notes;
+
   const wikiUrls = new Set<string>();
-  const notes: string[] = [];
+  const memberNotes: string[] = [];
   const rows: string[] = [];
   for (const m of group.meshes) {
     const s = m.userData as Star;
     const spect = s.spect ? `<span class="member-spect">${s.spect}</span>` : "";
     rows.push(`<div class="system-member-row">${s.name} — ${formatDist(s.dist)} ${spect}</div>`);
-    if (s.wikipedia) wikiUrls.add(s.wikipedia);
-    if (s.notes) notes.push(`<strong>${s.name}:</strong> ${s.notes}`);
+    if (!isCluster) {
+      if (s.wikipedia) wikiUrls.add(s.wikipedia);
+      if (s.notes) memberNotes.push(`<strong>${s.name}:</strong> ${s.notes}`);
+    }
   }
+
+  const wikiUrl = groupWiki ?? [...wikiUrls][0];
+  const notesHtml = groupNotes
+    ? renderNotes(groupNotes)
+    : (memberNotes.length > 0 ? `<div class="star-notes">${memberNotes.join("<br>")}</div>` : "");
+
+  const aliasLine = isCluster && group.aliases && group.aliases.length > 0
+    ? `<div class="star-aliases">${group.aliases.join(" · ")}</div>` : "";
+
+  const memberList = isCluster
+    ? ""
+    : `<div class="system-member-list">${rows.join("")}</div>`;
 
   detail.innerHTML = `
     <div class="star-name">${group.name}</div>
+    ${aliasLine}
     <div class="detail-body">
       <div class="star-detail">
         Distance: ${formatDist(group.avgDist)}
       </div>
-      <div class="system-member-list">${rows.join("")}</div>
-      ${notes.length > 0 ? `<div class="star-notes">${notes.join("<br>")}</div>` : ""}
-      ${renderWikiLink([...wikiUrls][0])}
+      ${memberList}
+      ${notesHtml}
+      ${renderWikiLink(wikiUrl)}
     </div>
   `;
+  detail.classList.remove("collapsed");
   detail.classList.add("active");
 }
 
@@ -77,5 +100,6 @@ export function updateDetailPanel() {
       ${renderWikiLink(star.wikipedia)}
     </div>
   `;
+  detail.classList.remove("collapsed");
   detail.classList.add("active");
 }

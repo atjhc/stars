@@ -1,0 +1,146 @@
+{
+  "Pleiades": {
+    "aliases": ["M45", "Messier 45", "Seven Sisters", "Melotte 22"],
+    "type": "open",
+    "seed_stars": ["Alcyone", "Atlas", "Electra", "Maia", "Merope", "Taygeta", "Celaeno", "Pleione", "Asterope"],
+    "radius_pc": 20,
+    "wikipedia": "https://en.wikipedia.org/wiki/Pleiades",
+    "notes": "Young open cluster in Taurus, ~100 Myr old, ~136 pc away. The nine named 'Seven Sisters' — Alcyone, Atlas, Electra, Maia, Merope, Taygeta, Celaeno, Pleione, and Asterope — are hot blue-white B-type stars glowing through residual reflection nebulosity. One of the most striking sights in a small telescope or binoculars."
+  },
+  "Hyades": {
+    "aliases": ["Melotte 25", "Collinder 50"],
+    "type": "open",
+    "seed_stars": ["Prima Hyadum", "Secunda Hyadum", "Chamukuy", "Ain"],
+    "radius_pc": 10,
+    "wikipedia": "https://en.wikipedia.org/wiki/Hyades_(star_cluster)",
+    "notes": "Nearest open cluster to Sol at ~47 pc, forming the V-shaped face of Taurus. Aldebaran lies in the foreground and is NOT a member — it's less than half the cluster's distance. Age ~625 Myr, roughly 400 confirmed members."
+  },
+  "Alpha Persei Cluster": {
+    "aliases": ["Melotte 20", "Collinder 39", "Perseus OB3"],
+    "type": "open",
+    "seed_stars": ["Mirfak"],
+    "radius_pc": 15,
+    "wikipedia": "https://en.wikipedia.org/wiki/Alpha_Persei_Cluster",
+    "notes": "Young (~50 Myr) open cluster centered on the supergiant Mirfak, at ~172 pc. A loose, large association of hot B-type stars visible to the naked eye as a string of stars arcing through Perseus."
+  },
+
+  "Coma Star Cluster": {
+    "aliases": ["Melotte 111", "Coma Berenices Cluster"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Coma_Star_Cluster",
+    "notes": "Nearby open cluster in Coma Berenices at ~85 pc. Age ~450 Myr. One of the closest clusters to Sol, forming a loose scattering of 5th-magnitude stars visible to the naked eye."
+  },
+  "IC 2391": {
+    "aliases": ["Omicron Velorum Cluster"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/IC_2391",
+    "notes": "Young (~50 Myr) open cluster in Vela at ~150 pc, centered on the bright star Omicron Velorum. Visible to the naked eye from the southern hemisphere."
+  },
+  "IC 2602": {
+    "aliases": ["Southern Pleiades", "Theta Carinae Cluster"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/IC_2602",
+    "notes": "Bright open cluster in Carina at ~150 pc. Often called the 'Southern Pleiades' for its visual resemblance. Age ~30 Myr, one of the youngest nearby clusters."
+  },
+  "Beehive Cluster": {
+    "aliases": ["Praesepe", "M44", "NGC 2632", "Messier 44"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Beehive_Cluster",
+    "notes": "Large open cluster in Cancer at ~183 pc, visible as a fuzzy patch to the naked eye. Age ~600 Myr. One of the nearest Messier objects, known since antiquity."
+  },
+  "NGC 2451A": {
+    "aliases": ["NGC 2451"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/NGC_2451",
+    "notes": "Nearer component of the NGC 2451 pair in Puppis at ~190 pc. Two unrelated open clusters overlap on the sky; this foreground cluster is younger (~50 Myr) and sparser."
+  },
+  "NGC 2451B": {
+    "aliases": [],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/NGC_2451",
+    "notes": "Background component of the NGC 2451 pair in Puppis at ~368 pc. A richer, older (~200 Myr) cluster that overlaps the nearer NGC 2451A on the sky but is physically unrelated."
+  },
+  "Blanco 1": {
+    "aliases": [],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Blanco_1",
+    "notes": "Open cluster in Sculptor at ~234 pc. Age ~100 Myr. A relatively sparse cluster in the southern sky."
+  },
+  "Ptolemy Cluster": {
+    "aliases": ["M7", "Messier 7", "NGC 6475"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Ptolemy_Cluster",
+    "notes": "Large bright open cluster in Scorpius at ~276 pc. Known since antiquity — Ptolemy cataloged it in 130 AD. Age ~200 Myr. One of the most prominent open clusters in the sky."
+  },
+  "IC 4665": {
+    "aliases": [],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/IC_4665",
+    "notes": "Young (~40 Myr) open cluster in Ophiuchus at ~343 pc. A loose, large cluster visible in binoculars."
+  },
+  "NGC 2547": {
+    "aliases": [],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/NGC_2547",
+    "notes": "Young (~35 Myr) open cluster in Vela at ~382 pc. A rich southern-hemisphere cluster."
+  },
+  "NGC 2516": {
+    "aliases": ["Southern Beehive"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/NGC_2516",
+    "notes": "Rich open cluster in Carina at ~407 pc, sometimes called the 'Southern Beehive'. Visible to the naked eye. Age ~150 Myr, with ~3800 confirmed members."
+  },
+  "Butterfly Cluster": {
+    "aliases": ["M6", "Messier 6", "NGC 6405"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Butterfly_Cluster",
+    "notes": "Open cluster in Scorpius at ~452 pc. Named for its butterfly-like shape. Age ~100 Myr. Visible to the naked eye near the stinger of Scorpius."
+  },
+  "NGC 2422": {
+    "aliases": ["M47", "Messier 47"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Messier_47",
+    "notes": "Open cluster in Puppis at ~468 pc. A bright, loose cluster visible to the naked eye under good conditions. Age ~80 Myr."
+  },
+  "Wishing Well Cluster": {
+    "aliases": ["NGC 3532"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/NGC_3532",
+    "notes": "Rich open cluster in Carina at ~472 pc. One of the brightest open clusters in the sky with ~3400 confirmed members. Age ~300 Myr. Named for its resemblance to scattered silver coins."
+  },
+  "NGC 6633": {
+    "aliases": [],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/NGC_6633",
+    "notes": "Open cluster in Ophiuchus at ~390 pc. A moderately rich cluster visible in binoculars. Age ~600 Myr."
+  },
+  "NGC 2287": {
+    "aliases": ["M41", "Messier 41"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Messier_41",
+    "notes": "Open cluster in Canis Major at ~715 pc, about 4° south of Sirius. Contains several red giants. Age ~200 Myr."
+  },
+  "NGC 2168": {
+    "aliases": ["M35", "Messier 35"],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Messier_35",
+    "notes": "Large open cluster in Gemini at ~839 pc, visible to the naked eye as a hazy spot near Castor's foot. Age ~175 Myr."
+  }
+}

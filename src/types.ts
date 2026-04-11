@@ -16,4 +16,8 @@ export interface SystemGroup {
   collapsedMembers: THREE.Object3D[];
   screens: { x: number; y: number }[];
   parents: number[];
+  kind?: "cluster";
+  aliases?: string[];
+  wikipedia?: string;
+  notes?: string;
 }

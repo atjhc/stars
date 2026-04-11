@@ -3,7 +3,10 @@ import type { Star, SystemGroup } from "./types.ts";
 import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, SCALE,
 } from "./constants.ts";
-import { apparentMag, magLimitUniform } from "./starfield.ts";
+import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
+import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
+
+const collapsed = new Set<THREE.Object3D>();
 
 const LY_PER_PARSEC = 3.26156;
 const labelsWithSubtitle = new WeakSet<HTMLElement>();
@@ -41,6 +44,27 @@ function cssLabelChild(target: THREE.Object3D): THREE.Object3D | undefined {
   return undefined;
 }
 
+function projectGroupToScreen(group: SystemGroup) {
+  for (let i = 0; i < group.meshes.length; i++) {
+    const s = projectToScreen(group.meshes[i].position);
+    group.screens[i].x = s.x;
+    group.screens[i].y = s.y;
+  }
+}
+
+function collapseNearPoint(
+  sx: number, sy: number,
+  group: SystemGroup,
+) {
+  for (let i = 0; i < group.meshes.length; i++) {
+    const dx = group.screens[i].x - sx;
+    const dy = group.screens[i].y - sy;
+    if (dx * dx + dy * dy < COLLAPSE_PX_SQ) {
+      collapsed.add(group.meshes[i]);
+    }
+  }
+}
+
 const prevCamPos = new THREE.Vector3();
 
 export type DivResolver = (target: THREE.Object3D) => HTMLElement | undefined;
@@ -59,19 +83,40 @@ export function updateLabels(
   const magLimit = magLimitUniform.value;
   const tier0FadeStart = magLimit - 1.5;
 
-  const collapsed = new Set<THREE.Object3D>();
+  const hlCtx: import("./labelVisibility.ts").HighlightContext = {
+    meshToSystem, clusterOf,
+    hoveredSystem, selectedSystem,
+    lastHoveredMesh, selectedMesh,
+  };
+
+  collapsed.clear();
 
   for (const group of systemGroups) {
+    if (group.kind === "cluster") {
+      group.collapsedMembers = [];
+      const dist = group.anchor.position.distanceTo(camera.position);
+      const isHighlighted = hoveredSystem === group || selectedSystem === group;
+      const appMag = apparentMag(-2, dist);
+      const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 1.5, 0, 1);
+      group.label.visible = t < 1 || isHighlighted;
+      if (group.label.visible) {
+        const opacity = isHighlighted ? 1.0 : (1 - t);
+        const zIndex = Math.round(20000 - dist * 100);
+        setLabelStyle(group.label.element as HTMLElement, String(Math.max(0.3, opacity)), String(zIndex));
+
+        projectGroupToScreen(group);
+        const anchorScreen = projectToScreen(group.anchor.position);
+        collapseNearPoint(anchorScreen.x, anchorScreen.y, group);
+      }
+      continue;
+    }
+
     const n = group.meshes.length;
     const screens = group.screens;
     const parent = group.parents;
 
-    for (let i = 0; i < n; i++) {
-      const s = projectToScreen(group.meshes[i].position);
-      screens[i].x = s.x;
-      screens[i].y = s.y;
-      parent[i] = i;
-    }
+    projectGroupToScreen(group);
+    for (let i = 0; i < n; i++) parent[i] = i;
 
     function find(i: number): number { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
 
@@ -137,8 +182,7 @@ export function updateLabels(
     const camDist = target.position.distanceTo(camera.position);
     const sys = meshToSystem.get(target);
     const star = target.userData as Star;
-    const isHighlighted = target === lastHoveredMesh || target === selectedMesh
-      || (sys !== undefined && (sys === hoveredSystem || sys === selectedSystem));
+    const isHighlighted = shouldHighlightLabel(target, hlCtx);
 
     // CSS2DObject child; toggled separately from target.visible so a
     // collapsed system member can hide its individual label while its
@@ -157,7 +201,8 @@ export function updateLabels(
 
     const zIndex = String(Math.round(10000 - camDist * 100));
     const isTier0 = star.tier === 0;
-    const isSystemMemberHighlighted = sys !== undefined && (sys === hoveredSystem || sys === selectedSystem);
+    const owningGroup = sys ?? clusterOf.get(target);
+    const isSystemMemberHighlighted = owningGroup !== undefined && (owningGroup === hoveredSystem || owningGroup === selectedSystem);
 
     if (isHighlighted) {
       target.visible = true;
@@ -186,20 +231,23 @@ export function updateLabels(
     }
     if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
 
+    // Cluster members whose cluster is active: keep the Object3D visible
+    // (so the billboard glow from highlightSystem renders) but don't
+    // override the label's normal fade styling.
+    const forceVis = shouldForceVisible(target, hlCtx);
+
     if (isTier0) {
-      // Tier-0 labels fade over the same 1.5-mag window the shader uses,
-      // so label visibility tracks actual point visibility exactly.
       const appMag = apparentMag(star.absmag ?? 10, camDist);
       const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 1.5, 0, 1);
       if (t >= 1) {
-        target.visible = false;
+        target.visible = forceVis;
         return;
       }
       target.visible = true;
       setLabelStyle(div, String(1 - t), zIndex);
     } else {
       if (camDist > LABEL_HIDE_DIST) {
-        target.visible = false;
+        target.visible = forceVis;
         return;
       }
       target.visible = true;

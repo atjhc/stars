@@ -1,0 +1,108 @@
+import { describe, it, expect, beforeEach, mock } from "bun:test";
+import type { SearchEntry } from "./catalog.ts";
+
+// Isolate the search-matching logic from the DOM-dependent setupSearch.
+// Extract the core filtering into a testable function.
+import { filterSearch } from "./searchFilter.ts";
+
+function makeEntry(overrides: Partial<SearchEntry> & { n: string }): SearchEntry {
+  return {
+    p: [0, 0, 0],
+    mg: 0,
+    M: 0,
+    d: 0,
+    ...overrides,
+  };
+}
+
+describe("filterSearch", () => {
+  const hyadesStar1 = makeEntry({ n: "97 Tau", t: "tile1", i: 1, sy: "Hyades" });
+  const hyadesStar2 = makeEntry({ n: "Prima Hyadum", t: "tile1", i: 2, sy: "Hyades" });
+  const hyadesStar3 = makeEntry({ n: "76 Tau", t: "tile1", i: 3, sy: "Hyades" });
+  const hyadesCluster = makeEntry({ n: "Hyades", k: "c", sy: "Hyades", a: ["Melotte 25"] });
+  const pleiadesCluster = makeEntry({ n: "Pleiades", k: "c", sy: "Pleiades", a: ["M45", "Seven Sisters"] });
+  const alcyone = makeEntry({ n: "Alcyone", t: "tile2", i: 10, sy: "Pleiades" });
+  const siriusA = makeEntry({ n: "Sirius A", t: "tile3", i: 20, sy: "Sirius", a: ["Sirius"] });
+  const siriusB = makeEntry({ n: "Sirius B", t: "tile3", i: 21, sy: "Sirius" });
+  const vega = makeEntry({ n: "Vega", t: "tile4", i: 30 });
+
+  const index: SearchEntry[] = [
+    hyadesStar1, hyadesStar2, hyadesStar3,
+    alcyone, siriusA, siriusB, vega,
+    hyadesCluster, pleiadesCluster,
+  ];
+
+  it("searching 'Hyades' returns the cluster entry, not individual members", () => {
+    const results = filterSearch("Hyades", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(hyadesCluster);
+  });
+
+  it("searching 'M45' matches Pleiades cluster via alias", () => {
+    const results = filterSearch("M45", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(pleiadesCluster);
+  });
+
+  it("searching 'Seven Sisters' matches Pleiades cluster via alias", () => {
+    const results = filterSearch("Seven Sisters", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(pleiadesCluster);
+  });
+
+  it("searching 'Melotte 25' matches Hyades cluster via alias", () => {
+    const results = filterSearch("Melotte 25", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(hyadesCluster);
+  });
+
+  it("searching 'Alcyone' returns Alcyone (not Pleiades cluster)", () => {
+    const results = filterSearch("Alcyone", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(alcyone);
+  });
+
+  it("searching 'Sirius' dedupes system members to one result", () => {
+    const results = filterSearch("Sirius", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(siriusA);
+  });
+
+  it("searching 'Vega' returns Vega (no system dedup)", () => {
+    const results = filterSearch("Vega", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(vega);
+  });
+
+  it("searching 'Prima Hyadum' returns that star, not the Hyades cluster", () => {
+    const results = filterSearch("Prima Hyadum", index);
+    // Prima Hyadum matches by name, but Hyades cluster doesn't match "Prima Hyadum".
+    // So Prima Hyadum should show (even though it has sy:"Hyades" — the cluster
+    // entry doesn't match this query, so it doesn't block via seenSystems).
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(hyadesStar2);
+  });
+
+  it("searching 'cluster' matches all cluster entries", () => {
+    const results = filterSearch("cluster", index);
+    expect(results.length).toBe(2);
+    expect(results.every((r) => r.k === "c")).toBe(true);
+  });
+
+  it("searching 'star cluster' matches cluster entries", () => {
+    const results = filterSearch("star cluster", index);
+    expect(results.length).toBe(2);
+    expect(results.every((r) => r.k === "c")).toBe(true);
+  });
+
+  it("cluster entries don't appear when query doesn't match them, system dedup still applies", () => {
+    const results = filterSearch("Tau", index);
+    const names = results.map((r) => r.n);
+    // 97 Tau is the first Hyades member matching "Tau"; 76 Tau is deduped
+    // by seenSystems (same sy:"Hyades"). Cluster entry doesn't match "Tau".
+    expect(names).toContain("97 Tau");
+    expect(names).not.toContain("Hyades");
+    // Only one Hyades member in results
+    expect(results.filter((r) => r.sy === "Hyades").length).toBe(1);
+  });
+});

@@ -52,6 +52,51 @@ without needing to stream in their enormous distant tiles.
 Buckets are orthogonal to label tiers — a tier-0 notable lives in whichever
 brightness bucket its absolute magnitude puts it in.
 
+### Star clusters
+
+Open star clusters are defined in `data/clusters.json` with hand-curated
+metadata (name, aliases, wikipedia, notes) and `seed_stars` (bright members
+that may be missing from automated catalogs).
+
+**Membership** comes from [Hunt & Reffert (2023)](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114)
+(Gaia DR3, `J/A+A/673/A114/members`), stored as Gaia source ID lists in
+`data/cluster-members/hunt2023.json`. At build time, these IDs are joined
+against AT-HYG's `gaia` column. Bright stars often lack Gaia astrometry
+(saturation), so `seed_stars` from `clusters.json` are always included
+regardless of Gaia membership.
+
+If `hunt2023.json` is missing, the build falls back to a spatial-radius
+heuristic (all catalog stars within `radius_pc` of the seed centroid).
+
+**To update cluster membership:**
+
+```sh
+# Download from VizieR for a specific cluster (e.g. Melotte_22 = Pleiades):
+curl -s "https://vizier.cds.unistra.fr/viz-bin/asu-tsv?-source=J/A%2BA/673/A114/members&-out=Name,GaiaDR3,Prob&Name=Melotte_22&-out.max=unlimited"
+
+# Parse the TSV, filter prob > 0.5, extract Gaia IDs, and write to hunt2023.json.
+# See the existing file for the expected format: {"ClusterName": ["gaiaId1", ...]}
+```
+
+**To add a new cluster:**
+
+1. Add an entry to `data/clusters.json` with `aliases`, `seed_stars`,
+   `wikipedia`, and `notes`.
+2. Download its membership from VizieR and add the Gaia ID list to
+   `data/cluster-members/hunt2023.json` under the same name key.
+3. Rebuild: `python3 scripts/build-catalog.py ...`
+
+Cluster names in `hunt2023.json` must match the keys in `clusters.json`.
+VizieR uses Melotte/Collinder designations (`Melotte_22`), so map those
+to the display names used in `clusters.json` (`Pleiades`).
+
+**Runtime behavior:** cluster labels render at a fixed centroid (computed
+from all members), with a distinct style. Member star labels are hidden
+when they collide with the cluster label on screen but reappear as you
+zoom in. Selecting/hovering a cluster glows member star billboards without
+glowing their individual labels. Clusters are searchable by name, alias,
+or the term "cluster".
+
 ### Source modules
 
 - `src/main.ts` — Entry point: input wiring, render loop, system label hooks
@@ -65,6 +110,8 @@ brightness bucket its absolute magnitude puts it in.
 - `src/labels.ts` — Per-frame label visibility, fade thresholds, system collapse clustering
 - `src/detail.ts` — Info panel rendering
 - `src/search.ts` — Search UI
+- `src/searchFilter.ts` — Pure search matching logic (testable without DOM)
+- `src/labelVisibility.ts` — Pure highlight/visibility decision functions (testable)
 
 ### Other files
 
@@ -75,6 +122,9 @@ brightness bucket its absolute magnitude puts it in.
 - `scripts/audit-notable.py` — Reports tier-0 stars missing wikipedia / notes / traditional aliases (`--json` for machine-readable output)
 - `scripts/merge-augmentations.py` — Merges research-batch JSON files into `data/augmentations.json`, preserving existing fields
 - `data/augmentations.json` — Hand-curated overrides: Wikipedia links, names, notes, aliases, system groupings, synthetic companions. Keyable by Gliese ID / HIP / "Sol" OR by IAU proper name; both entries merge with proper-name winning on conflict.
+- `data/clusters.json` — Star cluster definitions: name, aliases, seed stars, wikipedia, notes
+- `data/cluster-members/hunt2023.json` — Gaia DR3 membership IDs from Hunt & Reffert (2023), keyed by cluster name
+- `data/constellations.json` — Constellation line definitions for the 37 rendered constellations
 - `.claude/skills/research/SKILL.md` — Documented workflow for filling tier-0 metadata gaps in batches via research subagents
 - `docs/stars.md` — Star rendering documentation (shader, bloom, sizing)
 - `docs/starfield.md` — Streaming pipeline + binary format + tier model + catalog scope rationale
@@ -123,5 +173,5 @@ inject stars that don't exist in the source catalog (e.g. Sirius B).
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
 - **3D:** Three.js with custom GLSL shaders, CSS2DRenderer for labels, UnrealBloomPass
-- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/hyg) with Gaia DR3 distances (CC-BY-SA 4.0)
+- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/hyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3)
 - **Hosting:** Vercel (static)

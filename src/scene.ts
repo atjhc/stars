@@ -20,6 +20,7 @@ renderer.setPixelRatio(window.devicePixelRatio);
 viewport.appendChild(renderer.domElement);
 
 export const labelRenderer = new CSS2DRenderer();
+labelRenderer.sortObjects = false;
 labelRenderer.setSize(window.innerWidth, window.innerHeight);
 labelRenderer.domElement.style.position = "absolute";
 labelRenderer.domElement.style.top = "0";

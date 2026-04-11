@@ -1,6 +1,6 @@
 import type { SearchEntry } from "./catalog.ts";
 import { getSearchIndex } from "./catalog.ts";
-import { MAX_SEARCH_RESULTS } from "./constants.ts";
+import { filterSearch } from "./searchFilter.ts";
 
 const searchEl = document.getElementById("search")!;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -28,36 +28,7 @@ function closeSearch() {
 }
 
 function updateSearchResults(query: string) {
-  const q = query.toLowerCase().trim();
-  filteredEntries = [];
-  if (q.length === 0) {
-    selectedIndex = 0;
-    return;
-  }
-  const index = getSearchIndex();
-
-  const seen = new Set<SearchEntry>();
-  for (const entry of index) {
-    if (entry.n.toLowerCase().includes(q) || entry.sy?.toLowerCase().includes(q)) {
-      seen.add(entry);
-      filteredEntries.push(entry);
-      if (filteredEntries.length >= MAX_SEARCH_RESULTS) break;
-    }
-  }
-
-  if (filteredEntries.length < MAX_SEARCH_RESULTS) {
-    const seenSystems = new Set<string>();
-    for (const entry of index) {
-      if (seen.has(entry)) continue;
-      if (!entry.a?.some((a) => a.toLowerCase().includes(q))) continue;
-      if (entry.sy) {
-        if (seenSystems.has(entry.sy)) continue;
-        seenSystems.add(entry.sy);
-      }
-      filteredEntries.push(entry);
-      if (filteredEntries.length >= MAX_SEARCH_RESULTS) break;
-    }
-  }
+  filteredEntries = filterSearch(query, getSearchIndex());
   selectedIndex = 0;
 }
 
@@ -73,17 +44,22 @@ function renderSearchResults() {
   const q = searchInput.value.toLowerCase().trim();
   filteredEntries.forEach((entry, i) => {
     const li = document.createElement("li");
-    const primaryName = entry.sy ?? entry.n;
-    const matchSource = findMatchSource(entry, q);
-    const secondary = matchSource && matchSource !== primaryName
-      ? matchSource
-      : (entry.sy && entry.n !== entry.sy ? entry.n : null);
 
-    if (secondary) {
-      li.innerHTML = `${primaryName} <span class="search-secondary">${secondary}</span>`;
+    if (entry.k === "c") {
+      li.innerHTML = `${entry.n} <span class="search-secondary">Star Cluster</span>`;
     } else {
-      li.textContent = primaryName;
+      const primaryName = entry.sy ?? entry.n;
+      const matchSource = findMatchSource(entry, q);
+      const secondary = matchSource && matchSource !== primaryName
+        ? matchSource
+        : (entry.sy && entry.n !== entry.sy ? entry.n : null);
+      if (secondary) {
+        li.innerHTML = `${primaryName} <span class="search-secondary">${secondary}</span>`;
+      } else {
+        li.textContent = primaryName;
+      }
     }
+
     if (i === selectedIndex) li.classList.add("selected");
     li.addEventListener("click", () => selectResult(i));
     searchResults.appendChild(li);
