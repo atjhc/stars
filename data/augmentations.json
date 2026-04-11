@@ -1731,12 +1731,49 @@
     ]
   },
   "Algol": {
+    "name": "Algol A",
+    "system": "Algol",
     "wikipedia": "https://en.wikipedia.org/wiki/Algol",
-    "notes": "The famous 'Demon Star' of Perseus, the prototypical eclipsing binary whose brightness drops noticeably every 2.87 days. It is actually a triple system and one of the first variable stars discovered.",
+    "notes": "Primary component of the famous 'Demon Star', the prototypical eclipsing binary. A hot B8V main-sequence star whose brightness drops every 2.87 days when Algol B transits in front. Actually a triple system.",
     "aliases": [
       "Demon Star",
-      "Gorgona"
+      "Gorgona",
+      "Beta Persei"
     ]
+  },
+  "Algol B": {
+    "system": "Algol",
+    "name": "Algol B",
+    "wikipedia": "https://en.wikipedia.org/wiki/Algol",
+    "notes": "The eclipsing companion of Algol. A K0IV subgiant that has transferred much of its mass to Algol A — paradoxically the less massive star is the more evolved one (the 'Algol paradox').",
+    "synthetic": {
+      "x": 14.189,
+      "y": 15.239,
+      "z": 18.072,
+      "dist": 27.571,
+      "mag": 3.39,
+      "absmag": 2.9,
+      "ci": 0.94,
+      "spect": "K0IV",
+      "lum": 6.92
+    }
+  },
+  "Algol C": {
+    "system": "Algol",
+    "name": "Algol C",
+    "wikipedia": "https://en.wikipedia.org/wiki/Algol",
+    "notes": "Third component of the Algol system, orbiting the inner eclipsing pair every 1.86 years. An A5V main-sequence star.",
+    "synthetic": {
+      "x": 14.189,
+      "y": 15.239,
+      "z": 18.072,
+      "dist": 27.571,
+      "mag": 3.69,
+      "absmag": 3.2,
+      "ci": 0.15,
+      "spect": "A5V",
+      "lum": 4.13
+    }
   },
   "Almach": {
     "wikipedia": "https://en.wikipedia.org/wiki/Gamma_Andromedae",
@@ -2481,6 +2518,7 @@
     "notes": "White main-sequence star in Pegasus about 89 light-years away. Its name comes from Arabic meaning 'the lucky star of the two beasts'."
   },
   "Sheliak": {
+    "aliases": ["Beta Lyrae"],
     "wikipedia": "https://en.wikipedia.org/wiki/Beta_Lyrae",
     "notes": "Prototype of the Beta Lyrae eclipsing binary class, about 900 light-years away in Lyra. The two stars are so close they exchange mass through an accretion stream."
   },

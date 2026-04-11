@@ -172,8 +172,8 @@
     "iau": "Per",
     "description": "The Hero, holding the severed head of Medusa (Algol, the 'Demon Star', a famous eclipsing binary). Mirfak anchors the central curve.",
     "lines": [
-      ["Mirfak", "Algol"],
-      ["Algol", "Misam"],
+      ["Mirfak", "Algol A"],
+      ["Algol A", "Misam"],
       ["Mirfak", "Miram"],
       ["Mirfak", "Atik"],
       ["Atik", "Menkib"]
