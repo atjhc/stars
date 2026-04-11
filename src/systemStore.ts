@@ -34,6 +34,10 @@ export function isInSelectedGroup(target: THREE.Object3D): boolean {
   return _selectedMembers.has(target);
 }
 
+let _pinnedTile: string | null = null;
+export function getPinnedTile(): string | null { return _pinnedTile; }
+export function setPinnedTile(t: string | null) { _pinnedTile = t; }
+
 // After rebuildSystems destroys and recreates all groups, re-link any
 // active references by name so identity checks don't silently fail.
 export function relinkAfterRebuild(

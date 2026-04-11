@@ -5,7 +5,7 @@ import { LABEL_CSS, CLUSTER_LABEL_CSS, CLUSTER_DEFAULT_SHADOW, SCALE, TILE_BASE_
 import { scene, camera } from "./scene.ts";
 import { createBillboardMesh, createNotableAnchor, createStarLabel, rebindHitSphere } from "./billboard.ts";
 import { setCompanionResolver, showSystemMembers } from "./interaction.ts";
-import { setLabelsDirty, relinkAfterRebuild } from "./systemStore.ts";
+import { setLabelsDirty, relinkAfterRebuild, getPinnedTile } from "./systemStore.ts";
 import { registerMembers } from "./systemDispatch.ts";
 import { GLOW_GLSL, createStarGlowTexture } from "./starShader.ts";
 import {
@@ -404,10 +404,11 @@ function precomputeTileSpheres() {
   }
 }
 
-// Tiles the user has explicitly targeted via search. They load regardless
-// of frustum / cull distance and are exempt from LRU eviction until
-// released. Entries are cleared once their pending selection resolves.
 const forcedTiles = new Set<string>();
+
+function isTileForced(path: string): boolean {
+  return forcedTiles.has(path) || path === getPinnedTile();
+}
 type PendingSelection = { tile: string; i: number; onResolved: (mesh: THREE.Object3D) => void };
 let pendingSelection: PendingSelection | null = null;
 
@@ -423,7 +424,7 @@ export function requestTileFocus(
 }
 
 function shouldLoadGeometry(path: string, tile: TileMeta, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
-  if (forcedTiles.has(path)) return true;
+  if (isTileForced(path)) return true;
   const meta = getMeta();
   if (!meta) return false;
   const cullDist = meta.buckets[tile.bucket]?.cullDist ?? null;
@@ -436,7 +437,7 @@ function shouldLoadGeometry(path: string, tile: TileMeta, frustum: THREE.Frustum
 }
 
 function shouldLoadLabels(path: string, camPos: THREE.Vector3): boolean {
-  if (forcedTiles.has(path)) return true;
+  if (isTileForced(path)) return true;
   const sphere = tileSpheres.get(path);
   if (!sphere) return false;
   // Load labels if the tile's bounding sphere overlaps the tier-1 range.
@@ -507,7 +508,7 @@ function evictOldTiles() {
   const meta = getMeta();
   const evictable = [...loadedTiles.entries()]
     .filter(([path]) => meta?.buckets[meta.tiles[path].bucket]?.cullDist !== null)
-    .filter(([path]) => !forcedTiles.has(path))
+    .filter(([path]) => !isTileForced(path))
     .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
   const toEvict = evictable.slice(0, loadedTiles.size - MAX_LOADED_TILES);
   for (const [path] of toEvict) evictGeometryTile(path);

@@ -8,7 +8,7 @@ import {
   getHoveredSystem, setHoveredSystem,
   getSelectedMesh, setSelectedMesh,
   getLastHoveredMesh, setLastHoveredMesh,
-  setLabelsDirty, isInSelectedGroup,
+  setLabelsDirty, isInSelectedGroup, setPinnedTile,
 } from "./systemStore.ts";
 import {
   focusTarget,
@@ -158,6 +158,7 @@ export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) 
   const prevMesh = getSelectedMesh();
   if (prevMesh) unhighlightStar(prevMesh);
   setSelectedMesh(null);
+  setPinnedTile(null);
   const prevSys = getSelectedSystem();
   if (prevSys && prevSys !== group) hideSystemMembers(prevSys);
   setSelectedSystem(group);
@@ -178,6 +179,8 @@ export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void
   const prevSys = getSelectedSystem();
   if (prevSys) { hideSystemMembers(prevSys); setSelectedSystem(null); }
   setSelectedMesh(target);
+  const star = target.userData as Star;
+  setPinnedTile(star.tile ?? null);
   highlightStar(target);
   const label = getLabelDiv(target);
   if (label) applyLabelGlow(label, target);
