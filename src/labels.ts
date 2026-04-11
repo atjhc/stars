@@ -19,10 +19,10 @@ function formatSceneDistance(sceneUnits: number): string {
 }
 import { camera } from "./scene.ts";
 import {
-  selectedMesh, selectedSystem, hoveredSystem, lastHoveredMesh,
-  labelsDirty, setLabelsDirty,
-  updateSystemLabelText,
-} from "./interaction.ts";
+  getSelectedMesh, getSelectedSystem, getHoveredSystem, getLastHoveredMesh,
+  isLabelsDirty, setLabelsDirty,
+} from "./systemStore.ts";
+import { updateSystemLabelText } from "./interaction.ts";
 import { starGlowShadow } from "./color.ts";
 
 const projVec = new THREE.Vector3();
@@ -44,24 +44,11 @@ function cssLabelChild(target: THREE.Object3D): THREE.Object3D | undefined {
   return undefined;
 }
 
-function projectGroupToScreen(group: SystemGroup) {
+function projectGroupToScreen(group: import("./types.ts").BinarySystem) {
   for (let i = 0; i < group.meshes.length; i++) {
     const s = projectToScreen(group.meshes[i].position);
     group.screens[i].x = s.x;
     group.screens[i].y = s.y;
-  }
-}
-
-function collapseNearPoint(
-  sx: number, sy: number,
-  group: SystemGroup,
-) {
-  for (let i = 0; i < group.meshes.length; i++) {
-    const dx = group.screens[i].x - sx;
-    const dy = group.screens[i].y - sy;
-    if (dx * dx + dy * dy < COLLAPSE_PX_SQ) {
-      collapsed.add(group.meshes[i]);
-    }
   }
 }
 
@@ -78,10 +65,15 @@ export function updateLabels(
   divFor: DivResolver,
 ) {
   if (!labelsVisible) return;
-  if (!labelsDirty) return;
+  if (!isLabelsDirty()) return;
 
   const magLimit = magLimitUniform.value;
   const tier0FadeStart = magLimit - 1.5;
+
+  const selectedSystem = getSelectedSystem();
+  const hoveredSystem = getHoveredSystem();
+  const selectedMesh = getSelectedMesh();
+  const lastHoveredMesh = getLastHoveredMesh();
 
   const hlCtx: import("./labelVisibility.ts").HighlightContext = {
     meshToSystem, clusterOf,
@@ -93,7 +85,6 @@ export function updateLabels(
 
   for (const group of systemGroups) {
     if (group.kind === "cluster") {
-      group.collapsedMembers = [];
       const dist = group.anchor.position.distanceTo(camera.position);
       const isHighlighted = hoveredSystem === group || selectedSystem === group;
       const appMag = apparentMag(-2, dist);
@@ -104,9 +95,14 @@ export function updateLabels(
         const zIndex = Math.round(20000 - dist * 100);
         setLabelStyle(group.label.element as HTMLElement, String(Math.max(0.3, opacity)), String(zIndex));
 
-        projectGroupToScreen(group);
+        // Check each member against the cluster label position.
         const anchorScreen = projectToScreen(group.anchor.position);
-        collapseNearPoint(anchorScreen.x, anchorScreen.y, group);
+        const ax = anchorScreen.x, ay = anchorScreen.y;
+        for (const m of group.meshes) {
+          const ms = projectToScreen(m.position);
+          const dx = ms.x - ax, dy = ms.y - ay;
+          if (dx * dx + dy * dy < COLLAPSE_PX_SQ) collapsed.add(m);
+        }
       }
       continue;
     }

@@ -9,14 +9,16 @@ import {
   orbitRadius, setOrbitRadius,
 } from "./scene.ts";
 import {
-  selectedSystem, hoveredSystem,
-  setLabelsDirty, setHoveredSystem,
   registerLabelMap,
   highlightStar,
   hoverTarget, unhoverAll,
   selectTarget, selectSystem, selectStar,
   showSystemMembers, hideSystemMembers,
 } from "./interaction.ts";
+import {
+  getSelectedSystem, getHoveredSystem, setHoveredSystem,
+  setLabelsDirty,
+} from "./systemStore.ts";
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
@@ -121,13 +123,13 @@ function wireSystemLabels() {
     wiredSystems.add(group);
     const labelDiv = group.label.element as HTMLElement;
     labelDiv.addEventListener("mouseenter", () => {
-      if (selectedSystem !== group) {
+      if (getSelectedSystem() !== group) {
         setHoveredSystem(group);
         showSystemMembers(group);
       }
     });
     labelDiv.addEventListener("mouseleave", () => {
-      if (hoveredSystem === group && selectedSystem !== group) {
+      if (getHoveredSystem() === group && getSelectedSystem() !== group) {
         hideSystemMembers(group);
         setHoveredSystem(null);
       }

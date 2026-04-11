@@ -1,14 +1,12 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-import type { Star, SystemGroup } from "./types.ts";
-import { LABEL_CSS, CLUSTER_LABEL_CSS, SCALE } from "./constants.ts";
+import type { Star, SystemGroup, BinarySystem, ClusterGroup } from "./types.ts";
+import { LABEL_CSS, CLUSTER_LABEL_CSS, CLUSTER_DEFAULT_SHADOW, SCALE } from "./constants.ts";
 import { scene, camera } from "./scene.ts";
 import { createBillboardMesh, createNotableAnchor, createStarLabel, rebindHitSphere } from "./billboard.ts";
-import {
-  setCompanionResolver, setLabelsDirty,
-  selectedSystem, hoveredSystem, setSelectedSystem, setHoveredSystem,
-  showSystemMembers,
-} from "./interaction.ts";
+import { setCompanionResolver, showSystemMembers } from "./interaction.ts";
+import { setLabelsDirty, relinkAfterRebuild } from "./systemStore.ts";
+import { registerMembers } from "./systemDispatch.ts";
 import { GLOW_GLSL, createStarGlowTexture } from "./starShader.ts";
 import {
   initCatalog, getMeta, getNotable, getSystems, getTileLabels,
@@ -339,9 +337,6 @@ function rebuildSystems() {
   const catalog = getSystems();
   for (const [name, data] of Object.entries(catalog)) {
     const isCluster = data.kind === "cluster";
-    // Binary/trinary systems need ≥2 members to form a group. Clusters
-    // always form a group (the label should show even if no individual
-    // member stars resolved in the catalog).
     if (!isCluster && data.members.length < 2) continue;
     const meshes: THREE.Object3D[] = [];
     for (const m of data.members) {
@@ -363,8 +358,6 @@ function rebuildSystems() {
     label.visible = false;
     anchor.add(label);
 
-    // Clusters use the fixed centroid from catalog metadata; binary/
-    // trinary systems compute from their members.
     const centroid = new THREE.Vector3();
     if (isCluster && data.centroid) {
       centroid.set(data.centroid[0], data.centroid[1], data.centroid[2]);
@@ -374,46 +367,23 @@ function rebuildSystems() {
       centroid.divideScalar(meshes.length);
     }
 
-    const avgDist = meshes.reduce((s, m) => {
-      const star = m.userData as Star;
-      return s + (star.dist ?? 0);
-    }, 0) / meshes.length;
+    const avgDist = meshes.length > 0
+      ? meshes.reduce((s, m) => s + ((m.userData as Star).dist ?? 0), 0) / meshes.length
+      : centroid.length() / SCALE;
 
-    const screens = meshes.map(() => ({ x: 0, y: 0 }));
-    const parents = new Array(meshes.length);
+    const base = { name, meshes, label, anchor, centroid, avgDist, wikipedia: data.wikipedia, notes: data.notes };
 
-    const group: SystemGroup = {
-      name, meshes, label, anchor, centroid, avgDist,
-      collapsedMembers: [], screens, parents,
-      kind: data.kind,
-      aliases: data.aliases,
-      wikipedia: data.wikipedia,
-      notes: data.notes,
-    };
+    const group: SystemGroup = isCluster
+      ? { ...base, kind: "cluster", defaultShadow: CLUSTER_DEFAULT_SHADOW, aliases: data.aliases } as ClusterGroup
+      : { ...base, kind: "binary", collapsedMembers: [],
+          screens: meshes.map(() => ({ x: 0, y: 0 })),
+          parents: new Array(meshes.length) } as BinarySystem;
+
     systemGroups.push(group);
-    if (isCluster) {
-      for (const m of meshes) clusterOf.set(m, group);
-    } else {
-      for (const m of meshes) meshToSystem.set(m, group);
-    }
+    registerMembers(group, meshToSystem, clusterOf);
   }
 
-  // Re-link selectedSystem / hoveredSystem to the new group objects.
-  // Without this, the old references become dangling after the rebuild
-  // and all identity checks (selectedSystem === group) silently fail.
-  if (selectedSystem) {
-    const replacement = systemGroups.find((g) => g.name === selectedSystem!.name);
-    if (replacement) {
-      setSelectedSystem(replacement);
-      showSystemMembers(replacement);
-    } else {
-      setSelectedSystem(null);
-    }
-  }
-  if (hoveredSystem) {
-    const replacement = systemGroups.find((g) => g.name === hoveredSystem!.name);
-    setHoveredSystem(replacement ?? null);
-  }
+  relinkAfterRebuild(systemGroups, showSystemMembers);
 }
 
 function precomputeTileSpheres() {

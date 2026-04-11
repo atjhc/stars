@@ -27,11 +27,13 @@ export const LABEL_CSS = `
   margin-top: 16px; user-select: none; text-align: center; cursor: pointer;
 `;
 
+export const CLUSTER_DEFAULT_SHADOW = "0 0 8px rgba(100,150,220,0.6), 0 0 3px #000";
+
 export const CLUSTER_LABEL_CSS = `
   color: rgba(180,210,255,0.85); font-size: 14px;
   letter-spacing: 1px;
   pointer-events: auto; white-space: nowrap;
-  text-shadow: 0 0 8px rgba(100,150,220,0.6), 0 0 3px #000;
+  text-shadow: ${CLUSTER_DEFAULT_SHADOW};
   transform: translateZ(0); -webkit-transform: translateZ(0);
   user-select: none; text-align: center; cursor: pointer;
 `;
