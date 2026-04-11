@@ -47,6 +47,8 @@ function renderSearchResults() {
 
     if (entry.k === "c") {
       li.innerHTML = `${entry.n} <span class="search-secondary">Star Cluster</span>`;
+    } else if (entry.k === "n") {
+      li.innerHTML = `${entry.n} <span class="search-secondary">Nebula</span>`;
     } else {
       const primaryName = entry.sy ?? entry.n;
       const matchSource = findMatchSource(entry, q);

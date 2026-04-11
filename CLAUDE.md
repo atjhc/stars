@@ -129,6 +129,7 @@ or the term "cluster".
 - `docs/stars.md` — Star rendering documentation (shader, bloom, sizing)
 - `docs/starfield.md` — Streaming pipeline + binary format + tier model + catalog scope rationale
 - `docs/data-corrections.md` — Corrections applied on top of source data
+- `docs/nebulae.md` — Nebula rendering: approaches (multi-layer billboard, particle cloud, SDF raymarching, voxel), nearby targets, prototype plan
 - `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap; consult before making decisions that would foreclose floating-origin retrofits or LOD/sub-scene splits.
 
 ### Label tiers

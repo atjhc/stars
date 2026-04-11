@@ -27,27 +27,52 @@ export function filterSearch(query: string, index: SearchEntry[]): SearchEntry[]
   const clusterMatch = (e: SearchEntry) =>
     "star cluster".startsWith(q) || "cluster".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
 
-  // Pass 1: cluster entries by name, system, alias, or the term "cluster".
-  for (const entry of index) {
-    if (entry.k !== "c") continue;
-    if (!clusterMatch(entry)) continue;
-    if (add(entry)) return results;
+  // Rank: 0 = exact name, 1 = name prefix, 2 = name/sys substring, 3 = alias
+  function rank(e: SearchEntry): number {
+    const nl = e.n.toLowerCase();
+    if (nl === q) return 0;
+    if (nl.startsWith(q)) return 1;
+    if (nl.includes(q) || e.sy?.toLowerCase().includes(q)) return 2;
+    return 3;
   }
 
-  // Pass 2: non-cluster primary name / system match.
+  const nebulaMatch = (e: SearchEntry) =>
+    "nebula".startsWith(q) || "molecular cloud".startsWith(q) ||
+    "dark nebula".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
+
+  // Pass 1: cluster and nebula entries.
   for (const entry of index) {
-    if (entry.k === "c") continue;
+    if (entry.k === "c") {
+      if (!clusterMatch(entry)) continue;
+    } else if (entry.k === "n") {
+      if (!nebulaMatch(entry)) continue;
+    } else {
+      continue;
+    }
+    if (add(entry)) break;
+  }
+
+  // Pass 2: star primary name / system match.
+  for (const entry of index) {
+    if (entry.k === "c" || entry.k === "n") continue;
     if (!nameOrSysMatch(entry)) continue;
-    if (add(entry)) return results;
+    if (add(entry)) break;
   }
 
-  // Pass 3: non-cluster alias match.
+  // Pass 3: star alias match.
   for (const entry of index) {
-    if (entry.k === "c") continue;
+    if (entry.k === "c" || entry.k === "n") continue;
     if (seen.has(entry)) continue;
     if (!aliasMatch(entry)) continue;
-    if (add(entry)) return results;
+    if (add(entry)) break;
   }
+
+  // Sort by: exact match > prefix > substring > alias, then by name length.
+  results.sort((a, b) => {
+    const ra = rank(a), rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    return a.n.length - b.n.length;
+  });
 
   return results;
 }

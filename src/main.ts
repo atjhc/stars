@@ -24,6 +24,9 @@ import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations } from "./constellations.ts";
+import { initDust, updateDust, renderDustPostBloom, toggleDust } from "./dust.ts";
+import { initNebulaeLabels } from "./nebulaeLabels.ts";
+import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debug.ts";
 import {
   initStarfield, updateStarfield,
@@ -102,6 +105,7 @@ function trySelectAt(clientX: number, clientY: number) {
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(allInteractiveStars);
   if (hits.length > 0) {
+    clearAllSelections();
     selectTarget(canonicalTarget(hits[0].object), meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
   }
 }
@@ -112,6 +116,7 @@ function doUpdateLabelVisibility() {
     for (const obj of allInteractiveStars) obj.visible = false;
     for (const group of systemGroups) group.label.visible = false;
   }
+  setAllLabelsVisible(labelsVisible);
   setLabelsDirty(true);
 }
 
@@ -136,6 +141,7 @@ function wireSystemLabels() {
     });
     labelDiv.addEventListener("mouseup", () => {
       if (dragDistance >= CLICK_THRESHOLD) return;
+      clearAllSelections();
       selectSystem(group, updateDetailPanel);
     });
   }
@@ -276,8 +282,16 @@ labelRenderer.domElement.addEventListener("mouseout", (e) => {
 
 labelRenderer.domElement.addEventListener("mouseup", (e) => {
   if (dragDistance >= CLICK_THRESHOLD) return;
+  // Registry handles nebulae (and any future label types)
+  if (dispatchLabelClick(e.target as HTMLElement)) {
+    updateDetailPanel();
+    return;
+  }
   const mesh = meshFromLabel(e.target as HTMLElement);
-  if (mesh) selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+  if (mesh) {
+    clearAllSelections();
+    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+  }
 });
 
 window.addEventListener("keydown", (e) => {
@@ -289,6 +303,9 @@ window.addEventListener("keydown", (e) => {
     gridHelper.visible = !gridHelper.visible;
   } else if (e.key === "c") {
     toggleConstellations();
+  } else if (e.key === "d") {
+    toggleDust();
+    doUpdateLabelVisibility();
   }
 });
 
@@ -314,6 +331,11 @@ function trySelectCluster(name: string): boolean {
 function handleSearchSelect(entry: SearchEntry) {
   pendingClusterSelect = null;
   animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+  if (entry.k === "n") {
+    selectByType("nebula", entry.n);
+    updateDetailPanel();
+    return;
+  }
   if (entry.k === "c") {
     if (!trySelectCluster(entry.n)) {
       // Group doesn't exist yet — member tiles haven't streamed.
@@ -329,6 +351,7 @@ function handleSearchSelect(entry: SearchEntry) {
   }
   if (entry.t !== undefined && entry.i !== undefined) {
     requestTileFocus(entry.t, entry.i, (mesh) => {
+      clearAllSelections();
       selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
     });
   }
@@ -341,6 +364,8 @@ registerLabelMap(notableLabelMap);
 registerLabelMap(streamedLabelMap);
 wireSystemLabels();
 await initConstellations();
+await initDust();
+await initNebulaeLabels();
 
 const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
 if (solAnchor) {
@@ -377,6 +402,8 @@ function animate(now: number) {
   tickAnimation(now);
   checkCameraMoved();
   updateStarfield();
+  updateDust();
+  updateAllLabels();
   updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor);
   if (debugEnabled && debug.directRender) {
     renderer.render(scene, camera);
@@ -385,6 +412,7 @@ function animate(now: number) {
     composer.render();
     endBloomRender();
   }
+  renderDustPostBloom(renderer);
   labelRenderer.render(scene, camera);
   if (debugEnabled) tickDebug();
 }

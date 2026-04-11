@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star, SystemGroup, BinarySystem, ClusterGroup } from "./types.ts";
-import { LABEL_CSS, CLUSTER_LABEL_CSS, CLUSTER_DEFAULT_SHADOW, SCALE } from "./constants.ts";
+import { LABEL_CSS, CLUSTER_LABEL_CSS, CLUSTER_DEFAULT_SHADOW, SCALE, TILE_BASE_URL } from "./constants.ts";
 import { scene, camera } from "./scene.ts";
 import { createBillboardMesh, createNotableAnchor, createStarLabel, rebindHitSphere } from "./billboard.ts";
 import { setCompanionResolver, showSystemMembers } from "./interaction.ts";
@@ -17,7 +17,6 @@ import {
 
 const BYTES_PER_STAR = 16;
 const MAX_LOADED_TILES = 80;
-const TILE_BASE_URL = "/tiles/";
 let tier1LoadDist = 150;
 
 // The brightness byte encodes absolute magnitude linearly as
@@ -210,7 +209,7 @@ export const systemGroups: SystemGroup[] = [];
 export const meshToSystem = new Map<THREE.Object3D, SystemGroup>();
 export const clusterOf = new Map<THREE.Object3D, SystemGroup>();
 
-let initLabelDragFn: ((div: HTMLElement) => void) | null = null;
+export let initLabelDragFn: ((div: HTMLElement) => void) | null = null;
 let labelChangeListeners: Array<() => void> = [];
 export function onLabelsChanged(fn: () => void) { labelChangeListeners.push(fn); }
 function notifyLabelsChanged() { for (const fn of labelChangeListeners) fn(); }

@@ -2,14 +2,17 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, SCALE,
+  solDistanceFade,
 } from "./constants.ts";
 import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
 import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
 
 const collapsed = new Set<THREE.Object3D>();
 
-const LY_PER_PARSEC = 3.26156;
+import { LY_PER_PARSEC } from "./constants.ts";
 const labelsWithSubtitle = new WeakSet<HTMLElement>();
+let cachedMaxNotableSolDist = 0;
+let cachedMaxClusterSolDist = 0;
 
 function formatSceneDistance(sceneUnits: number): string {
   const ly = (sceneUnits / SCALE) * LY_PER_PARSEC;
@@ -70,6 +73,14 @@ export function updateLabels(
   const magLimit = magLimitUniform.value;
   const tier0FadeStart = magLimit - 1.5;
 
+  // Cache max Sol distance for notables (positions are static after init).
+  if (cachedMaxNotableSolDist === 0 && notableAnchors.length > 0) {
+    for (const anchor of notableAnchors) {
+      const d = anchor.position.length();
+      if (d > cachedMaxNotableSolDist) cachedMaxNotableSolDist = d;
+    }
+  }
+
   const selectedSystem = getSelectedSystem();
   const hoveredSystem = getHoveredSystem();
   const selectedMesh = getSelectedMesh();
@@ -83,26 +94,34 @@ export function updateLabels(
 
   collapsed.clear();
 
+  if (cachedMaxClusterSolDist === 0) {
+    for (const group of systemGroups) {
+      if (group.kind === "cluster") {
+        const d = group.anchor.position.length();
+        if (d > cachedMaxClusterSolDist) cachedMaxClusterSolDist = d;
+      }
+    }
+  }
+  const maxClusterSolDist = cachedMaxClusterSolDist;
+
   for (const group of systemGroups) {
     if (group.kind === "cluster") {
-      const dist = group.anchor.position.distanceTo(camera.position);
       const isHighlighted = hoveredSystem === group || selectedSystem === group;
-      const appMag = apparentMag(-2, dist);
-      const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 1.5, 0, 1);
-      group.label.visible = t < 1 || isHighlighted;
-      if (group.label.visible) {
-        const opacity = isHighlighted ? 1.0 : (1 - t);
-        const zIndex = Math.round(20000 - dist * 100);
-        setLabelStyle(group.label.element as HTMLElement, String(Math.max(0.3, opacity)), String(zIndex));
+      const solDist = group.anchor.position.length();
+      const baseOpacity = solDistanceFade(solDist, maxClusterSolDist);
+      const opacity = isHighlighted ? 1.0 : baseOpacity;
+      group.label.visible = true;
+      const dist = group.anchor.position.distanceTo(camera.position);
+      const zIndex = Math.round(20000 - dist * 100);
+      setLabelStyle(group.label.element as HTMLElement, String(Math.max(0.2, opacity)), String(zIndex));
 
-        // Check each member against the cluster label position.
-        const anchorScreen = projectToScreen(group.anchor.position);
-        const ax = anchorScreen.x, ay = anchorScreen.y;
-        for (const m of group.meshes) {
-          const ms = projectToScreen(m.position);
-          const dx = ms.x - ax, dy = ms.y - ay;
-          if (dx * dx + dy * dy < COLLAPSE_PX_SQ) collapsed.add(m);
-        }
+      // Check each member against the cluster label position.
+      const anchorScreen = projectToScreen(group.anchor.position);
+      const ax = anchorScreen.x, ay = anchorScreen.y;
+      for (const m of group.meshes) {
+        const ms = projectToScreen(m.position);
+        const dx = ms.x - ax, dy = ms.y - ay;
+        if (dx * dx + dy * dy < COLLAPSE_PX_SQ) collapsed.add(m);
       }
       continue;
     }
@@ -240,7 +259,9 @@ export function updateLabels(
         return;
       }
       target.visible = true;
-      setLabelStyle(div, String(1 - t), zIndex);
+      const solDist = target.position.length();
+      const solFade = solDistanceFade(solDist, cachedMaxNotableSolDist);
+      setLabelStyle(div, String(Math.max(0.15, (1 - t) * solFade)), zIndex);
     } else {
       if (camDist > LABEL_HIDE_DIST) {
         target.visible = forceVis;

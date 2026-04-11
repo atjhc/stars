@@ -25,10 +25,12 @@ describe("filterSearch", () => {
   const siriusA = makeEntry({ n: "Sirius A", t: "tile3", i: 20, sy: "Sirius", a: ["Sirius"] });
   const siriusB = makeEntry({ n: "Sirius B", t: "tile3", i: 21, sy: "Sirius" });
   const vega = makeEntry({ n: "Vega", t: "tile4", i: 30 });
+  const sol = makeEntry({ n: "Sol", t: "tile5", i: 40 });
+  const solitaire = makeEntry({ n: "Solitaire", t: "tile6", i: 41 });
 
   const index: SearchEntry[] = [
     hyadesStar1, hyadesStar2, hyadesStar3,
-    alcyone, siriusA, siriusB, vega,
+    alcyone, siriusA, siriusB, vega, solitaire, sol,
     hyadesCluster, pleiadesCluster,
   ];
 
@@ -93,6 +95,34 @@ describe("filterSearch", () => {
     const results = filterSearch("star cluster", index);
     expect(results.length).toBe(2);
     expect(results.every((r) => r.k === "c")).toBe(true);
+  });
+
+  it("exact name match ranks before prefix match", () => {
+    const results = filterSearch("Sol", index);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results[0].n).toBe("Sol");
+  });
+
+  it("prefix match ranks before substring match", () => {
+    // "Vega" should rank before a hypothetical star containing "vega" mid-name
+    const testIndex = [
+      ...index,
+      makeEntry({ n: "Novega", t: "tile9", i: 90 }),
+    ];
+    const results = filterSearch("vega", testIndex);
+    const vegaIdx = results.findIndex((r) => r.n === "Vega");
+    const novegaIdx = results.findIndex((r) => r.n === "Novega");
+    expect(vegaIdx).toBeLessThan(novegaIdx);
+  });
+
+  it("shorter prefix match ranks before longer prefix match", () => {
+    const testIndex = [
+      makeEntry({ n: "Sol", t: "tile1", i: 1 }),
+      makeEntry({ n: "Solitaire", t: "tile2", i: 2 }),
+    ];
+    const results = filterSearch("sol", testIndex);
+    expect(results[0].n).toBe("Sol");
+    expect(results[1].n).toBe("Solitaire");
   });
 
   it("cluster entries don't appear when query doesn't match them, system dedup still applies", () => {

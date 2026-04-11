@@ -643,6 +643,54 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             "a": cmeta.get("aliases") or [],
         })
 
+    # Nebulae: load data/nebulae.json, convert galactic Cartesian positions
+    # to scene coordinates, and add to the search index.
+    nebulae_path = os.path.join(data_dir, "data", "nebulae.json")
+    nebulae_count = 0
+    if os.path.exists(nebulae_path):
+        with open(nebulae_path) as f:
+            nebulae_raw = json.load(f)
+        # Galactic → equatorial rotation matrix (same as in dust.ts)
+        import numpy as np
+        ra_ngp = np.radians(192.85948)
+        dec_ngp = np.radians(27.12835)
+        l_ncp = np.radians(122.93192)
+        cos_ra, sin_ra = np.cos(ra_ngp), np.sin(ra_ngp)
+        cos_dec, sin_dec = np.cos(dec_ngp), np.sin(dec_ngp)
+        cos_l, sin_l = np.cos(l_ncp), np.sin(l_ncp)
+        R = np.array([
+            [-sin_ra*sin_l - cos_ra*sin_dec*cos_l,  sin_ra*cos_l - cos_ra*sin_dec*sin_l,  cos_ra*cos_dec],
+            [ cos_ra*sin_l - sin_ra*sin_dec*cos_l, -cos_ra*cos_l - sin_ra*sin_dec*sin_l,  sin_ra*cos_dec],
+            [ cos_dec*cos_l,                         cos_dec*sin_l,                         sin_dec       ]
+        ])
+        P = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+        M = P @ R
+        for nname, ndef in nebulae_raw.items():
+            gal = np.array(ndef["pos_pc"])
+            scene_pos = (M @ gal) * SCALE
+            search_index.append({
+                "n": nname,
+                "k": "n",
+                "p": [round(float(scene_pos[0]), 2), round(float(scene_pos[1]), 2), round(float(scene_pos[2]), 2)],
+                "mg": 0, "M": 0,
+                "d": round(float(np.linalg.norm(gal)), 1),
+                "a": ndef.get("aliases", []),
+            })
+            nebulae_count += 1
+        print(f"Nebulae:  {nebulae_count} in search index")
+        # Write nebulae with baked scene positions for runtime labels
+        nebulae_out = {}
+        for nname, ndef in nebulae_raw.items():
+            gal = np.array(ndef["pos_pc"])
+            scene_pos = (M @ gal) * SCALE
+            nebulae_out[nname] = {
+                **ndef,
+                "scene_pos": [round(float(scene_pos[0]), 2), round(float(scene_pos[1]), 2), round(float(scene_pos[2]), 2)],
+                "dist_pc": round(float(np.linalg.norm(gal)), 1),
+            }
+        with open(os.path.join(out_dir, "nebulae.json"), "w") as f:
+            json.dump(nebulae_out, f)
+
     with open(os.path.join(out_dir, "meta.json"), "w") as f:
         json.dump(meta, f)
     with open(os.path.join(out_dir, "notable.json"), "w") as f:

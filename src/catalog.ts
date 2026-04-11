@@ -86,10 +86,10 @@ export interface SearchEntry {
   sp?: string;                  // spectral type
   a?: string[];                 // aliases
   sy?: string;                  // system name
-  k?: "c";                      // kind: "c" for cluster
+  k?: "c" | "n";                // kind: "c" for cluster, "n" for nebula
 }
 
-const TILE_BASE_URL = "/tiles/";
+import { TILE_BASE_URL } from "./constants.ts";
 
 let meta: CatalogMeta | null = null;
 let notable: NotableEntry[] = [];

@@ -1,6 +1,7 @@
 import type { Star } from "./types.ts";
 import { getSelectedMesh, getSelectedSystem } from "./systemStore.ts";
 import { systemDetailHtml } from "./systemDispatch.ts";
+import { getActiveDetailHtml } from "./labelRegistry.ts";
 
 const detail = document.getElementById("detail")!;
 
@@ -10,8 +11,10 @@ detail.addEventListener("click", (e) => {
   detail.classList.toggle("collapsed");
 });
 
+import { LY_PER_PARSEC } from "./constants.ts";
+
 export function formatDist(pc: number): string {
-  return `${(pc * 3.262).toFixed(1)} ly (${pc.toFixed(2)} pc)`;
+  return `${(pc * LY_PER_PARSEC).toFixed(1)} ly (${pc.toFixed(2)} pc)`;
 }
 
 function renderWikiLink(url: string | undefined): string {
@@ -23,6 +26,15 @@ function renderNotes(text: string | undefined): string {
 }
 
 export function updateDetailPanel() {
+  // Check registry-managed label types (nebulae, etc.) first
+  const registryHtml = getActiveDetailHtml();
+  if (registryHtml) {
+    detail.innerHTML = registryHtml;
+    detail.classList.remove("collapsed");
+    detail.classList.add("active");
+    return;
+  }
+
   const selectedSystem = getSelectedSystem();
   if (selectedSystem) {
     detail.innerHTML = systemDetailHtml(selectedSystem);

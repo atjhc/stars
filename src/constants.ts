@@ -16,6 +16,15 @@ export const GRID_DIVISIONS = 65;
 export const GRID_FADE_RADIUS = 30.0;
 export const HIT_SCREEN_FRACTION = 0.02;
 
+export const LY_PER_PARSEC = 3.26156;
+
+export function solDistanceFade(solDist: number, maxSolDist: number): number {
+  if (maxSolDist <= 0) return 1.0;
+  return 1.0 - (solDist / maxSolDist) * 0.75;
+}
+
+export const TILE_BASE_URL = "/tiles/";
+
 export const BLOOM_STRENGTH = 0.3;
 export const BLOOM_RADIUS = 0.4;
 export const BLOOM_THRESHOLD = 0.1;
@@ -28,6 +37,17 @@ export const LABEL_CSS = `
 `;
 
 export const CLUSTER_DEFAULT_SHADOW = "0 0 8px rgba(100,150,220,0.6), 0 0 3px #000";
+
+export const NEBULA_DEFAULT_SHADOW = "0 0 8px rgba(200,120,60,0.5), 0 0 3px #000";
+
+export const NEBULA_LABEL_CSS = `
+  color: rgba(255,180,120,0.85); font-size: 13px;
+  letter-spacing: 0.5px;
+  pointer-events: auto; white-space: nowrap;
+  text-shadow: ${NEBULA_DEFAULT_SHADOW};
+  transform: translateZ(0); -webkit-transform: translateZ(0);
+  user-select: none; text-align: center; cursor: pointer;
+`;
 
 export const CLUSTER_LABEL_CSS = `
   color: rgba(180,210,255,0.85); font-size: 14px;
