@@ -71,7 +71,6 @@ const nebulaHandler: LabelTypeHandler = {
   },
 
   update() {
-    if (!isDustVisible()) return;
     if (maxSolDist === 0 && nebulaLabels.length > 0) {
       for (const nl of nebulaLabels) {
         const d = nl.anchor.position.length();
@@ -79,10 +78,15 @@ const nebulaHandler: LabelTypeHandler = {
       }
     }
     for (const nl of nebulaLabels) {
-      const camDist = nl.anchor.position.distanceTo(camera.position);
-      const distPc = camDist / SCALE;
-      nl.distDiv.textContent = formatDist(distPc);
       const isActive = nl === selectedNebula || nl === hoveredNebula;
+      if (isActive) {
+        const camDist = nl.anchor.position.distanceTo(camera.position);
+        const distPc = camDist / SCALE;
+        nl.distDiv.textContent = formatDist(distPc);
+        nl.distDiv.style.display = "";
+      } else {
+        nl.distDiv.style.display = "none";
+      }
       const solDist = nl.anchor.position.length();
       nl.div.style.opacity = String(isActive ? 1.0 : solDistanceFade(solDist, maxSolDist));
     }
@@ -122,7 +126,7 @@ export async function initNebulaeLabels(): Promise<void> {
   for (const [name, entry] of Object.entries(data)) {
     const div = document.createElement("div");
     div.style.cssText = NEBULA_LABEL_CSS;
-    div.innerHTML = `<div>${name}</div><div style="font-size:10px;opacity:0.6">${formatDist(entry.dist_pc)}</div>`;
+    div.innerHTML = `<div>${name}</div><div class="system-members" style="display:none"></div>`;
     div.setAttribute("data-label-type", "nebula");
     div.setAttribute("data-label-name", name);
     if (initLabelDragFn) initLabelDragFn(div);

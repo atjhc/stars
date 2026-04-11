@@ -24,7 +24,7 @@ import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations } from "./constellations.ts";
-import { initDust, updateDust, renderDustPostBloom, toggleDust } from "./dust.ts";
+import { initDust, updateDust, renderDustPostBloom, toggleDust, handleDustResize } from "./dust.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debug.ts";
@@ -311,6 +311,7 @@ window.addEventListener("keydown", (e) => {
 
 window.addEventListener("resize", () => {
   handleResize();
+  handleDustResize();
   setLabelsDirty(true);
 });
 

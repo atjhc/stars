@@ -1,6 +1,7 @@
 import type { SearchEntry } from "./catalog.ts";
 import { getSearchIndex } from "./catalog.ts";
 import { filterSearch } from "./searchFilter.ts";
+import { isDustVisible } from "./dust.ts";
 
 const searchEl = document.getElementById("search")!;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -28,7 +29,8 @@ function closeSearch() {
 }
 
 function updateSearchResults(query: string) {
-  filteredEntries = filterSearch(query, getSearchIndex());
+  const exclude = isDustVisible() ? undefined : new Set(["n"]);
+  filteredEntries = filterSearch(query, getSearchIndex(), exclude);
   selectedIndex = 0;
 }
 

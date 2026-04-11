@@ -1,7 +1,7 @@
 import type { SearchEntry } from "./catalog.ts";
 import { MAX_SEARCH_RESULTS } from "./constants.ts";
 
-export function filterSearch(query: string, index: SearchEntry[]): SearchEntry[] {
+export function filterSearch(query: string, index: SearchEntry[], excludeKinds?: Set<string>): SearchEntry[] {
   const q = query.toLowerCase().trim();
   if (q.length === 0) return [];
 
@@ -42,6 +42,7 @@ export function filterSearch(query: string, index: SearchEntry[]): SearchEntry[]
 
   // Pass 1: cluster and nebula entries.
   for (const entry of index) {
+    if (excludeKinds?.has(entry.k ?? "")) continue;
     if (entry.k === "c") {
       if (!clusterMatch(entry)) continue;
     } else if (entry.k === "n") {

@@ -112,6 +112,11 @@ or the term "cluster".
 - `src/search.ts` — Search UI
 - `src/searchFilter.ts` — Pure search matching logic (testable without DOM)
 - `src/labelVisibility.ts` — Pure highlight/visibility decision functions (testable)
+- `src/labelRegistry.ts` — Unified label type registry for cross-type coordination
+- `src/nebulaeLabels.ts` — Nebula label CSS2DObjects, registered via labelRegistry
+- `src/dust.ts` — 3D dust volume ray marcher (Lallement/Vergely data + hot-star illumination)
+- `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
+- `src/systemDispatch.ts` — Polymorphic dispatch functions for SystemGroup variants
 
 ### Other files
 
@@ -125,11 +130,16 @@ or the term "cluster".
 - `data/clusters.json` — Star cluster definitions: name, aliases, seed stars, wikipedia, notes
 - `data/cluster-members/hunt2023.json` — Gaia DR3 membership IDs from Hunt & Reffert (2023), keyed by cluster name
 - `data/constellations.json` — Constellation line definitions for the 37 rendered constellations
+- `data/nebulae.json` — Molecular cloud definitions: positions (galactic Cartesian), metadata, wikipedia
+- `data/dust/cube_ext.fits.gz` — Lallement/Vergely 3D extinction cube (source FITS, not checked in)
+- `dist/tiles/dust_volume_rgba.bin` — Baked RGBA 3D texture (density + hot-star illumination)
+- `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata
+- `dist/tiles/nebulae.json` — Runtime nebula data with baked scene coordinates
 - `.claude/skills/research/SKILL.md` — Documented workflow for filling tier-0 metadata gaps in batches via research subagents
 - `docs/stars.md` — Star rendering documentation (shader, bloom, sizing)
 - `docs/starfield.md` — Streaming pipeline + binary format + tier model + catalog scope rationale
 - `docs/data-corrections.md` — Corrections applied on top of source data
-- `docs/nebulae.md` — Nebula rendering: approaches (multi-layer billboard, particle cloud, SDF raymarching, voxel), nearby targets, prototype plan
+- `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown, planned improvements
 - `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap; consult before making decisions that would foreclose floating-origin retrofits or LOD/sub-scene splits.
 
 ### Label tiers
@@ -174,5 +184,5 @@ inject stars that don't exist in the source catalog (e.g. Sirius B).
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
 - **3D:** Three.js with custom GLSL shaders, CSS2DRenderer for labels, UnrealBloomPass
-- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/hyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3)
+- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/hyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Lallement/Vergely 2022](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147) (CC-BY 4.0)
 - **Hosting:** Vercel (static)

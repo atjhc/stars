@@ -16,14 +16,113 @@ interface DustMeta {
   extent_pc: [number, number, number];
 }
 
-const dustScene = new THREE.Scene();
-let dustMesh: THREE.Mesh | null = null;
+const emissionScene = new THREE.Scene();
+let emissionMesh: THREE.Mesh | null = null;
 let wantVisible = false;
+
+// Half-resolution render target for the emission pass. Volumetric glow
+// is inherently smooth, so half-res + bilinear upscale is nearly
+// indistinguishable from full-res at ~4× less GPU cost.
+let halfResRT: THREE.WebGLRenderTarget | null = null;
+let blitMaterial: THREE.ShaderMaterial | null = null;
+const blitScene = new THREE.Scene();
+const blitCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+
+const SHARED_VERTEX = `
+  varying vec3 vWorldPos;
+  void main() {
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPos = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+const EMISSION_FRAGMENT = `
+  uniform sampler3D uDustVolume;
+  uniform vec3 uVolumeSize;
+  uniform mat3 uSceneToGal;
+  uniform vec3 uCameraPos;
+  uniform float uOpacity;
+  varying vec3 vWorldPos;
+
+  vec3 sceneToUV(vec3 scenePos) {
+    vec3 galPos = uSceneToGal * scenePos;
+    return galPos / uVolumeSize + 0.5;
+  }
+
+  void main() {
+    vec3 rayDir = normalize(vWorldPos - uCameraPos);
+    vec3 pos = uCameraPos;
+    float maxDist = length(vWorldPos - uCameraPos);
+
+    float accumDensity = 0.0;
+    float accumHII = 0.0;
+    float accumRef = 0.0;
+    float stepSize = 18.0;
+    float traveled = 0.0;
+
+    for (int i = 0; i < 128; i++) {
+      if (traveled > maxDist) break;
+      if (accumDensity > 4.0) break;
+      vec3 uv = sceneToUV(pos);
+
+      if (all(greaterThanEqual(uv, vec3(0.0))) && all(lessThanEqual(uv, vec3(1.0)))) {
+        vec4 texel = texture(uDustVolume, uv);
+        float density = texel.r;
+        float ionFlux = texel.g;
+        float scatFlux = texel.b;
+
+        float transmittance = exp(-accumDensity);
+        accumDensity += density * uOpacity * 0.3;
+
+        float hiiEm = ionFlux * ionFlux * density;
+        float refEm = scatFlux * scatFlux * density * 0.5;
+        accumHII += hiiEm * transmittance * uOpacity * 5.0;
+        accumRef += refEm * transmittance * uOpacity * 5.0;
+      }
+
+      pos += rayDir * stepSize;
+      traveled += stepSize;
+    }
+
+    vec3 hiiColor = vec3(0.9, 0.2, 0.25);
+    vec3 refColor = vec3(0.3, 0.45, 0.85);
+    float total = accumHII + accumRef;
+    vec3 color = total > 0.001
+      ? (hiiColor * accumHII + refColor * accumRef) / total * total
+      : vec3(0.0);
+    float alpha = min(1.0, total);
+    if (alpha < 0.001) discard;
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+function createEmissionMaterial(
+  texture: THREE.Data3DTexture,
+  volSize: THREE.Vector3,
+): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uDustVolume: { value: texture },
+      uVolumeSize: { value: volSize },
+      uSceneToGal: { value: new THREE.Matrix3().copy(GAL_TO_SCENE).invert() },
+      uCameraPos: { value: new THREE.Vector3() },
+      uOpacity: { value: 0.12 },
+    },
+    vertexShader: SHARED_VERTEX,
+    fragmentShader: EMISSION_FRAGMENT,
+    blending: THREE.NormalBlending,  // writes to offscreen RT, not directly to screen
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.BackSide,
+  });
+}
 
 export async function initDust(): Promise<void> {
   const [metaResp, dataResp] = await Promise.all([
     fetch(`${TILE_BASE_URL}dust_meta.json`),
-    fetch(`${TILE_BASE_URL}dust_volume.bin`),
+    fetch(`${TILE_BASE_URL}dust_volume_rgba.bin`),
   ]);
   if (!metaResp.ok || !dataResp.ok) {
     console.warn("Dust volume not available");
@@ -36,7 +135,7 @@ export async function initDust(): Promise<void> {
   const [zSize, ySize, xSize] = meta.shape;
 
   const dustTexture = new THREE.Data3DTexture(data, xSize, ySize, zSize);
-  dustTexture.format = THREE.RedFormat;
+  dustTexture.format = THREE.RGBAFormat;
   dustTexture.type = THREE.UnsignedByteType;
   dustTexture.minFilter = THREE.LinearFilter;
   dustTexture.magFilter = THREE.LinearFilter;
@@ -65,114 +164,63 @@ export async function initDust(): Promise<void> {
     meta.extent_pc[0] * SCALE, meta.extent_pc[1] * SCALE, meta.extent_pc[2] * SCALE,
   );
 
-  const material = new THREE.ShaderMaterial({
-    uniforms: {
-      uDustVolume: { value: dustTexture },
-      uVolumeSize: { value: volSize },
-      uSceneToGal: { value: new THREE.Matrix3().copy(GAL_TO_SCENE).invert() },
-      uCameraPos: { value: new THREE.Vector3() },
-      uOpacity: { value: 0.12 },
-    },
-    vertexShader: `
-      varying vec3 vWorldPos;
-      void main() {
-        vec4 worldPos = modelMatrix * vec4(position, 1.0);
-        vWorldPos = worldPos.xyz;
-        gl_Position = projectionMatrix * viewMatrix * worldPos;
-      }
-    `,
-    fragmentShader: `
-      uniform sampler3D uDustVolume;
-      uniform vec3 uVolumeSize;
-      uniform mat3 uSceneToGal;
-      uniform vec3 uCameraPos;
-      uniform float uOpacity;
-      varying vec3 vWorldPos;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
 
-      vec3 sceneToUV(vec3 scenePos) {
-        vec3 galPos = uSceneToGal * scenePos;
-        return galPos / uVolumeSize + 0.5;
-      }
+  const emMat = createEmissionMaterial(dustTexture, volSize);
+  emissionMesh = new THREE.Mesh(geometry, emMat);
+  emissionMesh.position.copy(center);
+  emissionMesh.scale.copy(size);
+  emissionMesh.frustumCulled = false;
+  emissionScene.add(emissionMesh);
 
-      void main() {
-        vec3 rayDir = normalize(vWorldPos - uCameraPos);
-        vec3 pos = uCameraPos;
-        float maxDist = length(vWorldPos - uCameraPos);
+  // Half-resolution render target for the emission pass
+  const hw = Math.round(window.innerWidth * window.devicePixelRatio / 2);
+  const hh = Math.round(window.innerHeight * window.devicePixelRatio / 2);
+  halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
 
-        float accumLight = 0.0;
-        float accumDensity = 0.0;
-        float stepSize = 9.0;
-        float traveled = 0.0;
-
-        for (int i = 0; i < 256; i++) {
-          if (traveled > maxDist) break;
-          vec3 uv = sceneToUV(pos);
-
-          if (all(greaterThanEqual(uv, vec3(0.0))) && all(lessThanEqual(uv, vec3(1.0)))) {
-            float density = texture(uDustVolume, uv).r;
-            // Square density for contrast: dense cores glow much
-            // brighter than diffuse edges. This makes thin nearby
-            // clouds visible without over-saturating long sightlines.
-            float emission = density * density;
-            float transmittance = exp(-accumDensity);
-            accumLight += emission * transmittance * uOpacity;
-            accumDensity += density * uOpacity * 0.3;
-          }
-
-          pos += rayDir * stepSize;
-          traveled += stepSize;
-        }
-
-        // Color varies with density and depth:
-        // - Diffuse outer regions: blue-purple (starlight scattered by dust)
-        // - Moderate density: warm amber (heated dust thermal emission)
-        // - Dense cores: reddish-pink (Hα emission from ionized hydrogen)
-        vec3 scatterColor = vec3(0.25, 0.35, 0.75);  // blue reflection
-        vec3 warmColor = vec3(0.85, 0.45, 0.2);       // amber dust glow
-        vec3 emissionColor = vec3(0.9, 0.25, 0.3);    // Hα red-pink
-
-        float t = smoothstep(0.0, 0.3, accumLight);
-        float t2 = smoothstep(0.3, 0.8, accumLight);
-        vec3 nebulaColor = mix(scatterColor, warmColor, t);
-        nebulaColor = mix(nebulaColor, emissionColor, t2);
-
-        vec3 color = nebulaColor * accumLight;
-        float alpha = min(1.0, accumLight);
-        if (alpha < 0.001) discard;
-
-        gl_FragColor = vec4(color, alpha);
-      }
-    `,
+  // Fullscreen blit quad to upscale the half-res result
+  blitMaterial = new THREE.ShaderMaterial({
+    uniforms: { tDiffuse: { value: halfResRT.texture } },
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv); }`,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     depthTest: false,
-    side: THREE.BackSide,
   });
-
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  dustMesh = new THREE.Mesh(geometry, material);
-  dustMesh.position.copy(center);
-  dustMesh.scale.copy(size);
-  dustMesh.frustumCulled = false;
-  dustScene.add(dustMesh);
+  const blitQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blitMaterial);
+  blitScene.add(blitQuad);
 
   console.log(`Dust volume: ${xSize}×${ySize}×${zSize}, bbox ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}`);
 }
 
 export function updateDust(): void {
-  if (!dustMesh || !wantVisible) return;
-  (dustMesh.material as THREE.ShaderMaterial).uniforms.uCameraPos.value.copy(camera.position);
+  if (!emissionMesh || !wantVisible) return;
+  (emissionMesh.material as THREE.ShaderMaterial).uniforms.uCameraPos.value.copy(camera.position);
 }
 
 export function renderDustPostBloom(renderer: THREE.WebGLRenderer): void {
-  if (!dustMesh || !wantVisible) return;
-  // Render the dust volume AFTER the bloom compositor has written to
-  // the screen. Multiply blending darkens the bloomed starfield.
+  if (!emissionMesh || !wantVisible || !halfResRT || !blitMaterial) return;
+
+  // Pass 1: ray march at half resolution into offscreen target
+  renderer.setRenderTarget(halfResRT);
+  renderer.setClearColor(0x000000, 0);
+  renderer.clear(true, false, false);
+  renderer.render(emissionScene, camera);
+
+  // Pass 2: upscale to screen with additive blending
+  blitMaterial.uniforms.tDiffuse.value = halfResRT.texture;
   renderer.setRenderTarget(null);
   const prev = renderer.autoClear;
   renderer.autoClear = false;
-  renderer.render(dustScene, camera);
+  renderer.render(blitScene, blitCamera);
   renderer.autoClear = prev;
+}
+
+export function handleDustResize(): void {
+  if (!halfResRT) return;
+  const hw = Math.round(window.innerWidth * window.devicePixelRatio / 2);
+  const hh = Math.round(window.innerHeight * window.devicePixelRatio / 2);
+  halfResRT.setSize(hw, hh);
 }
 
 export function setDustVisible(v: boolean): void { wantVisible = v; }

@@ -2,6 +2,8 @@ import * as THREE from "three";
 import type { Star, SystemGroup, ClusterGroup } from "./types.ts";
 import { starGlowShadow } from "./color.ts";
 import { formatDist } from "./detail.ts";
+import { camera } from "./scene.ts";
+import { SCALE, LY_PER_PARSEC } from "./constants.ts";
 
 const CLUSTER_HIGHLIGHT_GLOW = "0 0 8px rgba(160,200,255,0.9), 0 0 20px rgba(130,170,255,0.4), 0 0 4px #000";
 
@@ -36,8 +38,20 @@ export function removeSystemLabelGlow(group: SystemGroup) {
     group.kind === "cluster" ? group.defaultShadow : "";
 }
 
+function formatSceneDist(sceneUnits: number): string {
+  const ly = (sceneUnits / SCALE) * LY_PER_PARSEC;
+  if (ly < 1) return `${ly.toFixed(3)} ly`;
+  if (ly < 10) return `${ly.toFixed(2)} ly`;
+  return `${ly.toFixed(1)} ly`;
+}
+
 export function labelContent(group: SystemGroup, isActive: boolean): string {
-  if (group.kind === "cluster" || !isActive) return group.name;
+  if (group.kind === "cluster") {
+    if (!isActive) return group.name;
+    const dist = group.anchor.position.distanceTo(camera.position);
+    return `<div>${group.name}</div><div class="system-members">${formatSceneDist(dist)}</div>`;
+  }
+  if (!isActive) return group.name;
   const members = group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes;
   const names = members.map((m) => (m.userData as Star).name);
   return `<div>${group.name}</div><div class="system-members">${names.join(" · ")}</div>`;

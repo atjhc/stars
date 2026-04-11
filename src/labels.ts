@@ -114,6 +114,7 @@ export function updateLabels(
       const dist = group.anchor.position.distanceTo(camera.position);
       const zIndex = Math.round(20000 - dist * 100);
       setLabelStyle(group.label.element as HTMLElement, String(Math.max(0.2, opacity)), String(zIndex));
+      if (isHighlighted) updateSystemLabelText(group);
 
       // Check each member against the cluster label position.
       const anchorScreen = projectToScreen(group.anchor.position);
