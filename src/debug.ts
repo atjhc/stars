@@ -96,6 +96,12 @@ let panel: HTMLDivElement | null = null;
 let bodyEl: HTMLDivElement | null = null;
 let staticEl: HTMLDivElement | null = null;
 let cameraEl: HTMLDivElement | null = null;
+let camLine: HTMLDivElement | null = null;
+let tgtLine: HTMLDivElement | null = null;
+let orbLine: HTMLDivElement | null = null;
+let lastCamText = "";
+let lastTgtText = "";
+let lastOrbText = "";
 
 function fmt(n: number) {
   return n.toFixed(2);
@@ -133,17 +139,24 @@ function renderStatic() {
   staticEl.innerHTML =
     toggleLines +
     `<div style="margin-top:6px;opacity:0.7">bloom tuning:</div>${bloomLines}` +
-    `<div style="margin-top:6px;opacity:0.7">eye:</div>${eyeLines}` +
-    `<div style="margin-top:6px;opacity:0.7">camera:</div>`;
+    `<div style="margin-top:6px;opacity:0.7">eye:</div>${eyeLines}`;
+}
+
+function cameraStateText() {
+  const cp = camera.position;
+  return `cam ${fmt(cp.x)} ${fmt(cp.y)} ${fmt(cp.z)}\ntgt ${fmt(target.x)} ${fmt(target.y)} ${fmt(target.z)}\norb r=${fmt(orbitRadius)} φ=${fmt(orbitPhi)} θ=${fmt(orbitTheta)}`;
 }
 
 function renderCamera() {
-  if (!cameraEl) return;
+  if (!camLine || !tgtLine || !orbLine) return;
+  // Skip DOM writes when text hasn't changed to preserve active selections
   const cp = camera.position;
-  cameraEl.innerHTML =
-    `<div>cam  ${fmt(cp.x)}  ${fmt(cp.y)}  ${fmt(cp.z)}</div>` +
-    `<div>tgt  ${fmt(target.x)}  ${fmt(target.y)}  ${fmt(target.z)}</div>` +
-    `<div>orb  r=${fmt(orbitRadius)} φ=${fmt(orbitPhi)} θ=${fmt(orbitTheta)}</div>`;
+  const ct = `cam  ${fmt(cp.x)}  ${fmt(cp.y)}  ${fmt(cp.z)}`;
+  const tt = `tgt  ${fmt(target.x)}  ${fmt(target.y)}  ${fmt(target.z)}`;
+  const ot = `orb  r=${fmt(orbitRadius)} φ=${fmt(orbitPhi)} θ=${fmt(orbitTheta)}`;
+  if (ct !== lastCamText) { camLine.textContent = ct; lastCamText = ct; }
+  if (tt !== lastTgtText) { tgtLine.textContent = tt; lastTgtText = tt; }
+  if (ot !== lastOrbText) { orbLine.textContent = ot; lastOrbText = ot; }
 }
 
 // Per-frame refresh — only the live camera block rewrites, not the full panel.
@@ -162,7 +175,34 @@ export function initDebug() {
   bodyEl.className = "debug-body";
   staticEl = document.createElement("div");
   cameraEl = document.createElement("div");
+  camLine = document.createElement("div");
+  tgtLine = document.createElement("div");
+  orbLine = document.createElement("div");
+  cameraEl.appendChild(camLine);
+  cameraEl.appendChild(tgtLine);
+  cameraEl.appendChild(orbLine);
+
+  const copyBtn = document.createElement("span");
+  copyBtn.className = "debug-copy";
+  copyBtn.title = "Copy camera state";
+  copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+  copyBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(cameraStateText());
+    copyBtn.style.opacity = "1";
+    setTimeout(() => { copyBtn.style.opacity = ""; }, 600);
+  });
+
+  const cameraHeader = document.createElement("div");
+  cameraHeader.style.cssText = "margin-top:6px;opacity:0.7;display:inline";
+  cameraHeader.textContent = "camera:";
+
+  const headerRow = document.createElement("div");
+  headerRow.appendChild(cameraHeader);
+  headerRow.appendChild(copyBtn);
+
   bodyEl.appendChild(staticEl);
+  bodyEl.appendChild(headerRow);
   bodyEl.appendChild(cameraEl);
 
   const bugIcon = document.createElement("div");

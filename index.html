@@ -113,7 +113,6 @@
     color: #cde; font: 11px/1.5 monospace;
     min-width: 220px;
     transition: border-color 0.15s;
-    cursor: pointer;
     -webkit-user-select: text; user-select: text;
   }
   #debug-panel * { -webkit-user-select: text; user-select: text; }
@@ -126,7 +125,13 @@
     align-items: center; justify-content: center;
     padding: 8px;
     color: #6aaeff;
+    cursor: pointer;
   }
+  #debug-panel .debug-copy {
+    display: inline-block; margin-left: 6px;
+    cursor: pointer; opacity: 0.5; vertical-align: middle;
+  }
+  #debug-panel .debug-copy:hover { opacity: 1; }
   #debug-panel.collapsed { min-width: 0; }
   #debug-panel.collapsed .debug-body { display: none; }
   #debug-panel.collapsed .debug-bug { display: inline-flex; }
