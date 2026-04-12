@@ -253,5 +253,14 @@
     "seed_stars": [],
     "wikipedia": "https://en.wikipedia.org/wiki/Sigma_Orionis_cluster",
     "notes": "Young cluster at ~396 pc around the multiple star \u03c3 Orionis. Age ~3 Myr, important for studying brown dwarfs and protoplanetary disks."
+  },
+  "ASCC 125": {
+    "aliases": [
+      "Cepheus OB3b"
+    ],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Cepheus_OB3",
+    "notes": "Young subgroup of the Cepheus OB3 association at ~828 pc. Embedded in the Cepheus OB3 molecular cloud, an active region of sequential star formation."
   }
 }
