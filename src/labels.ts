@@ -2,15 +2,22 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, SCALE,
-  solDistanceFade,
+  LY_PER_PARSEC, solDistanceFade,
 } from "./constants.ts";
+import { camera, animation } from "./scene.ts";
 import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
 import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
-
+import { type RankedLabel, resolveCollisions, isLabelInteractive } from "./labelCollision.ts";
+import { collectAllRegisteredLabels } from "./labelRegistry.ts";
+import {
+  getSelectedMesh, getSelectedSystem, getHoveredSystem, getLastHoveredMesh,
+  isLabelsDirty, setLabelsDirty,
+} from "./systemStore.ts";
+import { updateSystemLabelText, unhoverAll } from "./interaction.ts";
+import { starGlowShadow } from "./color.ts";
+import { isFavorite } from "./favorites.ts";
 
 const collapsed = new Set<THREE.Object3D>();
-
-import { LY_PER_PARSEC } from "./constants.ts";
 const labelsWithSubtitle = new WeakSet<HTMLElement>();
 let cachedMaxNotableSolDist = 0;
 let cachedMaxClusterSolDist = 0;
@@ -21,13 +28,6 @@ function formatSceneDistance(sceneUnits: number): string {
   if (ly < 10) return `${ly.toFixed(2)} ly`;
   return `${ly.toFixed(1)} ly`;
 }
-import { camera } from "./scene.ts";
-import {
-  getSelectedMesh, getSelectedSystem, getHoveredSystem, getLastHoveredMesh,
-  isLabelsDirty, setLabelsDirty,
-} from "./systemStore.ts";
-import { updateSystemLabelText } from "./interaction.ts";
-import { starGlowShadow } from "./color.ts";
 
 const projVec = new THREE.Vector3();
 const screenBuf = { x: 0, y: 0 };
@@ -57,6 +57,8 @@ function projectGroupToScreen(group: import("./types.ts").BinarySystem) {
 }
 
 const prevCamPos = new THREE.Vector3();
+const prevCollisionCamPos = new THREE.Vector3();
+let prevCollisionSelection: SystemGroup | THREE.Object3D | null = null;
 
 export type DivResolver = (target: THREE.Object3D) => HTMLElement | undefined;
 
@@ -69,7 +71,10 @@ export function updateLabels(
   divFor: DivResolver,
 ) {
   if (!labelsVisible) return;
+  if (animation) return;
   if (!isLabelsDirty()) return;
+
+  const frameLabels: RankedLabel[] = [];
 
   const magLimit = magLimitUniform.value;
   const tier0FadeStart = magLimit - 1.5;
@@ -114,8 +119,16 @@ export function updateLabels(
       group.label.visible = true;
       const dist = group.anchor.position.distanceTo(camera.position);
       const zIndex = Math.round(20000 - dist * 100);
-      setLabelStyle(group.label.element as HTMLElement, String(Math.max(0.2, opacity)), String(zIndex));
+      const clampedOpacity = Math.max(0.2, opacity);
+      setLabelStyle(group.label.element as HTMLElement, String(clampedOpacity), String(zIndex));
       if (isHighlighted) updateSystemLabelText(group);
+      const favBonus = isFavorite(group.name) ? 5000 : 0;
+      frameLabels.push({
+        div: group.label.element as HTMLElement,
+        rank: 1500 + favBonus,
+        opacity: clampedOpacity,
+        pinned: isHighlighted,
+      });
 
       // Check each member against the cluster label position.
       const anchorScreen = projectToScreen(group.anchor.position);
@@ -175,10 +188,18 @@ export function updateLabels(
       if (!group.label.visible) continue;
 
       const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
+      const clampedOpacity = Math.max(0.2, opacity);
       const zIndex = Math.round(10000 - dist * 100);
       const el = group.label.element as HTMLElement;
-      setLabelStyle(el, String(Math.max(0.2, opacity)), String(zIndex));
+      setLabelStyle(el, String(clampedOpacity), String(zIndex));
       updateSystemLabelText(group);
+      const favBonus = isFavorite(group.name) ? 5000 : 0;
+      frameLabels.push({
+        div: el,
+        rank: 1000 + favBonus,
+        opacity: clampedOpacity,
+        pinned: isSystemHighlighted,
+      });
     } else {
       group.collapsedMembers = [];
       group.label.visible = false;
@@ -239,6 +260,7 @@ export function updateLabels(
       if (isSystemMemberHighlighted) {
         div.style.textShadow = starGlowShadow(star.ci);
       }
+      frameLabels.push({ div, rank: 500, opacity: 1, pinned: true });
       return;
     }
 
@@ -252,6 +274,7 @@ export function updateLabels(
     // (so the billboard glow from highlightSystem renders) but don't
     // override the label's normal fade styling.
     const forceVis = shouldForceVisible(target, hlCtx);
+    const favBonus = isFavorite(star.name) ? 5000 : 0;
 
     if (isTier0) {
       const appMag = apparentMag(star.absmag ?? 10, camDist);
@@ -263,7 +286,10 @@ export function updateLabels(
       target.visible = true;
       const solDist = target.position.length();
       const solFade = solDistanceFade(solDist, cachedMaxNotableSolDist);
-      setLabelStyle(div, String(Math.max(0.15, (1 - t) * solFade)), zIndex);
+      const finalOpacity = Math.max(0.15, (1 - t) * solFade);
+      setLabelStyle(div, String(finalOpacity), zIndex);
+      const magRank = Math.max(0, (10 - appMag) * 10);
+      frameLabels.push({ div, rank: 500 + magRank + favBonus, opacity: finalOpacity });
     } else {
       if (camDist > LABEL_HIDE_DIST) {
         target.visible = forceVis;
@@ -271,17 +297,49 @@ export function updateLabels(
       }
       target.visible = true;
       const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
-      setLabelStyle(div, String(Math.max(0.2, opacity)), zIndex);
+      const finalOpacity = Math.max(0.2, opacity);
+      setLabelStyle(div, String(finalOpacity), zIndex);
+      frameLabels.push({ div, rank: favBonus, opacity: finalOpacity });
     }
   }
 
   for (const anchor of notableAnchors) processLabel(anchor);
   for (const mesh of interactiveStars) processLabel(mesh);
 
+  frameLabels.push(...collectAllRegisteredLabels());
+
+  // Hover-only changes shouldn't shuffle the collision layout
+  const selectionKey = selectedSystem ?? selectedMesh;
+  const needsCollision = !prevCollisionCamPos.equals(camera.position)
+    || prevCollisionSelection !== selectionKey;
+  if (needsCollision) {
+    resolveCollisions(frameLabels);
+    prevCollisionCamPos.copy(camera.position);
+    prevCollisionSelection = selectionKey;
+  }
+
+  // Clear hover on anything collision just hid
+  if (needsCollision) {
+    const hoverDiv = getLastHoveredMesh() ? divFor(getLastHoveredMesh()!) : null;
+    const hovSys = getHoveredSystem();
+    const sysDiv = hovSys ? hovSys.label.element as HTMLElement : null;
+    if ((hoverDiv && !isLabelInteractive(hoverDiv))
+      || (sysDiv && hovSys !== getSelectedSystem() && !isLabelInteractive(sysDiv))) {
+      unhoverAll();
+    }
+  }
+
   setLabelsDirty(false);
   prevCamPos.copy(camera.position);
 }
 
+const CAMERA_CHECK_INTERVAL = 300;
+let lastCameraCheckTime = 0;
+
 export function checkCameraMoved() {
-  if (!prevCamPos.equals(camera.position)) setLabelsDirty(true);
+  if (prevCamPos.equals(camera.position)) return;
+  const now = performance.now();
+  if (now - lastCameraCheckTime < CAMERA_CHECK_INTERVAL) return;
+  lastCameraCheckTime = now;
+  setLabelsDirty(true);
 }

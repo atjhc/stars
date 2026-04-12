@@ -6,7 +6,9 @@ import { initLabelDragFn } from "./starfield.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { isDustVisible } from "./dust.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
+import type { RankedLabel } from "./labelCollision.ts";
 import { favoriteIcon } from "./detail.ts";
+import { isFavorite } from "./favorites.ts";
 
 const NEBULA_GLOW = "0 0 12px rgba(255,160,80,1.0), 0 0 28px rgba(255,130,50,0.5), 0 0 4px rgba(255,200,150,0.9)";
 
@@ -117,6 +119,24 @@ const nebulaHandler: LabelTypeHandler = {
 
   detailHtml() {
     return selectedNebula ? buildDetailHtml(selectedNebula) : null;
+  },
+
+  collectVisibleLabels() {
+    const result: RankedLabel[] = [];
+    for (const nl of nebulaLabels) {
+      if (!nl.anchor.visible) continue;
+      const isActive = nl === selectedNebula || nl === hoveredNebula;
+      const solDist = nl.anchor.position.length();
+      const opacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
+      const favBonus = isFavorite(nl.name) ? 5000 : 0;
+      result.push({
+        div: nl.div,
+        rank: 2000 + favBonus,
+        pinned: isActive,
+        opacity,
+      });
+    }
+    return result;
   },
 };
 

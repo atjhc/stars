@@ -20,6 +20,8 @@ import {
   getSelectedMesh, getLastHoveredMesh, setLabelsDirty,
 } from "./systemStore.ts";
 import { toggleFavorite } from "./favorites.ts";
+import { isLabelInteractive } from "./labelCollision.ts";
+
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
@@ -146,6 +148,7 @@ function wireSystemLabels() {
     const labelDiv = group.label.element as HTMLElement;
     labelDiv.addEventListener("mouseenter", () => {
       if (isDragging || isZooming) return;
+      if (!isLabelInteractive(labelDiv)) return;
       if (getSelectedSystem() !== group) {
         setHoveredSystem(group);
         showSystemMembers(group);
@@ -160,6 +163,7 @@ function wireSystemLabels() {
     });
     labelDiv.addEventListener("mouseup", () => {
       if (dragDistance >= CLICK_THRESHOLD) return;
+      if (!isLabelInteractive(labelDiv)) return;
       clearAllSelections();
       selectSystem(group, updateDetailPanel);
     });
@@ -273,8 +277,20 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   setMouseNDC(e.clientX, e.clientY);
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(allInteractiveStars);
-  if (intersects.length > 0) {
-    hoverTarget(canonicalTarget(intersects[0].object), meshToSystem, clusterOf);
+  let hoverMesh: THREE.Object3D | undefined;
+  for (const h of intersects) {
+    const t = canonicalTarget(h.object);
+    // Check the star's own label
+    const d = divFor(t as THREE.Mesh);
+    if (!d || !isLabelInteractive(d)) continue;
+    // If the star belongs to a cluster, check the cluster label too
+    const cluster = clusterOf.get(t);
+    if (cluster && !isLabelInteractive(cluster.label.element as HTMLElement)) continue;
+    hoverMesh = t;
+    break;
+  }
+  if (hoverMesh) {
+    hoverTarget(hoverMesh, meshToSystem, clusterOf);
   } else {
     unhoverAll();
   }
@@ -282,6 +298,8 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 
 labelRenderer.domElement.addEventListener("mouseover", (e) => {
   if (lastInputWasTouch || isDragging || isZooming) return;
+  const label = (e.target as HTMLElement).closest("[data-star-label], [data-system-label], [data-label-type]") as HTMLElement | null;
+  if (label && !isLabelInteractive(label)) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoveredViaLabel = true;

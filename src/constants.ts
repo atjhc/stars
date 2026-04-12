@@ -23,6 +23,9 @@ export function solDistanceFade(solDist: number, maxSolDist: number): number {
   return 1.0 - (solDist / maxSolDist) * 0.75;
 }
 
+export const COLLISION_PAD_PX = 2;
+export const COLLISION_ALPHA_CUTOFF = 0.15;
+
 export const TILE_BASE_URL = "/tiles/";
 
 export const BLOOM_STRENGTH = 0.3;
