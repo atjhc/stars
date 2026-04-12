@@ -1,0 +1,3 @@
+[submodule "vendor/athyg"]
+	path = vendor/athyg
+	url = https://codeberg.org/astronexus/athyg.git
