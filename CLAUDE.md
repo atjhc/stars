@@ -10,6 +10,19 @@ bun run dev     # starts dev server with HMR at http://localhost:3000
 bun run build   # builds static site to dist/
 ```
 
+#### Worktree setup
+
+Git worktrees don't include submodules or build artifacts. Before running
+the dev server from a worktree, symlink both into place:
+
+```sh
+mkdir -p vendor && ln -s /path/to/main/repo/vendor/athyg vendor/athyg
+mkdir -p dist   && ln -s /path/to/main/repo/dist/tiles   dist/tiles
+```
+
+Without these the server returns 200 but the app fails at runtime (missing
+tile data).
+
 ### Deploy
 
 Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deploy.

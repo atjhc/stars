@@ -433,7 +433,7 @@ function shouldLoadGeometry(path: string, tile: TileMeta, frustum: THREE.Frustum
   const sphere = tileSpheres.get(path);
   if (!sphere) return false;
   if (!frustum.intersectsSphere(sphere)) return false;
-  return sphere.center.distanceTo(camPos) < cullDist;
+  return sphere.center.distanceTo(camPos) - sphere.radius < cullDist;
 }
 
 function shouldLoadLabels(path: string, camPos: THREE.Vector3): boolean {
