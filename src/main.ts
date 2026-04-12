@@ -187,6 +187,11 @@ window.addEventListener("mousemove", (e) => {
   const dy = e.clientY - prevMouse.y;
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
+  // Option/Alt held without click: free-look orbit rotation
+  if (e.altKey && !isDragging && !isZooming) {
+    applyOrbitDrag(dx, dy);
+    return;
+  }
   if (!isDragging && !isZooming) return;
   if (isDragging) {
     dragDistance += Math.abs(dx) + Math.abs(dy);
@@ -263,7 +268,7 @@ window.addEventListener("touchstart", () => { lastInputWasTouch = true; }, { cap
 window.addEventListener("mousemove", () => { lastInputWasTouch = false; }, { capture: true });
 
 renderer.domElement.addEventListener("mousemove", (e) => {
-  if (hoveredViaLabel || lastInputWasTouch || isDragging || isZooming) return;
+  if (hoveredViaLabel || lastInputWasTouch || isDragging || isZooming || e.altKey) return;
   setMouseNDC(e.clientX, e.clientY);
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(allInteractiveStars);
