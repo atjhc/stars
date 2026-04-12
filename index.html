@@ -59,6 +59,11 @@
     max-width: 320px; max-height: 60vh; overflow-y: auto; user-select: text;
   }
   #detail.active { display: block; }
+  #detail .favorite-toggle {
+    position: absolute; top: 12px; right: 16px;
+    cursor: pointer; color: #fc6; font-size: 16px; line-height: 1;
+  }
+  #detail .favorite-toggle:hover { text-shadow: 0 0 6px rgba(255,204,102,0.6); }
   #detail .star-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
   #detail { cursor: pointer; }
   #detail.collapsed .detail-body { display: none; }

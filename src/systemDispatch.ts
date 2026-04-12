@@ -4,6 +4,7 @@ import { starGlowShadow } from "./color.ts";
 import { formatDist } from "./detail.ts";
 import { camera } from "./scene.ts";
 import { SCALE, LY_PER_PARSEC } from "./constants.ts";
+import { favoriteIcon } from "./detail.ts";
 
 const CLUSTER_HIGHLIGHT_GLOW = "0 0 8px rgba(160,200,255,0.9), 0 0 20px rgba(130,170,255,0.4), 0 0 4px #000";
 
@@ -70,6 +71,7 @@ export function systemDetailHtml(group: SystemGroup): string {
     const aliasLine = group.aliases && group.aliases.length > 0
       ? `<div class="star-aliases">${group.aliases.join(" · ")}</div>` : "";
     return `
+      ${favoriteIcon(group.name)}
       <div class="star-name">${group.name}</div>
       ${aliasLine}
       <div class="detail-body">
@@ -95,6 +97,7 @@ export function systemDetailHtml(group: SystemGroup): string {
     ? `<div class="star-notes">${notes.join("<br>")}</div>` : "";
 
   return `
+    ${favoriteIcon(group.name)}
     <div class="star-name">${group.name}</div>
     <div class="detail-body">
       <div class="star-detail">Distance: ${formatDist(group.avgDist)}</div>

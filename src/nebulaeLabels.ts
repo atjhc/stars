@@ -6,6 +6,7 @@ import { initLabelDragFn } from "./starfield.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { isDustVisible } from "./dust.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
+import { favoriteIcon } from "./detail.ts";
 
 const NEBULA_GLOW = "0 0 12px rgba(255,160,80,1.0), 0 0 28px rgba(255,130,50,0.5), 0 0 4px rgba(255,200,150,0.9)";
 
@@ -54,6 +55,7 @@ function buildDetailHtml(nl: NebulaLabel): string {
   const notes = e.notes ? `<div class="star-notes">${e.notes}</div>` : "";
 
   return `
+    ${favoriteIcon(nl.name)}
     <div class="star-name">${nl.name}</div>
     ${aliasLine}
     <div class="detail-body">

@@ -7,6 +7,7 @@ import {
 import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
 import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
 
+
 const collapsed = new Set<THREE.Object3D>();
 
 import { LY_PER_PARSEC } from "./constants.ts";

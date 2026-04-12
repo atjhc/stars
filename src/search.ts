@@ -2,6 +2,7 @@ import type { SearchEntry } from "./catalog.ts";
 import { getSearchIndex } from "./catalog.ts";
 import { filterSearch } from "./searchFilter.ts";
 import { isDustVisible } from "./dust.ts";
+import { isFavorite } from "./favorites.ts";
 
 const searchEl = document.getElementById("search")!;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -47,10 +48,13 @@ function renderSearchResults() {
   filteredEntries.forEach((entry, i) => {
     const li = document.createElement("li");
 
+    const bookmarkName = entry.sy ?? entry.n;
+    const bmSuffix = isFavorite(bookmarkName) ? " ★" : "";
+
     if (entry.k === "c") {
-      li.innerHTML = `${entry.n} <span class="search-secondary">Star Cluster</span>`;
+      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Star Cluster</span>`;
     } else if (entry.k === "n") {
-      li.innerHTML = `${entry.n} <span class="search-secondary">Nebula</span>`;
+      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Nebula</span>`;
     } else {
       const primaryName = entry.sy ?? entry.n;
       const matchSource = findMatchSource(entry, q);
@@ -58,9 +62,9 @@ function renderSearchResults() {
         ? matchSource
         : (entry.sy && entry.n !== entry.sy ? entry.n : null);
       if (secondary) {
-        li.innerHTML = `${primaryName} <span class="search-secondary">${secondary}</span>`;
+        li.innerHTML = `${primaryName}${bmSuffix} <span class="search-secondary">${secondary}</span>`;
       } else {
-        li.textContent = primaryName;
+        li.textContent = primaryName + bmSuffix;
       }
     }
 

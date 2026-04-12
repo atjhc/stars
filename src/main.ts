@@ -17,8 +17,9 @@ import {
 } from "./interaction.ts";
 import {
   getSelectedSystem, getHoveredSystem, setHoveredSystem,
-  getLastHoveredMesh, setLabelsDirty,
+  getSelectedMesh, getLastHoveredMesh, setLabelsDirty,
 } from "./systemStore.ts";
+import { toggleFavorite } from "./favorites.ts";
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
@@ -329,6 +330,13 @@ window.addEventListener("keydown", (e) => {
   } else if (e.key === "d") {
     toggleDust();
     doUpdateLabelVisibility();
+  } else if (e.key === "f") {
+    const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name;
+    if (name) {
+      toggleFavorite(name);
+      setLabelsDirty(true);
+      updateDetailPanel();
+    }
   }
 });
 

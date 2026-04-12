@@ -3,6 +3,7 @@ import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star } from "./types.ts";
 import { LABEL_CSS, HIT_SCREEN_FRACTION } from "./constants.ts";
 import { bvToColor } from "./color.ts";
+
 import { GLOW_GLSL } from "./starShader.ts";
 
 // Billboard meshes add detailed glow when close to camera.

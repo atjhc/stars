@@ -2,10 +2,23 @@ import type { Star } from "./types.ts";
 import { getSelectedMesh, getSelectedSystem } from "./systemStore.ts";
 import { systemDetailHtml } from "./systemDispatch.ts";
 import { getActiveDetailHtml } from "./labelRegistry.ts";
+import { isFavorite, toggleFavorite } from "./favorites.ts";
+import { setLabelsDirty } from "./systemStore.ts";
 
 const detail = document.getElementById("detail")!;
 
 detail.addEventListener("click", (e) => {
+  const bmBtn = (e.target as HTMLElement).closest(".favorite-toggle");
+  if (bmBtn) {
+    e.stopPropagation();
+    const name = bmBtn.getAttribute("data-name");
+    if (name) {
+      toggleFavorite(name);
+      setLabelsDirty(true);
+      updateDetailPanel();
+    }
+    return;
+  }
   if ((e.target as HTMLElement).closest("a")) return;
   if (window.getSelection()?.toString()) return;
   detail.classList.toggle("collapsed");
@@ -23,6 +36,11 @@ function renderWikiLink(url: string | undefined): string {
 
 function renderNotes(text: string | undefined): string {
   return text ? `<div class="star-notes">${text}</div>` : "";
+}
+
+export function favoriteIcon(name: string): string {
+  const icon = isFavorite(name) ? "★" : "☆";
+  return `<span class="favorite-toggle" data-name="${name.replace(/"/g, "&quot;")}">${icon}</span>`;
 }
 
 export function updateDetailPanel() {
@@ -55,9 +73,10 @@ export function updateDetailPanel() {
     : "";
 
   detail.innerHTML = `
+    ${favoriteIcon(star.name)}
     <div class="star-name">${star.name}</div>
+    ${aliasLine}
     <div class="detail-body">
-      ${aliasLine}
       <div class="star-detail">
         From Sol: ${formatDist(star.dist)}<br>
         Magnitude: ${star.mag.toFixed(1)} (abs: ${star.absmag.toFixed(1)})<br>
