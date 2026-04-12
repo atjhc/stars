@@ -17,7 +17,7 @@ import {
 } from "./interaction.ts";
 import {
   getSelectedSystem, getHoveredSystem, setHoveredSystem,
-  setLabelsDirty,
+  getLastHoveredMesh, setLabelsDirty,
 } from "./systemStore.ts";
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
@@ -32,7 +32,7 @@ import {
   initStarfield, updateStarfield,
   notableObjects, notableLabelMap, notableLabelMeshMap,
   allInteractiveStars, tier1Meshes,
-  systemGroups, meshToSystem,
+  systemGroups, meshToSystem, clusterOf,
   setInitLabelDrag, onLabelsChanged,
   tier1LabelMeshFromDiv, tier1LabelDivFromMesh,
   streamedLabelMap,
@@ -102,12 +102,27 @@ function divFor(mesh: THREE.Mesh): HTMLElement | undefined {
 }
 
 function trySelectAt(clientX: number, clientY: number) {
+  // Prefer whatever is currently hovered — this ensures click selects the
+  // same target that hover highlighting shows, avoiding raycast mismatches
+  // (e.g. clicking a cluster label but the ray hitting a member star).
+  const hoveredSys = getHoveredSystem();
+  if (hoveredSys && hoveredSys !== getSelectedSystem()) {
+    clearAllSelections();
+    selectSystem(hoveredSys, updateDetailPanel);
+    return;
+  }
+  const hoveredMesh = getLastHoveredMesh();
+  if (hoveredMesh) {
+    clearAllSelections();
+    selectTarget(hoveredMesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility, clusterOf);
+    return;
+  }
   setMouseNDC(clientX, clientY);
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(allInteractiveStars);
   if (hits.length > 0) {
     clearAllSelections();
-    selectTarget(canonicalTarget(hits[0].object), meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+    selectTarget(canonicalTarget(hits[0].object), meshToSystem, updateDetailPanel, doUpdateLabelVisibility, clusterOf);
   }
 }
 
@@ -253,7 +268,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(allInteractiveStars);
   if (intersects.length > 0) {
-    hoverTarget(canonicalTarget(intersects[0].object), meshToSystem);
+    hoverTarget(canonicalTarget(intersects[0].object), meshToSystem, clusterOf);
   } else {
     unhoverAll();
   }
@@ -264,14 +279,14 @@ labelRenderer.domElement.addEventListener("mouseover", (e) => {
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoveredViaLabel = true;
-  hoverTarget(mesh, meshToSystem);
+  hoverTarget(mesh, meshToSystem, clusterOf);
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
   if (!hoveredViaLabel || isDragging || isZooming) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
-  hoverTarget(mesh, meshToSystem);
+  hoverTarget(mesh, meshToSystem, clusterOf);
 });
 
 labelRenderer.domElement.addEventListener("mouseout", (e) => {
@@ -293,7 +308,7 @@ labelRenderer.domElement.addEventListener("mouseup", (e) => {
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (mesh) {
     clearAllSelections();
-    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility, clusterOf);
   }
 });
 

@@ -124,8 +124,8 @@ export function hideHover() {
   setLabelsDirty(true);
 }
 
-export function hoverTarget(target: THREE.Object3D, meshToSystem: Map<THREE.Object3D, SystemGroup>) {
-  const sys = meshToSystem.get(target);
+export function hoverTarget(target: THREE.Object3D, meshToSystem: Map<THREE.Object3D, SystemGroup>, clusterOf?: Map<THREE.Object3D, SystemGroup>) {
+  const sys = meshToSystem.get(target) ?? clusterOf?.get(target);
   if (sys) {
     hideHover();
     if (getHoveredSystem() !== sys && getSelectedSystem() !== sys) {
@@ -196,8 +196,9 @@ export function selectTarget(
   meshToSystem: Map<THREE.Object3D, SystemGroup>,
   updateDetailPanel: () => void,
   updateLabelVisibility: () => void,
+  clusterOf?: Map<THREE.Object3D, SystemGroup>,
 ) {
-  const sys = meshToSystem.get(target);
+  const sys = meshToSystem.get(target) ?? clusterOf?.get(target);
   if (sys) {
     selectSystem(sys, updateDetailPanel);
   } else {
