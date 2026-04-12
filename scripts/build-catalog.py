@@ -97,6 +97,12 @@ def lum_from_absmag(absmag: float) -> float:
     return 10 ** ((4.74 - absmag) / 2.5) if absmag < 20 else 0.001
 
 
+def bprp_to_bv(bprp: float) -> float:
+    """Convert Gaia BP-RP color to Johnson B-V (Riello et al. 2021 polynomial)."""
+    bprp = max(-0.5, min(5.0, bprp))
+    return -0.0085 + 0.4728 * bprp + 0.0847 * bprp**2 - 0.0102 * bprp**3
+
+
 def brightness_byte(absmag: float) -> int:
     """The point vertex shader recovers absmag from this byte and computes
     apparent magnitude per-frame from the camera distance. Linear encoding
@@ -332,6 +338,53 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
         })
         synth_count += 1
     print(f"Injected {synth_count} synthetic companions")
+
+    # Inject cluster members from Hunt & Reffert (2023) astrometry.
+    # Stars in the membership list that aren't already in AT-HYG are added
+    # as tier-2 point-cloud entries so clusters appear visually complete.
+    astro_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "data", "cluster-members", "hunt2023-astro.json",
+    )
+    if os.path.exists(astro_path):
+        with open(astro_path) as f:
+            astro_data = json.load(f)
+        existing_gaia = {s["gaia_id"] for s in stars if s.get("gaia_id")}
+        cluster_synth = 0
+        for gaia_id, info in astro_data.items():
+            if gaia_id in existing_gaia:
+                continue
+            plx = info.get("plx")
+            if not plx or plx <= 0.1:
+                continue
+            dist = 1000.0 / plx
+            if dist > MAX_DIST_PC or dist < 0:
+                continue
+            ra_rad = math.radians(info["ra"])
+            dec_rad = math.radians(info["dec"])
+            cos_dec = math.cos(dec_rad)
+            x0 = dist * cos_dec * math.cos(ra_rad)
+            y0 = dist * cos_dec * math.sin(ra_rad)
+            z0 = dist * math.sin(dec_rad)
+            sx = x0 * SCALE
+            sy = z0 * SCALE
+            sz = -y0 * SCALE
+            gmag = info.get("gmag", 15.0)
+            bprp = info.get("bprp", 0.8)
+            ci = bprp_to_bv(bprp)
+            absmag = gmag - 5 * math.log10(dist / 10.0)
+            stars.append({
+                "sx": sx, "sy": sy, "sz": sz,
+                "dist": dist, "mag": gmag, "absmag": absmag, "ci": ci,
+                "spect": "", "key": f"Gaia DR3 {gaia_id}",
+                "gaia_id": gaia_id, "name": None, "aliases": [],
+                "tier": 2, "wikipedia": None, "notes": None,
+                "system": None, "synthetic": True,
+            })
+            cluster_synth += 1
+        print(f"Injected {cluster_synth} synthetic cluster members from Hunt & Reffert")
+    else:
+        print("No hunt2023-astro.json found; skipping synthetic cluster members")
 
     # Resolve star clusters (data/clusters.json). For each cluster, compute
     # the centroid from its seed stars (looked up by proper name in the
