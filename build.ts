@@ -4,7 +4,7 @@ await Bun.build({
   entrypoints: ["./src/main.ts"],
   outdir: "./dist",
   minify: true,
-  sourcemap: "linked",
+  sourcemap: "none",
 });
 
 const html = await readFile("./index.html", "utf-8");
