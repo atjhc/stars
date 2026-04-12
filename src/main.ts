@@ -78,6 +78,7 @@ function initLabelDrag(div: HTMLElement) {
     prevMouse.x = e.clientX;
     prevMouse.y = e.clientY;
     dragDistance = 0;
+    hoveredViaLabel = false;
   });
 }
 setInitLabelDrag(initLabelDrag);
@@ -128,12 +129,14 @@ function wireSystemLabels() {
     wiredSystems.add(group);
     const labelDiv = group.label.element as HTMLElement;
     labelDiv.addEventListener("mouseenter", () => {
+      if (isDragging || isZooming) return;
       if (getSelectedSystem() !== group) {
         setHoveredSystem(group);
         showSystemMembers(group);
       }
     });
     labelDiv.addEventListener("mouseleave", () => {
+      if (isDragging || isZooming) return;
       if (getHoveredSystem() === group && getSelectedSystem() !== group) {
         hideSystemMembers(group);
         setHoveredSystem(null);
