@@ -1,14 +1,13 @@
 # Data Corrections
 
-This document tracks known issues in the HYG v4.2 source data and the
+This document tracks known issues in the AT-HYG source data and the
 corrections applied via `data/augmentations.json`.
 
 ## Source Data
 
-Originally used HYG Database v4.2 (Hipparcos, Yale Bright Star, Gliese catalogs).
-Migrated to **HYGLike from AT-HYG v3.2** which uses the same column structure but
-incorporates **Gaia DR3 distances** for 97.5% of stars, dramatically improving
-parallax accuracy. This migration resolved several known distance errors.
+Uses **AT-HYG v3.3** (Tycho-2 + Hipparcos + Yale Bright Star + Gliese catalogs,
+augmented with Gaia DR3 parallax for 97.5% of stars). Vendored as a git
+submodule at `vendor/athyg/`.
 
 ### Stars removed by Gaia-corrected distances
 
@@ -122,13 +121,13 @@ from what the HYG naming hierarchy produces. Examples:
   confirmation of binary status found
 - **Fix**: Removed system tag. Treated as independent stars
 
-### Missing Companions in HYGLike
+### Missing Companions in AT-HYG
 
 #### Sirius B (Gl 244B) and Procyon B (Gl 280B)
-- **Source**: HYGLike (AT-HYG) does not include these white dwarf companions —
+- **Source**: AT-HYG does not include these white dwarf companions —
   they lack independent Gaia/Hipparcos parallax measurements
 - **Fix**: Added as synthetic entries in `augmentations.json` with coordinates
-  matching their primaries and known photometric data. The extraction script
+  matching their primaries and known photometric data. The build script
   injects synthetic stars into the output when a `synthetic` field is present
   in the augmentation entry
 
@@ -166,7 +165,22 @@ For stars missing from the source catalog, add a `synthetic` field with full dat
 }
 ```
 
-Then regenerate:
+Then rebuild:
 ```sh
-python3 scripts/extract-stars.py hyglike.csv src/stars.json data/augmentations.json
+python3 scripts/build-catalog.py data/augmentations.json dist/tiles/ \
+  vendor/athyg/data/athyg_v33-1.csv.gz vendor/athyg/data/athyg_v33-2.csv.gz
 ```
+
+### Synthetic Cluster Members
+
+AT-HYG is based on Tycho-2 (complete to V ≈ 11.5), but most cluster members
+identified by Hunt & Reffert (2023) via Gaia DR3 astrometric clustering are
+fainter (Gmag 12–20). The build script injects ~14k unmatched members as
+tier-2 synthetic stars using RA/Dec/parallax/Gmag/BP-RP from VizieR.
+
+- **Gmag vs V-band**: Gaia Gmag ≈ Johnson V for solar-type stars, differs by
+  up to ~0.3 mag for very red/blue stars. Acceptable for tier-2 point cloud.
+- **BP-RP → B-V**: Converted via Riello et al. (2021) polynomial (~0.05 mag
+  accuracy).
+- **Epoch**: VizieR positions are Gaia epoch 2016.0 vs AT-HYG's J2000.0.
+  The ~0.01 pc offset over 16 years at typical proper motions is negligible.

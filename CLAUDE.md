@@ -16,16 +16,26 @@ Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deplo
 
 ### Updating star data
 
-AT-HYG v3.3 ships its full catalog as two part-files (only part 1 has a
-header; the script concatenates them into a single logical stream).
+AT-HYG v3.3 is vendored as a git submodule at `vendor/athyg/`. The full
+catalog ships as two part-files (only part 1 has a header; the script
+concatenates them into a single logical stream).
 
 ```sh
-curl -L -o athyg_v33-1.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-1.csv.gz"
-curl -L -o athyg_v33-2.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-2.csv.gz"
+# Ensure submodule + LFS data are present
+git submodule update --init
+cd vendor/athyg && git lfs pull --include="data/athyg_v33-*.csv.gz" && cd ../..
+
+# Download cluster member astrometry from VizieR (first time or when updating)
+python3 scripts/fetch-hunt2023-astro.py
 
 python3 scripts/build-catalog.py data/augmentations.json dist/tiles/ \
-  athyg_v33-1.csv.gz athyg_v33-2.csv.gz
+  vendor/athyg/data/athyg_v33-1.csv.gz vendor/athyg/data/athyg_v33-2.csv.gz
 ```
+
+The build injects ~14k synthetic cluster members from Hunt & Reffert (2023)
+astrometric data. These are faint Gaia-identified members not in AT-HYG's
+Tycho-2-based catalog. If `hunt2023-astro.json` is missing, the build still
+runs but clusters will have fewer visible members.
 
 `.csv` and `.csv.gz` inputs are both accepted.
 
@@ -125,10 +135,12 @@ or the term "cluster".
 - `index.html` — App shell (styles + markup + viewport wrapper)
 - `scripts/build-catalog.py` — Builds the unified catalog from AT-HYG + augmentations
 - `scripts/audit-notable.py` — Reports tier-0 stars missing wikipedia / notes / traditional aliases (`--json` for machine-readable output)
+- `scripts/fetch-hunt2023-astro.py` — Downloads RA/Dec/parallax/photometry from VizieR for Hunt & Reffert cluster members
 - `scripts/merge-augmentations.py` — Merges research-batch JSON files into `data/augmentations.json`, preserving existing fields
 - `data/augmentations.json` — Hand-curated overrides: Wikipedia links, names, notes, aliases, system groupings, synthetic companions. Keyable by Gliese ID / HIP / "Sol" OR by IAU proper name; both entries merge with proper-name winning on conflict.
 - `data/clusters.json` — Star cluster definitions: name, aliases, seed stars, wikipedia, notes
 - `data/cluster-members/hunt2023.json` — Gaia DR3 membership IDs from Hunt & Reffert (2023), keyed by cluster name
+- `data/cluster-members/hunt2023-astro.json` — RA/Dec/parallax/Gmag/BP-RP for each member (fetched from VizieR)
 - `data/constellations.json` — Constellation line definitions for the 37 rendered constellations
 - `data/nebulae.json` — Molecular cloud definitions: positions (galactic Cartesian), metadata, wikipedia
 - `data/dust/cube_ext.fits.gz` — Lallement/Vergely 3D extinction cube (source FITS, not checked in)
@@ -140,7 +152,9 @@ or the term "cluster".
 - `docs/starfield.md` — Streaming pipeline + binary format + tier model + catalog scope rationale
 - `docs/data-corrections.md` — Corrections applied on top of source data
 - `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown, planned improvements
+- `docs/data-sources.md` — External data sources, what we extract, known issues, coordinate transforms
 - `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap; consult before making decisions that would foreclose floating-origin retrofits or LOD/sub-scene splits.
+- `vendor/athyg/` — AT-HYG v3.3 star catalog (git submodule, LFS for CSV data)
 
 ### Label tiers
 
@@ -184,5 +198,5 @@ inject stars that don't exist in the source catalog (e.g. Sirius B).
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
 - **3D:** Three.js with custom GLSL shaders, CSS2DRenderer for labels, UnrealBloomPass
-- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/hyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Lallement/Vergely 2022](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147) (CC-BY 4.0)
+- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/athyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Lallement/Vergely 2022](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147) (CC-BY 4.0)
 - **Hosting:** Vercel (static)

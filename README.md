@@ -95,14 +95,17 @@ name (e.g., **Rigil Kentaurus** and **Toliman** for Alpha Centauri A and B), no
 suffix is added. When components share a name or inherit one from the primary,
 suffixes are used (e.g., **Sirius** and **Sirius B**).
 
-## Data source
+## Data sources
 
-Star data comes from the [HYG Database v4.2](https://codeberg.org/astronexus/hyg)
-by David Nash, which merges the Hipparcos, Yale Bright Star, and Gliese catalogs.
-Licensed under [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- **[AT-HYG v3.3](https://codeberg.org/astronexus/athyg)** — ~2.5 M stars
+  (Tycho-2 + Hipparcos + Yale Bright Star + Gliese, augmented with Gaia DR3
+  parallax). Licensed under [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- **[Hunt & Reffert (2023)](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114)** —
+  Gaia DR3 open cluster membership for 26 clusters.
+- **[Lallement & Vergely (2022)](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147)** —
+  3D dust extinction cube for volumetric ISM rendering.
 
-The extraction script (`scripts/extract-stars.py`) selects the 300 nearest stars,
-resolves names using the hierarchy above, and outputs `src/stars.json`.
+See `docs/data-sources.md` for full details.
 
 ## Development
 
@@ -112,13 +115,14 @@ bun run dev     # dev server with HMR at http://localhost:3000
 bun run build   # static build to dist/
 ```
 
-### Updating star data
+### Building the catalog
 
 ```sh
-curl -L -o hyg_v42.csv.gz \
-  "https://codeberg.org/astronexus/hyg/media/branch/main/data/hyg/CURRENT/hyg_v42.csv.gz"
-gunzip hyg_v42.csv.gz
-python3 scripts/extract-stars.py hyg_v42.csv src/stars.json
+git submodule update --init
+cd vendor/athyg && git lfs pull --include="data/athyg_v33-*.csv.gz" && cd ../..
+python3 scripts/fetch-hunt2023-astro.py
+python3 scripts/build-catalog.py data/augmentations.json dist/tiles/ \
+  vendor/athyg/data/athyg_v33-1.csv.gz vendor/athyg/data/athyg_v33-2.csv.gz
 ```
 
 ### Deploying

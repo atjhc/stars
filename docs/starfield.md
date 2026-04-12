@@ -350,14 +350,27 @@ off-screen).
 ## Building
 
 ```sh
-curl -L -o athyg_v33-1.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-1.csv.gz"
-curl -L -o athyg_v33-2.csv.gz "https://codeberg.org/astronexus/hyg/media/branch/main/data/athyg_v33-2.csv.gz"
+# Ensure submodule + LFS data are present
+git submodule update --init
+cd vendor/athyg && git lfs pull --include="data/athyg_v33-*.csv.gz" && cd ../..
+
+# Download cluster member astrometry from VizieR (first time or when updating)
+python3 scripts/fetch-hunt2023-astro.py
+
+# Build tiles
 python3 scripts/build-catalog.py data/augmentations.json dist/tiles/ \
-  athyg_v33-1.csv.gz athyg_v33-2.csv.gz
+  vendor/athyg/data/athyg_v33-1.csv.gz vendor/athyg/data/athyg_v33-2.csv.gz
 ```
 
-(AT-HYG v3.3 ships its full catalog split across two files with only part 1
-carrying a header row; the build script concatenates them transparently.)
+AT-HYG v3.3 is vendored as a git submodule at `vendor/athyg/` (LFS for the
+CSV data). The catalog ships as two files with only part 1 carrying a header
+row; the build script concatenates them transparently.
+
+The build also injects ~14k synthetic cluster members from Hunt & Reffert
+(2023) astrometric data (`data/cluster-members/hunt2023-astro.json`). These
+are faint stars (Gmag 12–20) not in AT-HYG's Tycho-2-based catalog but
+identified as cluster members via Gaia DR3 astrometric clustering. They
+render as tier-2 point-cloud stars, making clusters visually complete.
 
 ## Curating tier-0 metadata
 
