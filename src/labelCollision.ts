@@ -13,8 +13,11 @@ const collisionHidden = new Set<HTMLElement>();
 const lastOpacity = new Map<HTMLElement, number>();
 const activeAnim = new WeakMap<HTMLElement, Animation>();
 
+// Labels currently rendered on screen (populated by labels.ts each dirty frame)
+export const visibleLabels = new Set<HTMLElement>();
+
 export function isLabelInteractive(div: HTMLElement): boolean {
-  return !collisionHidden.has(div);
+  return visibleLabels.has(div) && !collisionHidden.has(div);
 }
 
 function setLabelOpacity(div: HTMLElement, from: number, to: number) {

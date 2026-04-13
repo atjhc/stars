@@ -7,7 +7,7 @@ import {
 import { camera, animation } from "./scene.ts";
 import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
 import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
-import { type RankedLabel, resolveCollisions, isLabelInteractive } from "./labelCollision.ts";
+import { type RankedLabel, resolveCollisions, isLabelInteractive, visibleLabels } from "./labelCollision.ts";
 import { collectAllRegisteredLabels } from "./labelRegistry.ts";
 import {
   getSelectedMesh, getSelectedSystem, getHoveredSystem, getLastHoveredMesh,
@@ -73,6 +73,7 @@ export function updateLabels(
   if (!isLabelsDirty()) return;
 
   const frameLabels: RankedLabel[] = [];
+  visibleLabels.clear();
 
   const magLimit = magLimitUniform.value;
   const tier0FadeStart = magLimit - 1.5;
@@ -121,8 +122,10 @@ export function updateLabels(
       setLabelStyle(group.label.element as HTMLElement, String(clampedOpacity), String(zIndex));
       if (isHighlighted) updateSystemLabelText(group);
       const favBonus = isFavorite(group.name) ? 5000 : 0;
+      const clusterDiv = group.label.element as HTMLElement;
+      visibleLabels.add(clusterDiv);
       frameLabels.push({
-        div: group.label.element as HTMLElement,
+        div: clusterDiv,
         rank: 1500 + favBonus,
         opacity: clampedOpacity,
         pinned: isHighlighted,
@@ -192,6 +195,7 @@ export function updateLabels(
       setLabelStyle(el, String(clampedOpacity), String(zIndex));
       updateSystemLabelText(group);
       const favBonus = isFavorite(group.name) ? 5000 : 0;
+      visibleLabels.add(el);
       frameLabels.push({
         div: el,
         rank: 1000 + favBonus,
@@ -258,6 +262,7 @@ export function updateLabels(
       if (isSystemMemberHighlighted) {
         div.style.textShadow = starGlowShadow(star.ci);
       }
+      visibleLabels.add(div);
       frameLabels.push({ div, rank: 500, opacity: 1, pinned: true });
       return;
     }
@@ -287,6 +292,7 @@ export function updateLabels(
       const finalOpacity = Math.max(0.15, (1 - t) * solFade);
       setLabelStyle(div, String(finalOpacity), zIndex);
       const magRank = Math.max(0, (10 - appMag) * 10);
+      visibleLabels.add(div);
       frameLabels.push({ div, rank: 500 + magRank + favBonus, opacity: finalOpacity });
     } else {
       if (camDist > LABEL_HIDE_DIST) {
@@ -297,6 +303,7 @@ export function updateLabels(
       const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
       const finalOpacity = Math.max(0.2, opacity);
       setLabelStyle(div, String(finalOpacity), zIndex);
+      visibleLabels.add(div);
       frameLabels.push({ div, rank: favBonus, opacity: finalOpacity });
     }
   }
@@ -304,7 +311,9 @@ export function updateLabels(
   for (const anchor of notableAnchors) processLabel(anchor);
   for (const mesh of interactiveStars) processLabel(mesh);
 
-  frameLabels.push(...collectAllRegisteredLabels());
+  const registeredLabels = collectAllRegisteredLabels();
+  for (const rl of registeredLabels) visibleLabels.add(rl.div);
+  frameLabels.push(...registeredLabels);
   resolveCollisions(frameLabels);
 
   const lastHovered = getLastHoveredMesh();

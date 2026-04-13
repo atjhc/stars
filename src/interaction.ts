@@ -84,14 +84,14 @@ export function updateSystemLabelText(group: SystemGroup) {
 }
 
 export function showSystemMembers(group: SystemGroup) {
-  highlightSystem(group);
+  if (group.kind !== "cluster") highlightSystem(group);
   applySystemLabelGlow(group);
   updateSystemLabelText(group);
   setLabelsDirty(true);
 }
 
 export function hideSystemMembers(group: SystemGroup) {
-  unhighlightSystem(group);
+  if (group.kind !== "cluster") unhighlightSystem(group);
   removeSystemLabelGlow(group);
   updateSystemLabelText(group);
   setLabelsDirty(true);
@@ -125,14 +125,20 @@ export function hideHover() {
 }
 
 export function hoverTarget(target: THREE.Object3D, meshToSystem: Map<THREE.Object3D, SystemGroup>, clusterOf?: Map<THREE.Object3D, SystemGroup>) {
-  const sys = meshToSystem.get(target) ?? clusterOf?.get(target);
-  if (sys) {
-    hideHover();
-    if (getHoveredSystem() !== sys && getSelectedSystem() !== sys) {
+  const sys = meshToSystem.get(target);
+  const cluster = clusterOf?.get(target);
+  const group = sys ?? cluster;
+  if (group) {
+    if (cluster) {
+      showHover(target);
+    } else {
+      hideHover();
+    }
+    if (getHoveredSystem() !== group && getSelectedSystem() !== group) {
       const hovered = getHoveredSystem();
       if (hovered && hovered !== getSelectedSystem()) hideSystemMembers(hovered);
-      setHoveredSystem(sys);
-      showSystemMembers(sys);
+      setHoveredSystem(group);
+      showSystemMembers(group);
     }
   } else {
     const hovered = getHoveredSystem();
@@ -196,9 +202,8 @@ export function selectTarget(
   meshToSystem: Map<THREE.Object3D, SystemGroup>,
   updateDetailPanel: () => void,
   updateLabelVisibility: () => void,
-  clusterOf?: Map<THREE.Object3D, SystemGroup>,
 ) {
-  const sys = meshToSystem.get(target) ?? clusterOf?.get(target);
+  const sys = meshToSystem.get(target);
   if (sys) {
     selectSystem(sys, updateDetailPanel);
   } else {

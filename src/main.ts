@@ -17,7 +17,7 @@ import {
 } from "./interaction.ts";
 import {
   getSelectedSystem, getHoveredSystem, setHoveredSystem,
-  getSelectedMesh, getLastHoveredMesh, setLabelsDirty,
+  getSelectedMesh, setLabelsDirty,
 } from "./systemStore.ts";
 import { toggleFavorite } from "./favorites.ts";
 import { isLabelInteractive } from "./labelCollision.ts";
@@ -106,27 +106,16 @@ function divFor(mesh: THREE.Mesh): HTMLElement | undefined {
 }
 
 function trySelectAt(clientX: number, clientY: number) {
-  // Prefer whatever is currently hovered — this ensures click selects the
-  // same target that hover highlighting shows, avoiding raycast mismatches
-  // (e.g. clicking a cluster label but the ray hitting a member star).
-  const hoveredSys = getHoveredSystem();
-  if (hoveredSys && hoveredSys !== getSelectedSystem()) {
-    clearAllSelections();
-    selectSystem(hoveredSys, updateDetailPanel);
-    return;
-  }
-  const hoveredMesh = getLastHoveredMesh();
-  if (hoveredMesh) {
-    clearAllSelections();
-    selectTarget(hoveredMesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility, clusterOf);
-    return;
-  }
   setMouseNDC(clientX, clientY);
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(allInteractiveStars);
-  if (hits.length > 0) {
+  for (const h of hits) {
+    const t = canonicalTarget(h.object);
+    const d = divFor(t as THREE.Mesh);
+    if (!d || !isLabelInteractive(d)) continue;
     clearAllSelections();
-    selectTarget(canonicalTarget(hits[0].object), meshToSystem, updateDetailPanel, doUpdateLabelVisibility, clusterOf);
+    selectTarget(t, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+    return;
   }
 }
 
@@ -333,7 +322,7 @@ labelRenderer.domElement.addEventListener("mouseup", (e) => {
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (mesh) {
     clearAllSelections();
-    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility, clusterOf);
+    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
   }
 });
 
