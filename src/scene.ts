@@ -136,9 +136,14 @@ export function applyOrbitDrag(dx: number, dy: number) {
   updateCamera();
 }
 
+export function applyZoom(delta: number) {
+  orbitRadius = THREE.MathUtils.clamp(orbitRadius * Math.pow(1.0007, delta), MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS);
+  updateCamera();
+}
+
 export function onWheel(e: WheelEvent) {
   e.preventDefault();
-  orbitRadius = THREE.MathUtils.clamp(orbitRadius + e.deltaY * 0.02, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS);
+  applyZoom(e.deltaY);
   updateCamera();
 }
 

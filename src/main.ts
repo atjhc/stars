@@ -68,7 +68,6 @@ let labelsVisible = true;
 
 // Input state
 let isDragging = false;
-let isZooming = false;
 let prevMouse = { x: 0, y: 0 };
 let dragDistance = 0;
 let lastInputWasTouch = false;
@@ -138,7 +137,7 @@ function wireSystemLabels() {
     wiredSystems.add(group);
     const labelDiv = group.label.element as HTMLElement;
     labelDiv.addEventListener("mouseenter", () => {
-      if (isDragging || isZooming || isAltOrbit) return;
+      if (isDragging || isAltOrbit) return;
       if (!isLabelInteractive(labelDiv)) return;
       if (getSelectedSystem() !== group) {
         setHoveredSystem(group);
@@ -146,7 +145,7 @@ function wireSystemLabels() {
       }
     });
     labelDiv.addEventListener("mouseleave", () => {
-      if (isDragging || isZooming || isAltOrbit) return;
+      if (isDragging || isAltOrbit) return;
       if (getHoveredSystem() === group && getSelectedSystem() !== group) {
         hideSystemMembers(group);
         setHoveredSystem(null);
@@ -170,7 +169,7 @@ onLabelsChanged(() => {
 
 // Mouse controls
 renderer.domElement.addEventListener("mousedown", (e) => {
-  if (e.altKey) { isZooming = true; } else { isDragging = true; }
+  isDragging = true;
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
   dragDistance = 0;
@@ -183,27 +182,20 @@ window.addEventListener("mousemove", (e) => {
   const dy = e.clientY - prevMouse.y;
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
-  if (e.altKey && !isDragging && !isZooming) {
+  if (e.altKey && !isDragging) {
     isAltOrbit = true;
     applyOrbitDrag(dx, dy);
     return;
   }
   isAltOrbit = false;
-  if (!isDragging && !isZooming) return;
-  if (isDragging) {
-    dragDistance += Math.abs(dx) + Math.abs(dy);
-    applyOrbitDrag(dx, dy);
-  } else {
-    dragDistance += Math.abs(dx) + Math.abs(dy);
-    setOrbitRadius(THREE.MathUtils.clamp(orbitRadius + dy * 0.1, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS));
-    updateCamera();
-  }
+  if (!isDragging) return;
+  dragDistance += Math.abs(dx) + Math.abs(dy);
+  applyOrbitDrag(dx, dy);
 });
 
 window.addEventListener("mouseup", (e) => {
   const wasClick = isDragging && dragDistance < CLICK_THRESHOLD;
   isDragging = false;
-  isZooming = false;
   if (wasClick) trySelectAt(e.clientX, e.clientY);
 });
 
@@ -265,7 +257,7 @@ window.addEventListener("touchstart", () => { lastInputWasTouch = true; }, { cap
 window.addEventListener("mousemove", () => { lastInputWasTouch = false; }, { capture: true });
 
 renderer.domElement.addEventListener("mousemove", (e) => {
-  if (hoveredViaLabel || lastInputWasTouch || isDragging || isZooming || e.altKey) return;
+  if (hoveredViaLabel || lastInputWasTouch || isDragging || e.altKey) return;
   setMouseNDC(e.clientX, e.clientY);
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(allInteractiveStars);
@@ -289,7 +281,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 });
 
 labelRenderer.domElement.addEventListener("mouseover", (e) => {
-  if (lastInputWasTouch || isDragging || isZooming || isAltOrbit) return;
+  if (lastInputWasTouch || isDragging || isAltOrbit) return;
   const label = (e.target as HTMLElement).closest("[data-star-label], [data-system-label], [data-label-type]") as HTMLElement | null;
   if (label && !isLabelInteractive(label)) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
@@ -299,7 +291,7 @@ labelRenderer.domElement.addEventListener("mouseover", (e) => {
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
-  if (!hoveredViaLabel || isDragging || isZooming || isAltOrbit) return;
+  if (!hoveredViaLabel || isDragging || isAltOrbit) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoverTarget(mesh, meshToSystem, clusterOf);
