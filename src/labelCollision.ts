@@ -68,8 +68,16 @@ function cellKey(cx: number, cy: number): number {
 }
 
 export function resolveCollisions(labels: RankedLabel[]): void {
-  labels.sort((a, b) => b.rank - a.rank);
+  labels.sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return b.rank - a.rank;
+  });
   collisionHidden.clear();
+
+  // Restore visibility so getBoundingClientRect returns real sizes
+  for (const label of labels) {
+    label.div.style.visibility = "";
+  }
 
   const grid = new Map<number, DOMRect[]>();
 

@@ -3,9 +3,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -60,
-      -834,
-      7
+      -90,
+      -910,
+      30
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/Vela_Molecular_Ridge",
     "notes": "Extensive molecular cloud complex in Vela at ~872 pc. One of the largest nearby star-forming regions."
@@ -14,9 +14,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -213,
-      250,
-      32
+      -120,
+      320,
+      100
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/Taurus_molecular_cloud",
     "notes": "Extended dust cloud at ~356 pc between Taurus and Perseus. Part of the Gould Belt structure."
@@ -25,9 +25,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -57,
-      -832,
-      8
+      -130,
+      -900,
+      10
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/Vela_Molecular_Ridge",
     "notes": "Front face of the Vela Molecular Ridge at ~750 pc, associated with the Vela OB2 association."
@@ -36,9 +36,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -414,
-      696,
-      38
+      -540,
+      750,
+      0
     ],
     "notes": "Molecular cloud complex in Cassiopeia at ~727 pc, associated with Cas OB2/OB5 on the near side of the Perseus Arm."
   },
@@ -46,9 +46,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -211,
-      228,
-      33
+      -170,
+      280,
+      20
     ],
     "notes": "Nearby molecular cloud at ~337 pc at the boundary of the Local Bubble, part of the Cepheus-Cassiopeia complex."
   },
@@ -56,9 +56,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -651,
-      628,
-      51
+      -610,
+      670,
+      160
     ],
     "notes": "Molecular cloud associated with the Cam OB1 association at ~918 pc at the outer edge of the Local Arm."
   },
@@ -66,9 +66,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -333,
-      140,
-      -63
+      -260,
+      100,
+      -100
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/California_Molecular_Cloud",
     "notes": "Massive giant molecular cloud at ~446 pc rivaling Orion A in size. Discovered relatively recently despite its proximity."
@@ -77,9 +77,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -182,
-      290,
-      20
+      -70,
+      330,
+      90
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/Cepheus_Flare",
     "notes": "Complex of molecular clouds at ~450 pc in Cepheus, site of low-mass star formation."
@@ -88,9 +88,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -207,
-      42,
-      -48
+      -180,
+      30,
+      -30
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/Taurus_molecular_cloud",
     "notes": "One of the nearest star-forming regions at ~184 pc. A classic low-mass star formation laboratory in Taurus-Auriga."
@@ -99,9 +99,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -378,
-      699,
-      36
+      -260,
+      720,
+      30
     ],
     "notes": "Molecular cloud at ~770 pc associated with the Cep OB3 stellar association, an active region of sequential star formation."
   },
@@ -109,9 +109,9 @@
     "aliases": [],
     "type": "molecular cloud",
     "pos_pc": [
-      -628,
-      -426,
-      -209
+      -690,
+      -460,
+      -190
     ],
     "notes": "Molecular cloud complex at ~832 pc associated with the CMa OB1 association and CMa R1 reflection nebula."
   },
@@ -122,11 +122,104 @@
     ],
     "type": "star-forming",
     "pos_pc": [
-      -410,
-      -240,
+      -390,
+      -260,
       -160
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/Orion_molecular_cloud_complex",
     "notes": "The nearest giant molecular cloud complex at ~500 pc. Contains the Orion Nebula (M42), Horsehead Nebula, and Barnard's Loop. Home to the Trapezium cluster and massive ongoing star formation, illuminated by hot O-type stars including Hatysa."
+  },
+  "Cygnus Rift": {
+    "aliases": [
+      "Great Rift",
+      "Northern Coalsack"
+    ],
+    "type": "dark cloud",
+    "pos_pc": [
+      70,
+      760,
+      0
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Great_Rift_(astronomy)",
+    "notes": "Nearest and most prominent section of the Great Rift, a massive lane of interstellar dust along the galactic plane. Foreground clouds at ~760 pc in the Cygnus direction."
+  },
+  "Aquila Rift": {
+    "aliases": [
+      "Aquila South dark cloud"
+    ],
+    "type": "dark cloud",
+    "pos_pc": [
+      210,
+      80,
+      10
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Serpens%E2%80%93Aquila_Rift",
+    "notes": "Near edge of the Aquila Rift dark cloud system at ~225 pc, one of the nearest major dust structures beyond the Local Bubble. Extends through Scutum, Aquila, Serpens, and Ophiuchus."
+  },
+  "Cygnus X": {
+    "aliases": [
+      "Cygnus X complex"
+    ],
+    "type": "star-forming",
+    "pos_pc": [
+      200,
+      920,
+      20
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Cygnus_X_(astronomy)",
+    "notes": "Near edge of one of the richest star-forming regions in the galaxy. Contains Cygnus OB2 (thousands of OB stars) and millions of solar masses of molecular gas."
+  },
+  "Lupus Molecular Cloud": {
+    "aliases": [
+      "Lupus complex"
+    ],
+    "type": "star-forming",
+    "pos_pc": [
+      160,
+      -60,
+      20
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Lupus_(molecular_cloud_complex)",
+    "notes": "One of the nearest low-mass star-forming regions at ~172 pc, part of the Scorpius-Centaurus association environment. Contains Lupus 1-6 subregions."
+  },
+  "W40": {
+    "aliases": [
+      "Serpens South",
+      "Sh2-64"
+    ],
+    "type": "star-forming",
+    "pos_pc": [
+      410,
+      240,
+      30
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Westerhout_40",
+    "notes": "One of the closest sites of OB star formation at ~476 pc in the Serpens-Aquila Rift. Active massive star formation in a deeply embedded HII region."
+  },
+  "Vulpecula Rift": {
+    "aliases": [
+      "Vulpecula dark cloud"
+    ],
+    "type": "dark cloud",
+    "pos_pc": [
+      290,
+      460,
+      30
+    ],
+    "wikipedia": null,
+    "notes": "Continuation of the Aquila Rift dark cloud system through the Vulpecula-Sagitta region at ~545 pc. Part of the inner edge of the Local Arm dust lane."
+  },
+  "Lacerta Cloud": {
+    "aliases": [
+      "Lacerta OB1 cloud"
+    ],
+    "type": "molecular cloud",
+    "pos_pc": [
+      -40,
+      540,
+      40
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Lacerta_OB1",
+    "notes": "Molecular cloud associated with the Lacerta OB1 stellar association at ~543 pc, near the Cygnus-Lacerta boundary."
   }
 }

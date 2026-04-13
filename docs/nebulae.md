@@ -11,54 +11,89 @@ positions and spectral types of O and B stars in the catalog.
 The rendering is toggled with the **D** key, which shows both the
 volumetric dust glow and the named molecular cloud labels.
 
-## What is scientifically accurate
+## Scientific accuracy
 
 | Layer | Source | Accuracy |
 |---|---|---|
 | **3D dust density** | Lallement/Vergely (2022), Gaia parallax + photometric reddening | Measured — the dust is where the data says |
 | **Star positions & types** | AT-HYG / Gaia DR3 | Measured — we know which stars are O/B type |
-| **Which dust is illuminated** | Simulated: 1/r² UV flux from 9,139 O/B stars, 150 pc range | Physics-based — correct inputs, simplified radiative transfer |
-| **Emission color** | HII red (ionizing O/B) vs reflection blue (scattering B) | Simplified — real nebulae have OIII, SII, NII lines too |
-| **Emission intensity** | Tuned `uOpacity` multiplier | Artistic — not calibrated to surface brightness |
+| **Which dust is illuminated** | 1/r² UV flux from ~21k O/B stars, luminosity-weighted, 150 pc range | Physics-based — correct inputs, simplified radiative transfer |
+| **Emission color** | HII red (ionizing O/early-B) vs reflection blue (scattering B) | Simplified — two broadband channels, not spectral lines |
+| **Emission intensity** | Artistic tuning with magnitude-limit coupling | Not calibrated to real surface brightness |
 
 ### What the simulation gets right
 
-- Dust clouds near O-type stars glow red/pink (hydrogen Hα emission)
-- Dust near B-type stars glows blue (Rayleigh scattering, same physics
+- **Dust positions** are genuine observational data from Gaia stellar
+  reddening measurements, not a model
+- Dust near O-type stars glows red/pink (hydrogen Hα emission at 656 nm)
+- Dust near B-type stars glows blue (Rayleigh scattering — same physics
   as Earth's blue sky)
 - Dust with no nearby hot star produces no emission (correctly dark)
+- Hot-star illumination is **luminosity-weighted** (`L^0.7` UV proxy
+  from absolute magnitude), so a luminous O supergiant dominates over
+  dozens of faint B dwarfs at the same distance
 - The Orion Molecular Cloud glows because Hatysa (O9III) and other
-  Trapezium-region O stars are nearby in the catalog
+  Trapezium-region O stars illuminate it
+- **Distance attenuation** in the shader dims distant clouds relative
+  to nearby ones, roughly matching how apparent surface brightness
+  decreases with viewing distance for volumetric emitters
+- The **magnitude limit** control (`-`/`=` keys) affects dust brightness
+  alongside star visibility, simulating overall eye/camera sensitivity
 
-### What the simulation gets wrong or omits
+### What the simulation simplifies or omits
 
-- **No self-shielding**: a dense dust shell around a star would block
-  UV from reaching outer layers. Our model illuminates through dust.
-- **Two-color only**: real nebulae have OIII green (495/501 nm), SII
-  red (672 nm), NII red (658 nm) in addition to Hα and scattered blue.
-- **10 pc voxel resolution**: structures smaller than ~30 ly are blurred.
-  No filaments, dark lanes, or sharp edges visible at this scale.
-- **No dark cloud rendering**: extinction (dimming stars behind dust)
-  is tabled. Only emission glow renders currently.
+- **Brightness is artistic** — the overall intensity multiplier and
+  distance attenuation curve are hand-tuned for visual appeal, not
+  calibrated to real surface brightness in mag/arcsec². Real nebulae
+  are incredibly faint; most are invisible to the naked eye
+- **Two-color only** — real nebulae emit in specific spectral lines:
+  OIII green (495/501 nm), SII deep red (672 nm), NII red (658 nm),
+  Hβ blue-green (486 nm). We only model Hα red + Rayleigh blue
+- **No self-shielding** — dense cloud cores should block UV from
+  reaching their interiors, creating dark cores with illuminated rims.
+  Our model illuminates uniformly through dust
+- **No extinction** — real dust dims and reddens background starlight.
+  Stars render through clouds unaffected. See "Dark cloud rendering"
+  under Planned Improvements
+- **10 pc voxel resolution** — structures smaller than ~30 ly are blurred.
+  No filaments, dark lanes, or sharp cloud edges at this scale
+- **Isotropic scattering** — real interstellar dust has a
+  forward-scattering asymmetry (Henyey-Greenstein phase function).
+  We scatter uniformly in all directions
+- **UV weighting is approximate** — `luminosity^0.7` is a rough proxy
+  for UV output. Real UV flux depends on effective temperature, not
+  just bolometric luminosity. A hot B0 star puts out proportionally
+  more UV than a cooler but equally luminous B8 star
+- **Coordinate epoch mismatch** — AT-HYG star positions are J2000.0;
+  the dust cube is from Gaia DR3 (epoch ~2016). The ~0.01 pc offset
+  over 16 years is negligible at 10 pc voxel resolution
 
 ## Rendered molecular clouds
 
-12 illuminated clouds, labeled at emission-weighted centroids:
+19 labeled clouds, positions snapped to emission peaks in the baked volume
+(`scripts/snap-nebula-labels.py`):
 
-| Cloud | Distance | Type | Illumination |
+| Cloud | Distance | Type | Notes |
 |---|---|---|---|
+| Lupus Molecular Cloud | 560 ly | Star-forming | Nearest low-mass star-forming region |
 | Taurus Molecular Cloud | 600 ly | Star-forming | HII + reflection from nearby B stars |
-| Cepheus-Cassiopeia Cloud | 1100 ly | Star-forming | HII + reflection |
-| Taurus-Perseus Cloud | 1160 ly | Star-forming | Reflection dominant |
-| California Molecular Cloud | 1455 ly | Star-forming | HII + reflection; massive, rivals Orion |
-| Cepheus Flare | 1470 ly | Star-forming | Weak HII; low-mass formation |
-| Orion Molecular Cloud | 1635 ly | Star-forming | Strong HII from O-type Hatysa + Trapezium |
-| Cepheus OB3 Cloud | 2510 ly | Star-forming | HII + reflection |
-| Cassiopeia Cloud | 2370 ly | Star-forming | Near Perseus Arm |
-| Vela Molecular Ridge | 2845 ly | Star-forming | Extensive southern complex |
-| Vela Cloud | 2450 ly | Star-forming | Associated with Vela OB2 |
-| Canis Major Cloud | 2715 ly | Star-forming | Associated with CMa OB1 |
-| Camelopardalis Cloud | 2995 ly | Star-forming | Outer Local Arm |
+| Aquila Rift | 735 ly | Dark cloud | Nearest major dust beyond Local Bubble |
+| Cepheus-Cassiopeia Cloud | 1070 ly | Star-forming | HII + reflection |
+| Taurus-Perseus Cloud | 1160 ly | Molecular cloud | Reflection dominant |
+| California Molecular Cloud | 1010 ly | Star-forming | Massive; rivals Orion |
+| Cepheus Flare | 1100 ly | Star-forming | Weak HII; low-mass formation |
+| Orion Molecular Cloud | 1595 ly | Star-forming | Strong HII from O-type Hatysa + Trapezium |
+| W40 / Serpens South | 1555 ly | Star-forming | Closest OB star formation in Aquila |
+| Lacerta Cloud | 1770 ly | Molecular cloud | Associated with Lacerta OB1 |
+| Vulpecula Rift | 1780 ly | Dark cloud | Continuation of Aquila Rift |
+| Cygnus Rift | 2490 ly | Dark cloud | Great Rift foreground clouds |
+| Cepheus OB3 Cloud | 2490 ly | Star-forming | HII + reflection |
+| Cassiopeia Cloud | 3015 ly | Star-forming | Near Perseus Arm |
+| Vela Molecular Ridge | 2980 ly | Star-forming | Extensive southern complex |
+| Vela Cloud | 2960 ly | Star-forming | Associated with Vela OB2 |
+| Canis Major Cloud | 2775 ly | Star-forming | Associated with CMa OB1 |
+| Camelopardalis Cloud | 3000 ly | Star-forming | Outer Local Arm |
+| Cygnus X | 3075 ly | Star-forming | Massive complex with thousands of OB stars |
 
 ### Associated star clusters
 
@@ -82,18 +117,26 @@ visualization. See "Planned improvements" below.
 
 ### Build time
 
+Run `python3 scripts/bake-dust.py` (requires `astropy` and `numpy`).
+The script downloads the source FITS automatically on first run.
+
 1. **Download** Lallement/Vergely (2022) FITS cube from
    [CDS VizieR](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147).
-   Source: `cube_ext.fits.gz` (~100 MB). License: CC-BY 4.0.
+   Cached at `data/cache/cube_ext.fits.gz` (~100 MB, gitignored).
+   License: CC-BY 4.0.
 
 2. **Extract** ±1000 pc sub-cube (201×201×81 voxels at 10 pc/voxel).
    Threshold at 95th percentile to clear the Local Bubble (~50 pc
    around Sol is nearly zero density).
 
 3. **Compute hot-star illumination**: for each non-zero dust voxel,
-   accumulate UV flux from all O and B type stars within 150 pc using
-   1/r² falloff. Separate ionizing flux (O + early-B, producing Hα)
-   from scattering flux (late-B, producing blue reflection).
+   accumulate luminosity-weighted UV flux from ~21k O/B stars within
+   150 pc using 1/r² falloff. Flux weighted by `L^0.7` (absolute
+   magnitude → luminosity → UV proxy). Separate ionizing flux
+   (O + early-B, producing Hα) from scattering flux (late-B,
+   producing blue reflection). Star positions converted from AT-HYG
+   equatorial Cartesian to galactic Cartesian via the IAU rotation
+   matrix.
 
 4. **Bake** into RGBA uint8 binary (12.5 MB):
    - R = dust density (0-255, thresholded + normalized)

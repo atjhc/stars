@@ -148,6 +148,8 @@ or the term "cluster".
 - `index.html` — App shell (styles + markup + viewport wrapper)
 - `scripts/build-catalog.py` — Builds the unified catalog from AT-HYG + augmentations
 - `scripts/audit-notable.py` — Reports tier-0 stars missing wikipedia / notes / traditional aliases (`--json` for machine-readable output)
+- `scripts/bake-dust.py` — Downloads Lallement/Vergely FITS cube, bakes RGBA dust texture with hot-star illumination
+- `scripts/snap-nebula-labels.py` — Snaps nebula label positions to nearest emission peaks in the baked dust volume
 - `scripts/fetch-hunt2023-astro.py` — Downloads RA/Dec/parallax/photometry from VizieR for Hunt & Reffert cluster members
 - `scripts/merge-augmentations.py` — Merges research-batch JSON files into `data/augmentations.json`, preserving existing fields
 - `data/augmentations.json` — Hand-curated overrides: Wikipedia links, names, notes, aliases, system groupings, synthetic companions. Keyable by Gliese ID / HIP / "Sol" OR by IAU proper name; both entries merge with proper-name winning on conflict.
@@ -156,7 +158,7 @@ or the term "cluster".
 - `data/cluster-members/hunt2023-astro.json` — RA/Dec/parallax/Gmag/BP-RP for each member (fetched from VizieR)
 - `data/constellations.json` — Constellation line definitions for the 37 rendered constellations
 - `data/nebulae.json` — Molecular cloud definitions: positions (galactic Cartesian), metadata, wikipedia
-- `data/dust/cube_ext.fits.gz` — Lallement/Vergely 3D extinction cube (source FITS, not checked in)
+- `data/cache/` — Downloaded source data (gitignored): FITS cubes, etc.
 - `dist/tiles/dust_volume_rgba.bin` — Baked RGBA 3D texture (density + hot-star illumination)
 - `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata
 - `dist/tiles/nebulae.json` — Runtime nebula data with baked scene coordinates

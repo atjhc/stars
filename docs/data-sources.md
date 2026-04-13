@@ -160,7 +160,7 @@ Riello et al. (2021) polynomial fit, which is accurate to ~0.05 mag.
 
 ### `data/nebulae.json`
 
-- **Scope:** 12 illuminated molecular clouds
+- **Scope:** 19 labeled molecular clouds and dark cloud regions
 - **Fields:** `pos_pc` (galactic Cartesian), `type`, `aliases`, `wikipedia`, `notes`
 - **Source:** Positions derived from emission-weighted peaks in the Lallement/Vergely
   dust volume; metadata from Wikipedia and literature
@@ -174,12 +174,21 @@ Riello et al. (2021) polynomial fit, which is accurate to ~0.05 mag.
 - **Citation:** Lallement, R., Vergely, J.-L., & Cox, N.J. (2022), A&A 661, A147
 - **VizieR catalog:** `J/A+A/661/A147`
 - **License:** CC-BY 4.0
-- **Source file:** `data/dust/cube_ext.fits.gz` (~100 MB FITS, not checked in)
+- **Source file:** `data/cache/cube_ext.fits.gz` (~100 MB FITS, auto-downloaded)
 - **Output:** `dist/tiles/dust_volume_rgba.bin` (12.5 MB baked RGBA 3D texture)
 
 The source FITS contains a 601×601×81 extinction cube at 10 pc resolution.
 We extract a 201×201×81 sub-cube (±1,000 pc from Sol), bake hot-star
 illumination into the RGB channels, and ship the result as a binary texture.
+
+```sh
+# Requires: pip3 install astropy numpy
+python3 scripts/bake-dust.py
+```
+
+The script downloads the FITS file automatically on first run and caches it
+at `data/cache/cube_ext.fits.gz` (gitignored). It reads hot-star positions
+from the AT-HYG submodule for the illumination pass.
 
 **Illumination model:** For each non-zero dust voxel, UV flux from all O and
 B-type stars within 150 pc is accumulated (1/r² falloff). Ionizing flux

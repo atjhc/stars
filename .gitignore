@@ -34,7 +34,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 .vercel
-data/dust/cube_ext.fits.gz
+data/cache/
 .beads/
 .claude/worktrees/
 AGENTS.md

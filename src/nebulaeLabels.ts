@@ -81,6 +81,7 @@ const nebulaHandler: LabelTypeHandler = {
         if (d > maxSolDist) maxSolDist = d;
       }
     }
+    // Only update distance subtitle — opacity is managed by resolveCollisions
     for (const nl of nebulaLabels) {
       const isActive = nl === selectedNebula || nl === hoveredNebula;
       if (isActive) {
@@ -91,8 +92,6 @@ const nebulaHandler: LabelTypeHandler = {
       } else {
         nl.distDiv.style.display = "none";
       }
-      const solDist = nl.anchor.position.length();
-      nl.div.style.opacity = String(isActive ? 1.0 : solDistanceFade(solDist, maxSolDist));
     }
   },
 

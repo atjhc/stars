@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { camera } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
+import { magLimitUniform } from "./starfield.ts";
 
 // Galactic Cartesian → Drake scene. Derived in build-catalog.py from
 // IAU galactic pole (RA=192.86°, Dec=27.13°) + equatorial→scene swap.
@@ -44,6 +45,7 @@ const EMISSION_FRAGMENT = `
   uniform mat3 uSceneToGal;
   uniform vec3 uCameraPos;
   uniform float uOpacity;
+  uniform float uMagLimit;
   varying vec3 vWorldPos;
 
   vec3 sceneToUV(vec3 scenePos) {
@@ -61,6 +63,7 @@ const EMISSION_FRAGMENT = `
     float accumRef = 0.0;
     float stepSize = 18.0;
     float traveled = 0.0;
+    float magScale = pow(2.512, uMagLimit - 7.5);
 
     for (int i = 0; i < 128; i++) {
       if (traveled > maxDist) break;
@@ -76,10 +79,14 @@ const EMISSION_FRAGMENT = `
         float transmittance = exp(-accumDensity);
         accumDensity += density * uOpacity * 0.3;
 
+        float sampleDist = max(traveled, 1.0);
+        float distAtten = 150.0 / (150.0 + sampleDist);
+
         float hiiEm = ionFlux * ionFlux * density;
         float refEm = scatFlux * scatFlux * density * 0.5;
-        accumHII += hiiEm * transmittance * uOpacity * 5.0;
-        accumRef += refEm * transmittance * uOpacity * 5.0;
+        float brightness = uOpacity * 3.5 * distAtten * magScale;
+        accumHII += hiiEm * transmittance * brightness;
+        accumRef += refEm * transmittance * brightness;
       }
 
       pos += rayDir * stepSize;
@@ -109,6 +116,7 @@ function createEmissionMaterial(
       uSceneToGal: { value: new THREE.Matrix3().copy(GAL_TO_SCENE).invert() },
       uCameraPos: { value: new THREE.Vector3() },
       uOpacity: { value: 0.12 },
+      uMagLimit: magLimitUniform,
     },
     vertexShader: SHARED_VERTEX,
     fragmentShader: EMISSION_FRAGMENT,

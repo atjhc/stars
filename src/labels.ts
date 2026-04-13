@@ -57,8 +57,6 @@ function projectGroupToScreen(group: import("./types.ts").BinarySystem) {
 }
 
 const prevCamPos = new THREE.Vector3();
-const prevCollisionCamPos = new THREE.Vector3();
-let prevCollisionSelection: SystemGroup | THREE.Object3D | null = null;
 
 export type DivResolver = (target: THREE.Object3D) => HTMLElement | undefined;
 
@@ -307,26 +305,15 @@ export function updateLabels(
   for (const mesh of interactiveStars) processLabel(mesh);
 
   frameLabels.push(...collectAllRegisteredLabels());
+  resolveCollisions(frameLabels);
 
-  // Hover-only changes shouldn't shuffle the collision layout
-  const selectionKey = selectedSystem ?? selectedMesh;
-  const needsCollision = !prevCollisionCamPos.equals(camera.position)
-    || prevCollisionSelection !== selectionKey;
-  if (needsCollision) {
-    resolveCollisions(frameLabels);
-    prevCollisionCamPos.copy(camera.position);
-    prevCollisionSelection = selectionKey;
-  }
-
-  // Clear hover on anything collision just hid
-  if (needsCollision) {
-    const hoverDiv = getLastHoveredMesh() ? divFor(getLastHoveredMesh()!) : null;
-    const hovSys = getHoveredSystem();
-    const sysDiv = hovSys ? hovSys.label.element as HTMLElement : null;
-    if ((hoverDiv && !isLabelInteractive(hoverDiv))
-      || (sysDiv && hovSys !== getSelectedSystem() && !isLabelInteractive(sysDiv))) {
-      unhoverAll();
-    }
+  const lastHovered = getLastHoveredMesh();
+  const hoverDiv = lastHovered ? divFor(lastHovered) : null;
+  const hovSys = getHoveredSystem();
+  const sysDiv = hovSys ? hovSys.label.element as HTMLElement : null;
+  if ((hoverDiv && !isLabelInteractive(hoverDiv))
+    || (sysDiv && hovSys !== getSelectedSystem() && !isLabelInteractive(sysDiv))) {
+    unhoverAll();
   }
 
   setLabelsDirty(false);
