@@ -66,18 +66,19 @@ AT-HYG or through the cluster membership file.
   census. II", A&A 673, A114
 - **VizieR catalog:** `J/A+A/673/A114`
 - **License:** CC-BY 4.0 (CDS)
-- **Local file:** `data/cluster-members/hunt2023.json`
+- **Local files:**
+  - `data/cluster-members/hunt2023.json` — Gaia DR3 source IDs per cluster
+  - `data/cluster-members/hunt2023-astro.json` — RA/Dec/parallax/Gmag/BP-RP
+    per member (fetched via `scripts/fetch-hunt2023-astro.py`)
 
 We download the `members` table from VizieR, extracting `Name`, `GaiaDR3`,
 and `Prob` fields. After filtering for `Prob > 0.5`, we store the Gaia DR3
-source IDs keyed by cluster name.
+source IDs keyed by cluster name in `hunt2023.json`.
 
-**Fields available but not currently used:**
-
-The VizieR table also provides RA, Dec, parallax, proper motion, and
-photometry for each member star. We currently rely on matching Gaia IDs
-against AT-HYG to get positions, but could use these fields directly to
-compute cluster centroids when the AT-HYG match rate is low.
+A separate fetch (`scripts/fetch-hunt2023-astro.py`) downloads positional
+and photometric data for each member. This data is used at build time to:
+- Inject faint members (not in AT-HYG) as synthetic tier-2 point-cloud stars
+- Compute accurate cluster centroids from all members, not just AT-HYG matches
 
 ### Cluster membership matching
 
@@ -147,7 +148,7 @@ Riello et al. (2021) polynomial fit, which is accurate to ~0.05 mag.
 
 ### `data/clusters.json`
 
-- **Scope:** 26 open star clusters within 1,000 pc
+- **Scope:** 27 open star clusters within 1,000 pc
 - **Fields:** `aliases`, `type`, `seed_stars`, `radius_pc`, `wikipedia`, `notes`
 - **Source:** Hand-curated from multiple references
 

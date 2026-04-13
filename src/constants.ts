@@ -49,7 +49,7 @@ export const NEBULA_LABEL_CSS = `
   pointer-events: auto; white-space: nowrap;
   text-shadow: ${NEBULA_DEFAULT_SHADOW};
   transform: translateZ(0); -webkit-transform: translateZ(0);
-  user-select: none; text-align: center; cursor: pointer;
+  -webkit-user-select: none; user-select: none; text-align: center; cursor: pointer;
 `;
 
 export const CLUSTER_LABEL_CSS = `
@@ -58,5 +58,5 @@ export const CLUSTER_LABEL_CSS = `
   pointer-events: auto; white-space: nowrap;
   text-shadow: ${CLUSTER_DEFAULT_SHADOW};
   transform: translateZ(0); -webkit-transform: translateZ(0);
-  user-select: none; text-align: center; cursor: pointer;
+  -webkit-user-select: none; user-select: none; text-align: center; cursor: pointer;
 `;

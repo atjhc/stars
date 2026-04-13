@@ -93,25 +93,30 @@ heuristic (all catalog stars within `radius_pc` of the seed centroid).
 
 **To update cluster membership:**
 
-```sh
-# Download from VizieR for a specific cluster (e.g. Melotte_22 = Pleiades):
-curl -s "https://vizier.cds.unistra.fr/viz-bin/asu-tsv?-source=J/A%2BA/673/A114/members&-out=Name,GaiaDR3,Prob&Name=Melotte_22&-out.max=unlimited"
-
-# Parse the TSV, filter prob > 0.5, extract Gaia IDs, and write to hunt2023.json.
-# See the existing file for the expected format: {"ClusterName": ["gaiaId1", ...]}
-```
-
 **To add a new cluster:**
 
 1. Add an entry to `data/clusters.json` with `aliases`, `seed_stars`,
    `wikipedia`, and `notes`.
-2. Download its membership from VizieR and add the Gaia ID list to
-   `data/cluster-members/hunt2023.json` under the same name key.
-3. Rebuild: `python3 scripts/build-catalog.py ...`
+2. Query Hunt & Reffert (2023) on VizieR for the cluster's Gaia DR3
+   member IDs. VizieR uses Melotte/Collinder/NGC designations (e.g.
+   `NGC_6124`, `Melotte_22`). Filter for `Prob > 0.5` and add the
+   Gaia ID list to `data/cluster-members/hunt2023.json` under the
+   display name used in `clusters.json`.
+3. Fetch astrometry for the new members:
+   `python3 scripts/fetch-hunt2023-astro.py`
+4. Rebuild: `python3 scripts/build-catalog.py ...`
 
-Cluster names in `hunt2023.json` must match the keys in `clusters.json`.
-VizieR uses Melotte/Collinder designations (`Melotte_22`), so map those
-to the display names used in `clusters.json` (`Pleiades`).
+**Cluster data files:**
+
+- `data/clusters.json` — Cluster metadata: name, aliases, seed stars,
+  wikipedia, notes. Keyed by display name.
+- `data/cluster-members/hunt2023.json` — Gaia DR3 source IDs per cluster
+  from Hunt & Reffert (2023). Used at build time to assign AT-HYG stars
+  to clusters via `gaia` column matching.
+- `data/cluster-members/hunt2023-astro.json` — RA/Dec/parallax/Gmag/BP-RP
+  per member, fetched from VizieR. Members not in AT-HYG (too faint for
+  Tycho-2) are injected as synthetic tier-2 point-cloud stars so clusters
+  appear visually complete. Also provides positions for centroid computation.
 
 **Runtime behavior:** cluster labels render at a fixed centroid (computed
 from all members), with a distinct style. Member star labels are hidden
