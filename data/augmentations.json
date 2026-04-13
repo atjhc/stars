@@ -639,7 +639,7 @@
   "Gl 566A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Xi_Bo%C3%B6tis",
     "name": "Xi Bootis",
-    "notes": "Wikipedia uses Xi Bootis (Xi Boötis). Nearest visible star in Bootes. BY Draconis variable. Young system (~200 Myr). Both components in one article.",
+    "notes": "Wikipedia uses Xi Bootis (Xi Bo\u00f6tis). Nearest visible star in Bootes. BY Draconis variable. Young system (~200 Myr). Both components in one article.",
     "system": "Xi Bootis"
   },
   "Gl 643": {
@@ -1566,7 +1566,7 @@
   },
   "Iklil": {
     "wikipedia": "https://en.wikipedia.org/wiki/Rho_Scorpii",
-    "notes": "Hot blue subgiant/main-sequence star in Scorpius, part of the Scorpius–Centaurus association. The name 'Iklil' is from Arabic for 'crown', referring to the head of the scorpion."
+    "notes": "Hot blue subgiant/main-sequence star in Scorpius, part of the Scorpius\u2013Centaurus association. The name 'Iklil' is from Arabic for 'crown', referring to the head of the scorpion."
   },
   "Rasalas": {
     "wikipedia": "https://en.wikipedia.org/wiki/Mu_Leonis",
@@ -1745,7 +1745,7 @@
     "system": "Algol",
     "name": "Algol B",
     "wikipedia": "https://en.wikipedia.org/wiki/Algol",
-    "notes": "The eclipsing companion of Algol. A K0IV subgiant that has transferred much of its mass to Algol A — paradoxically the less massive star is the more evolved one (the 'Algol paradox').",
+    "notes": "The eclipsing companion of Algol. A K0IV subgiant that has transferred much of its mass to Algol A \u2014 paradoxically the less massive star is the more evolved one (the 'Algol paradox').",
     "synthetic": {
       "x": 14.189,
       "y": 15.239,
@@ -2078,7 +2078,7 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Iota_Centauri",
     "notes": "White main-sequence star in Centaurus. Its proper name Kulou comes from a Chinese asterism meaning 'Sickle'.",
     "aliases": [
-      "Kú Lóu"
+      "K\u00fa L\u00f3u"
     ]
   },
   "Zubenelgenubi": {
@@ -2499,7 +2499,7 @@
   },
   "Nekkar": {
     "wikipedia": "https://en.wikipedia.org/wiki/Beta_Bo%C3%B6tis",
-    "notes": "Yellow giant marking the head of Boötes the Herdsman, about 235 light-years away. Known to flare occasionally in X-rays."
+    "notes": "Yellow giant marking the head of Bo\u00f6tes the Herdsman, about 235 light-years away. Known to flare occasionally in X-rays."
   },
   "Wasat": {
     "wikipedia": "https://en.wikipedia.org/wiki/Delta_Geminorum",
@@ -2518,7 +2518,9 @@
     "notes": "White main-sequence star in Pegasus about 89 light-years away. Its name comes from Arabic meaning 'the lucky star of the two beasts'."
   },
   "Sheliak": {
-    "aliases": ["Beta Lyrae"],
+    "aliases": [
+      "Beta Lyrae"
+    ],
     "wikipedia": "https://en.wikipedia.org/wiki/Beta_Lyrae",
     "notes": "Prototype of the Beta Lyrae eclipsing binary class, about 900 light-years away in Lyra. The two stars are so close they exchange mass through an accretion stream."
   },
@@ -2626,5 +2628,15 @@
   "Zaniah": {
     "wikipedia": "https://en.wikipedia.org/wiki/Eta_Virginis",
     "notes": "Eta Virginis, a close triple-star system in Virgo about 250 light-years away. The Arabic name refers to a corner of the sky."
+  },
+  "HIP 26220": {
+    "name": "Theta\u00b9 Orionis A",
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta1_Orionis_A",
+    "notes": "Brightest member of the Trapezium Cluster in apparent magnitude. A young massive O7 star embedded in the Orion Nebula (M42)."
+  },
+  "HIP 26221": {
+    "name": "Theta\u00b9 Orionis C",
+    "wikipedia": "https://en.wikipedia.org/wiki/Theta1_Orionis_C",
+    "notes": "Most massive star in the Trapezium Cluster and the primary ionizing source of the Orion Nebula (M42). One of the most luminous O-type stars within 500 pc of Sol."
   }
 }
