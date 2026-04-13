@@ -292,8 +292,9 @@ export function updateLabels(
       const finalOpacity = Math.max(0.15, (1 - t) * solFade);
       setLabelStyle(div, String(finalOpacity), zIndex);
       const magRank = Math.max(0, (10 - appMag) * 10);
+      const solBonus = star.name === "Sol" ? 3000 : 0;
       visibleLabels.add(div);
-      frameLabels.push({ div, rank: 500 + magRank + favBonus, opacity: finalOpacity });
+      frameLabels.push({ div, rank: 500 + magRank + favBonus + solBonus, opacity: finalOpacity });
     } else {
       if (camDist > LABEL_HIDE_DIST) {
         target.visible = forceVis;

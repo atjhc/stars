@@ -2,6 +2,8 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { HIGHLIGHT_BOOST } from "./constants.ts";
 import { camera, animateTo } from "./scene.ts";
+import { addRecent } from "./recents.ts";
+import { refreshSearch } from "./search.ts";
 import { starGlowShadow } from "./color.ts";
 import {
   getSelectedSystem, setSelectedSystem,
@@ -172,6 +174,8 @@ export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) 
   setLabelsDirty(true);
   animateTo(focusTarget(group, camera.position));
   setLastHoveredMesh(null);
+  addRecent(group.name);
+  refreshSearch();
   updateDetailPanel();
 }
 
@@ -187,6 +191,8 @@ export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void
   setSelectedMesh(target);
   const star = target.userData as Star;
   setPinnedTile(star.tile ?? null);
+  addRecent(star.name);
+  refreshSearch();
   highlightStar(target);
   const label = getLabelDiv(target);
   if (label) applyLabelGlow(label, target);

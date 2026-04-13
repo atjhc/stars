@@ -92,6 +92,17 @@
     width: 260px; overflow: hidden;
   }
   #search.active { display: flex; }
+  #search-tabs {
+    display: flex; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .search-tab {
+    flex: 1; background: none; border: none; color: #666;
+    font-size: 11px; padding: 8px 0; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-family: 'Helvetica Neue', sans-serif;
+  }
+  .search-tab:hover { color: #aaa; }
+  .search-tab.active { color: #ccc; border-bottom-color: #6699dd; }
   #search-input {
     background: transparent; border: none; outline: none;
     color: #fff; font-size: 16px; padding: 10px 12px;
@@ -156,6 +167,11 @@
 <div id="detail"></div>
 <button id="search-btn" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="15" y1="15" x2="21" y2="21"/></svg></button>
 <div id="search">
+  <div id="search-tabs">
+    <button class="search-tab active" data-tab="all">All</button>
+    <button class="search-tab" data-tab="favorites">Favorites</button>
+    <button class="search-tab" data-tab="recent">Recent</button>
+  </div>
   <input id="search-input" type="text" placeholder="Search stars..." autocomplete="off" />
   <ul id="search-results"></ul>
 </div>
