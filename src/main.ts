@@ -73,6 +73,7 @@ let prevMouse = { x: 0, y: 0 };
 let dragDistance = 0;
 let lastInputWasTouch = false;
 let hoveredViaLabel = false;
+let isAltOrbit = false;
 
 function initLabelDrag(div: HTMLElement) {
   div.setAttribute("data-star-label", "");
@@ -137,7 +138,7 @@ function wireSystemLabels() {
     wiredSystems.add(group);
     const labelDiv = group.label.element as HTMLElement;
     labelDiv.addEventListener("mouseenter", () => {
-      if (isDragging || isZooming) return;
+      if (isDragging || isZooming || isAltOrbit) return;
       if (!isLabelInteractive(labelDiv)) return;
       if (getSelectedSystem() !== group) {
         setHoveredSystem(group);
@@ -145,7 +146,7 @@ function wireSystemLabels() {
       }
     });
     labelDiv.addEventListener("mouseleave", () => {
-      if (isDragging || isZooming) return;
+      if (isDragging || isZooming || isAltOrbit) return;
       if (getHoveredSystem() === group && getSelectedSystem() !== group) {
         hideSystemMembers(group);
         setHoveredSystem(null);
@@ -182,11 +183,12 @@ window.addEventListener("mousemove", (e) => {
   const dy = e.clientY - prevMouse.y;
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
-  // Option/Alt held without click: free-look orbit rotation
   if (e.altKey && !isDragging && !isZooming) {
+    isAltOrbit = true;
     applyOrbitDrag(dx, dy);
     return;
   }
+  isAltOrbit = false;
   if (!isDragging && !isZooming) return;
   if (isDragging) {
     dragDistance += Math.abs(dx) + Math.abs(dy);
@@ -287,7 +289,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 });
 
 labelRenderer.domElement.addEventListener("mouseover", (e) => {
-  if (lastInputWasTouch || isDragging || isZooming) return;
+  if (lastInputWasTouch || isDragging || isZooming || isAltOrbit) return;
   const label = (e.target as HTMLElement).closest("[data-star-label], [data-system-label], [data-label-type]") as HTMLElement | null;
   if (label && !isLabelInteractive(label)) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
@@ -297,7 +299,7 @@ labelRenderer.domElement.addEventListener("mouseover", (e) => {
 });
 
 labelRenderer.domElement.addEventListener("mousemove", (e) => {
-  if (!hoveredViaLabel || isDragging || isZooming) return;
+  if (!hoveredViaLabel || isDragging || isZooming || isAltOrbit) return;
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (!mesh) return;
   hoverTarget(mesh, meshToSystem, clusterOf);
