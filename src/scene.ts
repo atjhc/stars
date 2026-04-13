@@ -121,6 +121,7 @@ export function animateTo(pos: THREE.Vector3) {
 }
 
 export function tickAnimation(now: number) {
+  tickOrbitAnim(now);
   if (!animation) return;
   const t = Math.min(1, (now - animation.start) / ANIM_DURATION);
   const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -128,6 +129,36 @@ export function tickAnimation(now: number) {
   updateGridCenter();
   updateCamera();
   if (t >= 1) animation = null;
+}
+
+const ORBIT_ANIM_MS = 500;
+let orbitAnim: { fromTheta: number; fromPhi: number; toTheta: number; toPhi: number; start: number } | null = null;
+
+export function lookToward(worldPos: THREE.Vector3) {
+  const dir = new THREE.Vector3().subVectors(target, worldPos).normalize();
+  const x = dir.dot(galX);
+  const z = dir.dot(galZ);
+  const y = dir.dot(galUp);
+  let toTheta = Math.atan2(z, x);
+  let toPhi = Math.acos(THREE.MathUtils.clamp(y, -1, 1));
+  toPhi = THREE.MathUtils.clamp(toPhi, 0.1, Math.PI - 0.1);
+
+  // Shortest angular path for theta
+  let dTheta = toTheta - orbitTheta;
+  if (dTheta > Math.PI) toTheta -= 2 * Math.PI;
+  else if (dTheta < -Math.PI) toTheta += 2 * Math.PI;
+
+  orbitAnim = { fromTheta: orbitTheta, fromPhi: orbitPhi, toTheta, toPhi, start: performance.now() };
+}
+
+function tickOrbitAnim(now: number) {
+  if (!orbitAnim) return;
+  const t = Math.min(1, (now - orbitAnim.start) / ORBIT_ANIM_MS);
+  const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  orbitTheta = orbitAnim.fromTheta + (orbitAnim.toTheta - orbitAnim.fromTheta) * ease;
+  orbitPhi = orbitAnim.fromPhi + (orbitAnim.toPhi - orbitAnim.fromPhi) * ease;
+  updateCamera();
+  if (t >= 1) orbitAnim = null;
 }
 
 export function applyOrbitDrag(dx: number, dy: number) {

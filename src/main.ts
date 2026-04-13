@@ -5,7 +5,7 @@ import {
   scene, camera, renderer, labelRenderer, composer,
   gridHelper, handleResize, bloomPass,
   beginBloomRender, endBloomRender,
-  updateCamera, applyOrbitDrag, onWheel, tickAnimation,
+  updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
   orbitRadius, setOrbitRadius,
 } from "./scene.ts";
 import {
@@ -410,7 +410,9 @@ function handleSearchSelect(entry: SearchEntry) {
     });
   }
 }
-setupSearch(handleSearchSelect);
+setupSearch(handleSearchSelect, (entry) => {
+  lookToward(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+});
 
 // Boot the catalog + starfield, then select Sol once notables are loaded.
 await initStarfield();

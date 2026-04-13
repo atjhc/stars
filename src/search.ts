@@ -131,9 +131,22 @@ function renderSearchResults() {
   });
 }
 
-let selectResult = (_index: number) => {};
+function scrollToSelected() {
+  const el = searchResults.children[selectedIndex] as HTMLElement | undefined;
+  if (el) el.scrollIntoView({ block: "nearest" });
+}
 
-export function setupSearch(onSelect: (entry: SearchEntry) => void) {
+let selectResult = (_index: number) => {};
+let previewResult = (_entry: SearchEntry) => {};
+
+function notifyPreview() {
+  if (filteredEntries.length > 0 && selectedIndex < filteredEntries.length) {
+    previewResult(filteredEntries[selectedIndex]);
+  }
+}
+
+export function setupSearch(onSelect: (entry: SearchEntry) => void, onPreview?: (entry: SearchEntry) => void) {
+  if (onPreview) previewResult = onPreview;
   selectResult = (index: number) => {
     if (index < 0 || index >= filteredEntries.length) return;
     const entry = filteredEntries[index];
@@ -192,10 +205,14 @@ export function setupSearch(onSelect: (entry: SearchEntry) => void) {
       e.preventDefault();
       selectedIndex = Math.min(selectedIndex + 1, filteredEntries.length - 1);
       renderSearchResults();
+      scrollToSelected();
+      notifyPreview();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       selectedIndex = Math.max(selectedIndex - 1, 0);
       renderSearchResults();
+      scrollToSelected();
+      notifyPreview();
     } else if (e.key === "Enter") {
       e.preventDefault();
       selectResult(selectedIndex);

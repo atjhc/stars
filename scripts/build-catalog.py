@@ -589,7 +589,27 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             buf.extend(struct.pack("<fff", s["sx"], s["sy"], s["sz"]))
             buf.extend(struct.pack("BBBB", br, r, g, b))
 
+            has_augmentation = s.get("wikipedia") or s.get("notes")
+            if s["tier"] >= 2 and not has_augmentation:
+                continue
             if s["tier"] >= 2:
+                # Augmented tier-2 stars: add to search index but not label rows
+                search_entry: dict = {
+                    "n": s["name"],
+                    "t": path,
+                    "i": i,
+                    "p": [round(s["sx"], 4), round(s["sy"], 4), round(s["sz"], 4)],
+                    "mg": round(s["mag"], 2),
+                    "M": round(s["absmag"], 2),
+                    "d": round(s["dist"], 4),
+                }
+                if s["spect"]:
+                    search_entry["sp"] = s["spect"]
+                if s["aliases"]:
+                    search_entry["a"] = s["aliases"]
+                if s["system"]:
+                    search_entry["sy"] = s["system"]
+                search_index.append(search_entry)
                 continue
             labels_in_tile[s["tier"]] += 1
             row: dict = {

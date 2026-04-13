@@ -26,7 +26,8 @@
   },
   "Gl 699": {
     "wikipedia": "https://en.wikipedia.org/wiki/Barnard%27s_Star",
-    "notes": "Second closest star system to Sol (1.82 ly). Fastest known proper motion of any star. Red dwarf. Candidate exoplanet Barnard's Star b announced 2018."
+    "notes": "Second closest star system to Sol (1.82 ly). Fastest known proper motion of any star. Red dwarf. Candidate exoplanet Barnard's Star b announced 2018.",
+    "notable": true
   },
   "Gl 406": {
     "wikipedia": "https://en.wikipedia.org/wiki/Wolf_359",

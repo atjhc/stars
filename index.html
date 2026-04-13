@@ -161,7 +161,16 @@
   <div class="info-body">
     <h1>Stellar Neighborhood</h1>
     <div>1.86 million stars within ~3,260 light-years of Sol</div>
-    <div class="hint">Drag to rotate &middot; ⌥+move to orbit &middot; / search &middot; L labels &middot; G grid &middot; C constellations &middot; N nebulae</div>
+    <div class="hint">
+      Drag to rotate<br>
+      ⌥+move to orbit<br>
+      / search<br>
+      F favorite<br>
+      L labels<br>
+      G grid<br>
+      C constellations<br>
+      N nebulae
+    </div>
   </div>
 </div>
 <div id="detail"></div>
@@ -172,7 +181,7 @@
     <button class="search-tab" data-tab="favorites">Favorites</button>
     <button class="search-tab" data-tab="recent">Recent</button>
   </div>
-  <input id="search-input" type="text" placeholder="Search stars..." autocomplete="off" />
+  <input id="search-input" type="text" placeholder="Search stars..." autocomplete="off" spellcheck="false" autocorrect="off" />
   <ul id="search-results"></ul>
 </div>
 <script>
