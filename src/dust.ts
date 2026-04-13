@@ -19,7 +19,7 @@ interface DustMeta {
 
 const emissionScene = new THREE.Scene();
 let emissionMesh: THREE.Mesh | null = null;
-let wantVisible = false;
+let wantVisible = true;
 
 // Half-resolution render target for the emission pass. Volumetric glow
 // is inherently smooth, so half-res + bilinear upscale is nearly

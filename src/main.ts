@@ -26,8 +26,9 @@ import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
-import { initConstellations, toggleConstellations } from "./constellations.ts";
-import { initDust, updateDust, renderDustPostBloom, toggleDust, handleDustResize } from "./dust.ts";
+import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
+import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, isDustVisible, handleDustResize } from "./dust.ts";
+import { loadJSON, saveJSON } from "./storage.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debug.ts";
@@ -60,7 +61,7 @@ document.addEventListener("touchmove", (e) => {
 import { makeCollapsible } from "./collapse.ts";
 {
   const info = document.getElementById("info");
-  if (info) makeCollapsible(info);
+  if (info) makeCollapsible(info, "info");
 }
 
 let labelsVisible = true;
@@ -336,18 +337,38 @@ labelRenderer.domElement.addEventListener("mouseup", (e) => {
   }
 });
 
+interface ToggleState {
+  grid?: boolean;
+  constellations?: boolean;
+  dust?: boolean;
+  labels?: boolean;
+}
+
+function saveToggles() {
+  saveJSON("toggles", {
+    grid: gridHelper.visible,
+    constellations: constellationsVisible(),
+    dust: isDustVisible(),
+    labels: labelsVisible,
+  } satisfies ToggleState);
+}
+
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLInputElement) return;
   if (e.key === "l") {
     labelsVisible = !labelsVisible;
     doUpdateLabelVisibility();
+    saveToggles();
   } else if (e.key === "g") {
     gridHelper.visible = !gridHelper.visible;
+    saveToggles();
   } else if (e.key === "c") {
     toggleConstellations();
-  } else if (e.key === "d") {
+    saveToggles();
+  } else if (e.key === "n") {
     toggleDust();
     doUpdateLabelVisibility();
+    saveToggles();
   } else if (e.key === "f") {
     const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name;
     if (name) {
@@ -416,6 +437,13 @@ wireSystemLabels();
 await initConstellations();
 await initDust();
 await initNebulaeLabels();
+
+const savedToggles = loadJSON<ToggleState>("toggles", {});
+if (savedToggles.grid !== undefined) gridHelper.visible = savedToggles.grid;
+if (savedToggles.constellations !== undefined) setConstellationsVisible(savedToggles.constellations);
+if (savedToggles.dust !== undefined) setDustVisible(savedToggles.dust);
+if (savedToggles.labels !== undefined) labelsVisible = savedToggles.labels;
+doUpdateLabelVisibility();
 
 const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
 if (solAnchor) {

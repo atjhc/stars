@@ -64,7 +64,7 @@ function buildLineGeometry(): void {
 
   lineSegments = new THREE.LineSegments(geometry, material);
   lineSegments.frustumCulled = false;
-  lineSegments.visible = false;
+  lineSegments.visible = true;
   scene.add(lineSegments);
 }
 

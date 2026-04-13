@@ -149,7 +149,7 @@
   <div class="info-body">
     <h1>Stellar Neighborhood</h1>
     <div>1.86 million stars within ~3,260 light-years of Sol</div>
-    <div class="hint">Drag to rotate &middot; ⌥+drag to zoom &middot; / search &middot; L labels &middot; G grid &middot; C constellations &middot; D dust</div>
+    <div class="hint">Drag to rotate &middot; ⌥+move to orbit &middot; / search &middot; L labels &middot; G grid &middot; C constellations &middot; N nebulae</div>
   </div>
 </div>
 <div id="detail"></div>
@@ -158,6 +158,13 @@
   <input id="search-input" type="text" placeholder="Search stars..." autocomplete="off" />
   <ul id="search-results"></ul>
 </div>
+<script>
+  try {
+    var p = JSON.parse(localStorage.getItem("drake-panels") || "{}");
+    if (p.info) document.getElementById("info").classList.add("collapsed");
+    else document.getElementById("info").classList.remove("collapsed");
+  } catch(e) {}
+</script>
 <script type="module" src="./src/main.ts"></script>
 </div>
 </body>

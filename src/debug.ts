@@ -213,7 +213,7 @@ export function initDebug() {
   panel.appendChild(bugIcon);
   document.body.appendChild(panel);
 
-  makeCollapsible(panel);
+  makeCollapsible(panel, "debug");
 
   renderStatic();
   renderCamera();

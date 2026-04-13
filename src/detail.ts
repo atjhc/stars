@@ -1,9 +1,9 @@
 import type { Star } from "./types.ts";
-import { getSelectedMesh, getSelectedSystem } from "./systemStore.ts";
+import { getSelectedMesh, getSelectedSystem, setLabelsDirty } from "./systemStore.ts";
 import { systemDetailHtml } from "./systemDispatch.ts";
 import { getActiveDetailHtml } from "./labelRegistry.ts";
 import { isFavorite, toggleFavorite } from "./favorites.ts";
-import { setLabelsDirty } from "./systemStore.ts";
+import { loadJSON, saveJSON } from "./storage.ts";
 
 const detail = document.getElementById("detail")!;
 
@@ -22,6 +22,7 @@ detail.addEventListener("click", (e) => {
   if ((e.target as HTMLElement).closest("a")) return;
   if (window.getSelection()?.toString()) return;
   detail.classList.toggle("collapsed");
+  saveJSON("panels", { ...loadJSON<Record<string, boolean>>("panels", {}), detail: detail.classList.contains("collapsed") });
 });
 
 import { LY_PER_PARSEC } from "./constants.ts";
@@ -43,12 +44,17 @@ export function favoriteIcon(name: string): string {
   return `<span class="favorite-toggle" data-name="${name.replace(/"/g, "&quot;")}">${icon}</span>`;
 }
 
+function applyDetailCollapsed() {
+  const saved = loadJSON<Record<string, boolean>>("panels", {});
+  if (saved.detail) detail.classList.add("collapsed");
+  else detail.classList.remove("collapsed");
+}
+
 export function updateDetailPanel() {
-  // Check registry-managed label types (nebulae, etc.) first
   const registryHtml = getActiveDetailHtml();
   if (registryHtml) {
     detail.innerHTML = registryHtml;
-    detail.classList.remove("collapsed");
+    applyDetailCollapsed();
     detail.classList.add("active");
     return;
   }
@@ -56,7 +62,7 @@ export function updateDetailPanel() {
   const selectedSystem = getSelectedSystem();
   if (selectedSystem) {
     detail.innerHTML = systemDetailHtml(selectedSystem);
-    detail.classList.remove("collapsed");
+    applyDetailCollapsed();
     detail.classList.add("active");
     return;
   }
@@ -87,6 +93,6 @@ export function updateDetailPanel() {
       ${renderWikiLink(star.wikipedia)}
     </div>
   `;
-  detail.classList.remove("collapsed");
+  applyDetailCollapsed();
   detail.classList.add("active");
 }

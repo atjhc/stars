@@ -74,6 +74,7 @@ const gridShaderMat = new THREE.ShaderMaterial({
 export const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_DIVISIONS);
 gridHelper.material = gridShaderMat;
 gridHelper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), galNorthEq);
+gridHelper.visible = false;
 scene.add(gridHelper);
 
 // Camera orbit
@@ -85,7 +86,7 @@ const galZ = new THREE.Vector3().crossVectors(galX, galUp).normalize();
 camera.up.copy(galUp);
 
 export const target = new THREE.Vector3(0, 0, 0);
-export let orbitRadius = 7.8;
+export let orbitRadius = MIN_ORBIT_RADIUS;
 export let orbitPhi = 1.24;
 export let orbitTheta = 0.485;
 
