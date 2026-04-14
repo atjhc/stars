@@ -9,6 +9,8 @@ import { camera, target, orbitRadius, orbitPhi, orbitTheta, bloomPass } from "./
 import { BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD } from "./constants.ts";
 import { DEFAULT_MAG_LIMIT, setMagLimit } from "./starfield.ts";
 import { makeCollapsible } from "./collapse.ts";
+import { getSelectedSystem, getSelectedMesh } from "./systemStore.ts";
+import type { Star } from "./types.ts";
 
 type ToggleKey =
   | "textureGlow"   // sample glow from a mipmapped texture instead of math
@@ -147,6 +149,17 @@ function cameraStateText() {
   return `cam ${fmt(cp.x)} ${fmt(cp.y)} ${fmt(cp.z)}\ntgt ${fmt(target.x)} ${fmt(target.y)} ${fmt(target.z)}\norb r=${fmt(orbitRadius)} φ=${fmt(orbitPhi)} θ=${fmt(orbitTheta)}`;
 }
 
+function cameraStateUrl() {
+  const params = new URLSearchParams();
+  params.set("debug", "1");
+  const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name;
+  if (name) params.set("name", name);
+  params.set("r", fmt(orbitRadius));
+  params.set("phi", fmt(orbitPhi));
+  params.set("theta", fmt(orbitTheta));
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+}
+
 function renderCamera() {
   if (!camLine || !tgtLine || !orbLine) return;
   // Skip DOM writes when text hasn't changed to preserve active selections
@@ -188,7 +201,7 @@ export function initDebug() {
   copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
   copyBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(cameraStateText());
+    navigator.clipboard.writeText(cameraStateUrl());
     copyBtn.style.opacity = "1";
     setTimeout(() => { copyBtn.style.opacity = ""; }, 600);
   });

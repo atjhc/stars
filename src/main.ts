@@ -6,7 +6,8 @@ import {
   gridHelper, handleResize, bloomPass,
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
-  orbitRadius, setOrbitRadius,
+  orbitRadius, orbitPhi, orbitTheta, target,
+  setOrbitRadius, setOrbitPhi, setOrbitTheta,
 } from "./scene.ts";
 import {
   registerLabelMap,
@@ -430,10 +431,32 @@ if (savedToggles.dust !== undefined) setDustVisible(savedToggles.dust);
 if (savedToggles.labels !== undefined) labelsVisible = savedToggles.labels;
 doUpdateLabelVisibility();
 
-const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
-if (solAnchor) {
-  highlightStar(solAnchor);
-  selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
+// Apply URL parameters: ?name=Sol&r=5&phi=1.2&theta=0.5
+{
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlName = urlParams.get("name");
+  const urlR = urlParams.get("r");
+  const urlPhi = urlParams.get("phi");
+  const urlTheta = urlParams.get("theta");
+
+  const selectName = urlName ?? "Sol";
+  const nameEntry = getSearchIndex().find((e) => e.n === selectName || e.sy === selectName);
+  if (nameEntry) {
+    // Set target position instantly (no animation on initial load)
+    target.set(nameEntry.p[0], nameEntry.p[1], nameEntry.p[2]);
+    handleSearchSelect(nameEntry);
+  } else {
+    const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
+    if (solAnchor) {
+      selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
+    }
+  }
+
+  // Orbit params override after target is set
+  if (urlR) setOrbitRadius(parseFloat(urlR));
+  if (urlPhi) setOrbitPhi(parseFloat(urlPhi));
+  if (urlTheta) setOrbitTheta(parseFloat(urlTheta));
+  updateCamera();
 }
 
 // Debug mode: keyboard toggles for visual bug isolation. Gated on ?debug=1.
