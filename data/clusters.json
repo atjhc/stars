@@ -272,5 +272,23 @@
     "seed_stars": [],
     "wikipedia": "https://en.wikipedia.org/wiki/NGC_6124",
     "notes": "Prominent open cluster in Scorpius at ~630 pc, visible to the naked eye (mag 5.8). Discovered by Lacaille in 1751. Contains ~125 bright members. Age ~140 Myr."
+  },
+  "Stock 2": {
+    "aliases": [
+      "Muscleman Cluster"
+    ],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": null,
+    "notes": "Large open cluster in Cassiopeia at ~374 pc, sometimes called the Muscleman Cluster. One of the largest nearby clusters with over 3,000 Gaia DR3 members. Age ~150-300 Myr."
+  },
+  "Collinder 350": {
+    "aliases": [
+      "Cr 350"
+    ],
+    "type": "open",
+    "seed_stars": [],
+    "wikipedia": null,
+    "notes": "Open cluster in Ophiuchus at ~372 pc, near IC 4665. Age ~500 Myr, older than its neighbor."
   }
 }
