@@ -120,6 +120,17 @@ export function animateTo(pos: THREE.Vector3) {
   animation = { from: target.clone(), to: pos.clone(), start: performance.now() };
 }
 
+// Jump directly to a target position, cancelling any in-flight target
+// or orbit animation. Used when restoring from a shared URL, where the
+// normal selection lerp would play a distracting flyby on page load.
+export function setTargetImmediate(pos: THREE.Vector3) {
+  target.copy(pos);
+  animation = null;
+  orbitAnim = null;
+  updateGridCenter();
+  updateCamera();
+}
+
 export function tickAnimation(now: number) {
   tickOrbitAnim(now);
   if (!animation) return;

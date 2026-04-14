@@ -7,7 +7,13 @@ import {
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
   orbitRadius, setOrbitRadius,
+  setOrbitPhi, setOrbitTheta, setTargetImmediate,
+  orbitPhi, orbitTheta,
 } from "./scene.ts";
+import {
+  initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
+} from "./urlState.ts";
+import { getSelectedNebulaName } from "./nebulaeLabels.ts";
 import {
   registerLabelMap,
   highlightStar,
@@ -156,14 +162,16 @@ function wireSystemLabels() {
       if (!isLabelInteractive(labelDiv)) return;
       clearAllSelections();
       selectSystem(group, updateDetailPanel);
+      scheduleUrlWrite();
     });
   }
 }
 onLabelsChanged(() => {
   wireSystemLabels();
   setLabelsDirty(true);
-  if (pendingClusterSelect) {
-    if (trySelectCluster(pendingClusterSelect)) pendingClusterSelect = null;
+  if (pendingClusterSelect && trySelectCluster(pendingClusterSelect)) {
+    pendingClusterSelect = null;
+    scheduleUrlWrite();
   }
 });
 
@@ -195,8 +203,10 @@ window.addEventListener("mousemove", (e) => {
 
 window.addEventListener("mouseup", (e) => {
   const wasClick = isDragging && dragDistance < CLICK_THRESHOLD;
+  const wasDrag = isDragging && !wasClick;
   isDragging = false;
   if (wasClick) trySelectAt(e.clientX, e.clientY);
+  if (wasDrag || wasClick) scheduleUrlWrite();
 });
 
 // Touch controls
@@ -248,10 +258,15 @@ renderer.domElement.addEventListener("touchend", (e) => {
     const touch = e.changedTouches[0];
     trySelectAt(touch.clientX, touch.clientY);
   }
+  scheduleUrlWrite();
 }, { passive: false });
 
-renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
-labelRenderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+function onWheelWithUrl(e: WheelEvent) {
+  onWheel(e);
+  scheduleUrlWrite();
+}
+renderer.domElement.addEventListener("wheel", onWheelWithUrl, { passive: false });
+labelRenderer.domElement.addEventListener("wheel", onWheelWithUrl, { passive: false });
 
 window.addEventListener("touchstart", () => { lastInputWasTouch = true; }, { capture: true });
 window.addEventListener("mousemove", () => { lastInputWasTouch = false; }, { capture: true });
@@ -311,12 +326,14 @@ labelRenderer.domElement.addEventListener("mouseup", (e) => {
   // Registry handles nebulae (and any future label types)
   if (dispatchLabelClick(e.target as HTMLElement)) {
     updateDetailPanel();
+    scheduleUrlWrite();
     return;
   }
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (mesh) {
     clearAllSelections();
     selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+    scheduleUrlWrite();
   }
 });
 
@@ -388,13 +405,16 @@ function handleSearchSelect(entry: SearchEntry) {
   if (entry.k === "n") {
     selectByType("nebula", entry.n);
     updateDetailPanel();
+    scheduleUrlWrite();
     return;
   }
   if (entry.k === "c") {
-    if (!trySelectCluster(entry.n)) {
+    if (trySelectCluster(entry.n)) {
+      scheduleUrlWrite();
+    } else {
       // Group doesn't exist yet — member tiles haven't streamed.
       // Force-load a member tile; when rebuildSystems fires, the
-      // onLabelsChanged callback retries the selection.
+      // onLabelsChanged callback retries the selection and writes the URL.
       pendingClusterSelect = entry.n;
       const member = getSearchIndex().find((e) => e.sy === entry.n && e.t);
       if (member?.t && member.i !== undefined) {
@@ -407,6 +427,7 @@ function handleSearchSelect(entry: SearchEntry) {
     requestTileFocus(entry.t, entry.i, (mesh) => {
       clearAllSelections();
       selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+      scheduleUrlWrite();
     });
   }
 }
@@ -435,6 +456,49 @@ if (solAnchor) {
   highlightStar(solAnchor);
   selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
 }
+
+// Restore focus + orbit from URL query params. The focus entity drives
+// the target position through the same search-select path used elsewhere;
+// we then snap the target immediately (using the catalog entry's known
+// position) to skip the default selection lerp, since restoring a shared
+// URL shouldn't show a flyby animation.
+const urlState = parseUrlState(window.location.search);
+if (urlState.focus) {
+  const entry = getSearchIndex().find((e) => e.n === urlState.focus);
+  if (entry) {
+    handleSearchSelect(entry);
+    setTargetImmediate(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+  }
+}
+if (urlState.orbit) {
+  // Clamp the same way applyOrbitDrag / applyZoom do, so a hand-edited
+  // URL can't leave the camera in a degenerate (flipped, too close, etc.) state.
+  const { radius, phi, theta } = urlState.orbit;
+  setOrbitRadius(THREE.MathUtils.clamp(radius, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS));
+  setOrbitPhi(THREE.MathUtils.clamp(phi, 0.1, Math.PI - 0.1));
+  setOrbitTheta(theta);
+  updateCamera();
+}
+
+function currentFocusName(): string | undefined {
+  const sys = getSelectedSystem();
+  if (sys) return sys.name;
+  const mesh = getSelectedMesh();
+  if (mesh) {
+    const name = (mesh.userData as Star).name;
+    if (name) return name;
+  }
+  const nebula = getSelectedNebulaName();
+  return nebula ?? undefined;
+}
+
+initUrlState({
+  getState: () => ({
+    orbit: { radius: orbitRadius, phi: orbitPhi, theta: orbitTheta },
+    focus: currentFocusName(),
+  }),
+});
+enableUrlWrites();
 
 // Debug mode: keyboard toggles for visual bug isolation. Gated on ?debug=1.
 if (debugEnabled) {
