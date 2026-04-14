@@ -31,6 +31,7 @@ import { initConstellations, toggleConstellations, setConstellationsVisible, con
 import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, isDustVisible, handleDustResize } from "./dust.ts";
 import { loadJSON, saveJSON } from "./storage.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
+import { initBlackHoleLabels } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debug.ts";
 import {
@@ -391,6 +392,11 @@ function handleSearchSelect(entry: SearchEntry) {
     updateDetailPanel();
     return;
   }
+  if (entry.k === "b") {
+    selectByType("blackhole", entry.n);
+    updateDetailPanel();
+    return;
+  }
   if (entry.k === "c") {
     if (!trySelectCluster(entry.n)) {
       // Group doesn't exist yet — member tiles haven't streamed.
@@ -423,6 +429,7 @@ wireSystemLabels();
 await initConstellations();
 await initDust();
 await initNebulaeLabels();
+await initBlackHoleLabels();
 
 const savedToggles = loadJSON<ToggleState>("toggles", {});
 if (savedToggles.grid !== undefined) gridHelper.visible = savedToggles.grid;

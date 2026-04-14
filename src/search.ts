@@ -112,6 +112,8 @@ function renderSearchResults() {
       li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Star Cluster</span>`;
     } else if (entry.k === "n") {
       li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Nebula</span>`;
+    } else if (entry.k === "b") {
+      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Black Hole</span>`;
     } else {
       const primaryName = entry.sy ?? entry.n;
       const matchSource = findMatchSource(entry, q);

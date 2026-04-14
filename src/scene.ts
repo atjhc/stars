@@ -167,8 +167,12 @@ export function applyOrbitDrag(dx: number, dy: number) {
   updateCamera();
 }
 
+let minOrbitOverride: number | null = null;
+export function setMinOrbitOverride(v: number | null) { minOrbitOverride = v; }
+
 export function applyZoom(delta: number) {
-  orbitRadius = THREE.MathUtils.clamp(orbitRadius * Math.pow(1.0007, delta), MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS);
+  const minR = minOrbitOverride ?? MIN_ORBIT_RADIUS;
+  orbitRadius = THREE.MathUtils.clamp(orbitRadius * Math.pow(1.0007, delta), minR, MAX_ORBIT_RADIUS);
   updateCamera();
 }
 

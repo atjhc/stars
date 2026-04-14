@@ -86,7 +86,7 @@ export interface SearchEntry {
   sp?: string;                  // spectral type
   a?: string[];                 // aliases
   sy?: string;                  // system name
-  k?: "c" | "n";                // kind: "c" for cluster, "n" for nebula
+  k?: "c" | "n" | "b";           // kind: "c" cluster, "n" nebula, "b" black hole
 }
 
 import { TILE_BASE_URL } from "./constants.ts";

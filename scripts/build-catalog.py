@@ -764,6 +764,35 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
         with open(os.path.join(out_dir, "nebulae.json"), "w") as f:
             json.dump(nebulae_out, f)
 
+    # Black holes: convert RA/Dec to scene coordinates
+    bh_path = os.path.join(data_dir, "data", "blackholes.json")
+    bh_count = 0
+    if os.path.exists(bh_path):
+        with open(bh_path) as f:
+            bh_raw = json.load(f)
+        bh_out = {}
+        for bname, bdef in bh_raw.items():
+            ra_rad = math.radians(bdef["ra"])
+            dec_rad = math.radians(bdef["dec"])
+            dist = bdef["dist_pc"]
+            x = dist * math.cos(dec_rad) * math.cos(ra_rad)
+            y = dist * math.cos(dec_rad) * math.sin(ra_rad)
+            z = dist * math.sin(dec_rad)
+            sx, sy, sz = x * SCALE, z * SCALE, -y * SCALE
+            scene_pos = [round(sx, 2), round(sy, 2), round(sz, 2)]
+            search_index.append({
+                "n": bname, "k": "b",
+                "p": scene_pos,
+                "mg": 0, "M": 0,
+                "d": round(dist, 1),
+                "a": bdef.get("aliases", []),
+            })
+            bh_out[bname] = {**bdef, "scene_pos": scene_pos}
+            bh_count += 1
+        with open(os.path.join(out_dir, "blackholes.json"), "w") as f:
+            json.dump(bh_out, f)
+        print(f"Black holes: {bh_count} in search index")
+
     with open(os.path.join(out_dir, "meta.json"), "w") as f:
         json.dump(meta, f)
     with open(os.path.join(out_dir, "notable.json"), "w") as f:

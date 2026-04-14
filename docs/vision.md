@@ -270,6 +270,39 @@ frame. A modern desktop GPU does this comfortably; mobile may need 128
 steps or a Newtonian-approximation fast path (see the Starless reference
 linked from the SpaceEngine article).
 
+### Current state and transition path
+
+Drake currently renders black holes as artistic markers — a dark disc with
+a thin glowing corona, sized via `sqrt(distance)` scaling so they're visible
+at neighborhood scale despite being ~10⁻¹⁸ pc in reality. The exponential
+zoom already allows approaching to ~0.05 ly when a black hole is selected
+(vs 0.5 ly for normal stars). The label tracks the disc edge dynamically.
+
+The gap between the artistic marker and the sub-scene is ~10 orders of
+magnitude. The exponential zoom (`pow(1.0007, delta)`) traverses this
+smoothly in concept — the user experience would be continuous scrolling
+from 1000 pc down to 100 km. The technical barriers are:
+
+1. **Float32 precision**: at 480 pc from Sol, scene coordinates are ~1400.
+   Resolving 100 km (the viewing distance for a screen-filling BH) requires
+   ~10⁻⁹ scene units — 12 digits below the current values. The floating
+   origin must engage well before this point.
+
+2. **Transition trigger**: when `orbitRadius` drops below ~10⁻⁴ scene units
+   (~0.00003 pc ≈ 0.1 AU), shift the scene origin to the black hole's
+   position. All stars become a static cubemap captured at that instant.
+   The BH mesh transitions from the artistic marker to the geodesic shader.
+
+3. **Coordinate rebasing**: subtract the BH's world position from all scene
+   objects before the switch, so positions are near-zero in the new frame.
+   On exit, reverse the offset. The camera orbit parameters (theta, phi,
+   radius) remain unchanged — only the origin moves.
+
+4. **The in-between zone** (0.1 AU → 100 km): stars are too far to resolve
+   individually but the cubemap hasn't been captured yet. Render the
+   existing point cloud with the floating origin; capture the cubemap once
+   the orbit radius crosses into the geodesic-shader range.
+
 ### Why this fits the sub-scene work already on the list
 
 The blocker for BH rendering isn't the integrator — it's the coordinate

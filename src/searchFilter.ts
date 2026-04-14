@@ -40,13 +40,18 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
     "nebula".startsWith(q) || "molecular cloud".startsWith(q) ||
     "dark nebula".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
 
-  // Pass 1: cluster and nebula entries.
+  const bhMatch = (e: SearchEntry) =>
+    "black hole".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
+
+  // Pass 1: cluster, nebula, and black hole entries.
   for (const entry of index) {
     if (excludeKinds?.has(entry.k ?? "")) continue;
     if (entry.k === "c") {
       if (!clusterMatch(entry)) continue;
     } else if (entry.k === "n") {
       if (!nebulaMatch(entry)) continue;
+    } else if (entry.k === "b") {
+      if (!bhMatch(entry)) continue;
     } else {
       continue;
     }

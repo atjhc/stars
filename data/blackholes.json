@@ -1,0 +1,33 @@
+{
+  "Gaia BH1": {
+    "aliases": [
+      "Nearest Black Hole"
+    ],
+    "ra": 262.171,
+    "dec": -0.581,
+    "dist_pc": 480,
+    "mass_msun": 9.62,
+    "wikipedia": "https://en.wikipedia.org/wiki/Gaia_BH1",
+    "notes": "Nearest known black hole to Sol, discovered 2022 via Gaia DR3 astrometry. Orbited by a Sun-like G star every 186 days. Its wide orbit challenges standard binary evolution models."
+  },
+  "Gaia BH3": {
+    "aliases": [
+      "Most Massive Stellar BH"
+    ],
+    "ra": 190.34,
+    "dec": -16.769,
+    "dist_pc": 590,
+    "mass_msun": 32.7,
+    "wikipedia": "https://en.wikipedia.org/wiki/Gaia_BH3",
+    "notes": "Most massive stellar-mass black hole found in the Milky Way, discovered 2024. Its extreme mass (~33 M\u2609) is linked to its metal-poor companion star. Member of the ED-2 stellar stream."
+  },
+  "Gaia BH2": {
+    "aliases": [],
+    "ra": 204.891,
+    "dec": -59.611,
+    "dist_pc": 1160,
+    "mass_msun": 8.9,
+    "wikipedia": "https://en.wikipedia.org/wiki/Gaia_BH2",
+    "notes": "Second nearest known black hole, discovered 2023. Orbited by a red giant every 1,277 days in the widest stellar-mass BH binary known. Like BH1, its wide orbit challenges binary evolution models."
+  }
+}

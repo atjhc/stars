@@ -142,6 +142,7 @@ or the term "cluster".
 - `src/labelVisibility.ts` — Pure highlight/visibility decision functions (testable)
 - `src/labelRegistry.ts` — Unified label type registry for cross-type coordination
 - `src/nebulaeLabels.ts` — Nebula label CSS2DObjects, registered via labelRegistry
+- `src/blackholes.ts` — Black hole labels + point rendering, registered via labelRegistry
 - `src/dust.ts` — 3D dust volume ray marcher (Lallement/Vergely data + hot-star illumination)
 - `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
 - `src/systemDispatch.ts` — Polymorphic dispatch functions for SystemGroup variants
@@ -163,6 +164,7 @@ or the term "cluster".
 - `data/cluster-members/hunt2023-astro.json` — RA/Dec/parallax/Gmag/BP-RP for each member (fetched from VizieR)
 - `data/constellations.json` — Constellation line definitions for the 37 rendered constellations
 - `data/nebulae.json` — Molecular cloud definitions: positions (galactic Cartesian), metadata, wikipedia
+- `data/blackholes.json` — Stellar-mass black holes: RA/Dec, distance, mass, metadata
 - `data/cache/` — Downloaded source data (gitignored): FITS cubes, etc.
 - `dist/tiles/dust_volume_rgba.bin` — Baked RGBA 3D texture (density + hot-star illumination)
 - `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata
