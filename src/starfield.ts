@@ -57,6 +57,7 @@ const pointVertexShader = `
 export type StarMode = "texture" | "math" | "flat";
 
 const FRAG_MAIN = `
+  uniform float uTileOpacity;
   varying vec3 vColor;
   varying float vBrightness;
 `;
@@ -73,7 +74,7 @@ const fragments: Record<StarMode, string> = {
       vec2 g = glowAt(d);
       float intensity = g.x * vBrightness * 2.5;
       vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, g.y * vBrightness));
-      gl_FragColor = vec4(color * intensity, intensity);
+      gl_FragColor = vec4(color * intensity, intensity) * uTileOpacity;
     }
   `,
   texture: `
@@ -83,7 +84,7 @@ const fragments: Record<StarMode, string> = {
       vec4 tex = texture2D(uGlowTex, gl_PointCoord);
       float intensity = tex.r * vBrightness * 2.5;
       vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, tex.g * vBrightness));
-      gl_FragColor = vec4(color * intensity, intensity);
+      gl_FragColor = vec4(color * intensity, intensity) * uTileOpacity;
     }
   `,
   flat: `
@@ -92,7 +93,7 @@ const fragments: Record<StarMode, string> = {
       vec2 uv = gl_PointCoord - 0.5;
       float d = length(uv) * 2.0;
       if (d > 1.0) discard;
-      gl_FragColor = vec4(vColor * vBrightness, 1.0);
+      gl_FragColor = vec4(vColor * vBrightness, 1.0) * uTileOpacity;
     }
   `,
 };
@@ -116,9 +117,12 @@ export function apparentMag(absMag: number, sceneDist: number): number {
   return absMag + 5 * Math.log(distPc / 10) / LOG10;
 }
 
-function makePointMaterial(mode: StarMode): THREE.ShaderMaterial {
+function makePointMaterial(mode: StarMode, tileOpacity?: THREE.IUniform<number>): THREE.ShaderMaterial {
   const flat = mode === "flat";
-  const uniforms: Record<string, THREE.IUniform> = { uMagLimit: magLimitUniform };
+  const uniforms: Record<string, THREE.IUniform> = {
+    uMagLimit: magLimitUniform,
+    uTileOpacity: tileOpacity ?? { value: 1.0 },
+  };
   if (mode === "texture") uniforms.uGlowTex = { value: starGlowTexture };
   return new THREE.ShaderMaterial({
     uniforms,
@@ -145,16 +149,20 @@ export function setStarMode(mode: StarMode) {
   currentMode = mode;
   currentPointMaterial = pointMaterials[mode];
   for (const loaded of loadedTiles.values()) {
-    loaded.points.material = currentPointMaterial;
+    const newMat = makePointMaterial(mode, loaded.opacityUniform);
+    loaded.points.material = newMat;
   }
 }
 
 export function setPointDepthTest(enabled: boolean) {
-  for (const mat of Object.values(pointMaterials)) {
+  for (const loaded of loadedTiles.values()) {
+    const mat = loaded.points.material as THREE.ShaderMaterial;
     mat.depthTest = enabled;
     mat.needsUpdate = true;
   }
 }
+
+const TILE_FADE_MS = 400;
 
 interface LoadedTile {
   geometry: THREE.BufferGeometry;
@@ -163,9 +171,14 @@ interface LoadedTile {
   starCount: number;
   lastUsed: number;
   labelsLoaded: boolean;
+  opacityUniform: THREE.IUniform<number>;
+  fadeStart: number;
+  fadeFrom: number;
+  fadeTo: number;
 }
 
 let pointsGroup: THREE.Group;
+const fadingOutTiles = new Map<string, LoadedTile>();
 let billboardsGroup: THREE.Group;
 let notableAnchorsGroup: THREE.Group;
 
@@ -474,14 +487,19 @@ async function loadTile(path: string, tile: TileMeta) {
     geometry.setAttribute("brightness", new THREE.BufferAttribute(brightnesses, 1));
     geometry.setAttribute("starColor", new THREE.BufferAttribute(colors, 3));
 
-    const points = new THREE.Points(geometry, currentPointMaterial);
+    const opacityUniform: THREE.IUniform<number> = { value: 0.0 };
+    const tileMaterial = makePointMaterial(currentMode, opacityUniform);
+    const points = new THREE.Points(geometry, tileMaterial);
     points.frustumCulled = false;
     pointsGroup.add(points);
 
+    const now = performance.now();
     loadedTiles.set(path, {
       geometry, points, positions, starCount,
-      lastUsed: performance.now(),
+      lastUsed: now,
       labelsLoaded: false,
+      opacityUniform,
+      fadeStart: now, fadeFrom: 0, fadeTo: 1,
     });
 
     const cached = getTileLabels(path);
@@ -498,9 +516,21 @@ function evictGeometryTile(path: string) {
   if (!tile) return;
   despawnTileLabels(path);
   evictTileLabels(path);
-  pointsGroup.remove(tile.points);
-  tile.geometry.dispose();
+  // Start fade-out, then remove after animation
+  tile.fadeStart = performance.now();
+  tile.fadeFrom = tile.opacityUniform.value;
+  tile.fadeTo = 0;
+  fadingOutTiles.set(path, tile);
   loadedTiles.delete(path);
+  setTimeout(() => {
+    const fading = fadingOutTiles.get(path);
+    if (fading) {
+      pointsGroup.remove(fading.points);
+      fading.geometry.dispose();
+      (fading.points.material as THREE.ShaderMaterial).dispose();
+      fadingOutTiles.delete(path);
+    }
+  }, TILE_FADE_MS);
 }
 
 function evictOldTiles() {
@@ -550,7 +580,19 @@ export async function initStarfield() {
   notifyLabelsChanged();
 }
 
+function tickTileFades() {
+  const now = performance.now();
+  const allTiles = [...loadedTiles.values(), ...fadingOutTiles.values()];
+  for (const tile of allTiles) {
+    const t = Math.min(1, (now - tile.fadeStart) / TILE_FADE_MS);
+    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    tile.opacityUniform.value = tile.fadeFrom + (tile.fadeTo - tile.fadeFrom) * ease;
+  }
+}
+
 export function updateStarfield() {
+  tickTileFades();
+
   const meta = getMeta();
   if (!meta) return;
 

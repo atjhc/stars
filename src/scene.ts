@@ -154,7 +154,7 @@ export function lookToward(worldPos: THREE.Vector3) {
 function tickOrbitAnim(now: number) {
   if (!orbitAnim) return;
   const t = Math.min(1, (now - orbitAnim.start) / ORBIT_ANIM_MS);
-  const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const ease = (1 - Math.cos(Math.PI * t)) / 2;
   orbitTheta = orbitAnim.fromTheta + (orbitAnim.toTheta - orbitAnim.fromTheta) * ease;
   orbitPhi = orbitAnim.fromPhi + (orbitAnim.toPhi - orbitAnim.fromPhi) * ease;
   updateCamera();
