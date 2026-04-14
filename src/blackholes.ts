@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-import { scene, camera, animateTo, setMinOrbitOverride } from "./scene.ts";
+import {
+  scene, camera, animateTo, setMinOrbitOverride,
+  isDeepZoom, getDeepZoomScale, deepZoomScene, deepZoomCubeRT, orbitRadius,
+} from "./scene.ts";
 import { SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL } from "./constants.ts";
 import { initLabelDragFn } from "./starfield.ts";
 import { setLabelsDirty } from "./systemStore.ts";
@@ -9,8 +12,8 @@ import type { RankedLabel } from "./labelCollision.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
 
-// 0.05 ly ≈ 0.0153 pc × SCALE(3) ≈ 0.046 scene units
-const BH_MIN_ORBIT = 0.046;
+// 0.001 ly ≈ 3e-4 pc × SCALE(3) ≈ 0.001 scene units
+const BH_MIN_ORBIT = 0.001;
 
 const BH_LABEL_CSS = `
   color: rgba(180,140,220,0.85); font-size: 12px;
@@ -48,6 +51,16 @@ let selectedBH: BlackHoleLabel | null = null;
 let hoveredBH: BlackHoleLabel | null = null;
 let maxSolDist = 0;
 
+function formatBHDist(pc: number): string {
+  const ly = pc * LY_PER_PARSEC;
+  const au = ly * 63241;
+  const km = au * 1.496e8;
+  if (km < 1e6) return `${km.toFixed(0)} km`;
+  if (au < 1000) return `${au.toFixed(1)} AU`;
+  if (ly < 10) return `${ly.toFixed(2)} ly`;
+  return `${ly.toFixed(1)} ly`;
+}
+
 function applyGlow(bh: BlackHoleLabel) {
   bh.div.style.textShadow = BH_GLOW;
   setLabelsDirty(true);
@@ -73,7 +86,7 @@ function buildDetailHtml(bh: BlackHoleLabel): string {
     ${aliasLine}
     <div class="detail-body">
       <div class="star-detail">
-        Distance: ${(distPc * LY_PER_PARSEC).toFixed(1)} ly<br>
+        Distance: ${formatBHDist(distPc)}<br>
         Mass: ${e.mass_msun} M☉<br>
         Type: Stellar-mass black hole
       </div>
@@ -122,6 +135,105 @@ function createBlackHoleMesh(): THREE.Mesh {
   return mesh;
 }
 
+// Deep zoom mesh: sphere with lensing shader, lives in deepZoomScene
+let deepZoomMesh: THREE.Mesh | null = null;
+let deepZoomSchwarzRadius = 0;
+
+function createDeepZoomMesh(): THREE.Mesh {
+  const geometry = new THREE.SphereGeometry(50, 64, 64);
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uCubeMap: { value: null },
+      uSchwarzRadius: { value: 0.01 },
+      uCamDist: { value: 1.0 },
+    },
+    vertexShader: `
+      varying vec3 vWorldDir;
+      void main() {
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldDir = normalize(worldPos.xyz - cameraPosition);
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: `
+      uniform samplerCube uCubeMap;
+      uniform float uSchwarzRadius;
+      uniform float uCamDist;
+      varying vec3 vWorldDir;
+
+      void main() {
+        vec3 dir = normalize(vWorldDir);
+        // Simplified lensing: bend rays around the origin
+        // Impact parameter = perpendicular distance from ray to BH center
+        vec3 closest = -dot(dir, cameraPosition) * dir + cameraPosition;
+        float b = length(closest);
+        float rs = uSchwarzRadius;
+
+        // Inside event horizon: pure black
+        if (b < rs * 1.0) {
+          gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+          return;
+        }
+
+        // Photon ring: bright edge near 1.5 rs
+        float photonRing = smoothstep(rs * 1.8, rs * 1.5, b) * smoothstep(rs * 1.0, rs * 1.3, b);
+
+        // Deflection angle (weak-field approximation)
+        float deflection = 2.0 * rs / max(b, rs * 1.5);
+
+        // Bend the ray toward the BH
+        vec3 toCenter = normalize(-closest);
+        vec3 bentDir = normalize(dir + toCenter * deflection);
+
+        vec3 skyColor = textureCube(uCubeMap, bentDir).rgb;
+
+        // Add photon ring glow
+        vec3 ringColor = vec3(1.0, 0.9, 0.7) * photonRing * 2.0;
+
+        gl_FragColor = vec4(skyColor + ringColor, 1.0);
+      }
+    `,
+    side: THREE.BackSide,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+function updateDeepZoomMesh(bh: BlackHoleLabel) {
+  if (!deepZoomMesh) {
+    deepZoomMesh = createDeepZoomMesh();
+    deepZoomScene.add(deepZoomMesh);
+  }
+
+  const mat = deepZoomMesh.material as THREE.ShaderMaterial;
+  if (deepZoomCubeRT) {
+    mat.uniforms.uCubeMap.value = deepZoomCubeRT.texture;
+  }
+
+  // Schwarzschild radius in local units (where camera distance = 1)
+  const scale = getDeepZoomScale();
+  const massSun = bh.entry.mass_msun;
+  // r_s = 2GM/c^2 in km, then convert to pc, then to scene units, then scale
+  const rsKm = 2.953 * massSun; // Schwarzschild radius in km
+  const rsPc = rsKm / 3.086e13; // km to pc
+  const rsScene = rsPc * SCALE;  // pc to scene units
+  const rsLocal = rsScene * scale; // scene units to local units
+  deepZoomSchwarzRadius = rsLocal;
+
+  mat.uniforms.uSchwarzRadius.value = rsLocal;
+  mat.uniforms.uCamDist.value = 1.0;
+}
+
+function clearDeepZoomMesh() {
+  if (deepZoomMesh) {
+    deepZoomScene.remove(deepZoomMesh);
+    deepZoomMesh.geometry.dispose();
+    (deepZoomMesh.material as THREE.ShaderMaterial).dispose();
+    deepZoomMesh = null;
+  }
+}
+
 const bhHandler: LabelTypeHandler = {
   type: "blackhole",
 
@@ -140,8 +252,16 @@ const bhHandler: LabelTypeHandler = {
       const isActive = bh === selectedBH || bh === hoveredBH;
       if (isActive) {
         const camDist = bh.anchor.position.distanceTo(camera.position);
-        const ly = (camDist / SCALE) * LY_PER_PARSEC;
-        bh.distDiv.textContent = ly < 10 ? `${ly.toFixed(2)} ly` : `${ly.toFixed(1)} ly`;
+        const pc = camDist / SCALE;
+        const ly = pc * LY_PER_PARSEC;
+        const au = ly * 63241;
+        const km = au * 1.496e8;
+        let distText: string;
+        if (km < 1e6) distText = `${km.toFixed(0)} km`;
+        else if (au < 1000) distText = `${au.toFixed(1)} AU`;
+        else if (ly < 10) distText = `${ly.toFixed(2)} ly`;
+        else distText = `${ly.toFixed(1)} ly`;
+        bh.distDiv.textContent = distText;
         bh.distDiv.style.display = "";
       } else {
         bh.distDiv.style.display = "none";
@@ -155,6 +275,17 @@ const bhHandler: LabelTypeHandler = {
       const fov = camera.fov * Math.PI / 180;
       const screenPx = (scale * 0.9 / camDist) * (window.innerHeight / (2 * Math.tan(fov / 2)));
       bh.div.style.marginTop = `${Math.max(16, screenPx + 14)}px`;
+    }
+
+    // Manage deep zoom mesh
+    if (isDeepZoom() && selectedBH) {
+      updateDeepZoomMesh(selectedBH);
+      // Fade out the billboard in the main scene during deep zoom
+      const mat = selectedBH.mesh.material as THREE.ShaderMaterial;
+      mat.opacity = Math.max(0, 1 - orbitRadius / 0.01);
+      mat.transparent = true;
+    } else {
+      clearDeepZoomMesh();
     }
   },
 
@@ -171,7 +302,7 @@ const bhHandler: LabelTypeHandler = {
   },
 
   clearSelection() {
-    if (selectedBH) { removeGlow(selectedBH); selectedBH = null; setMinOrbitOverride(null); }
+    if (selectedBH) { removeGlow(selectedBH); selectedBH = null; setMinOrbitOverride(null); clearDeepZoomMesh(); }
     if (hoveredBH) { removeGlow(hoveredBH); hoveredBH = null; }
   },
 

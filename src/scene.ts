@@ -105,6 +105,10 @@ export function updateCamera() {
     .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
     .addScaledVector(galUp, orbitRadius * cosPhi);
   camera.lookAt(target);
+  // Tighten frustum at close zoom for depth precision
+  camera.near = Math.max(1e-6, orbitRadius * 0.001);
+  camera.far = Math.max(20000, orbitRadius * 100000);
+  camera.updateProjectionMatrix();
 }
 updateCamera();
 
@@ -169,11 +173,73 @@ export function applyOrbitDrag(dx: number, dy: number) {
 
 let minOrbitOverride: number | null = null;
 export function setMinOrbitOverride(v: number | null) { minOrbitOverride = v; }
+export function getEffectiveMinOrbit(): number { return minOrbitOverride ?? MIN_ORBIT_RADIUS; }
 
 export function applyZoom(delta: number) {
   const minR = minOrbitOverride ?? MIN_ORBIT_RADIUS;
   orbitRadius = THREE.MathUtils.clamp(orbitRadius * Math.pow(1.0007, delta), minR, MAX_ORBIT_RADIUS);
   updateCamera();
+}
+
+// Deep zoom: local coordinate frame for extreme close-ups (black holes)
+const DEEP_ZOOM_ENTER = 0.01;  // engage when orbit radius drops below this
+const DEEP_ZOOM_EXIT = 0.02;   // disengage when orbit radius rises above this
+
+let deepZoomActive = false;
+let deepZoomOrigin = new THREE.Vector3();
+
+export const deepZoomScene = new THREE.Scene();
+export const deepZoomCamera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.001, 100);
+
+export function isDeepZoom(): boolean { return deepZoomActive; }
+export function getDeepZoomScale(): number { return deepZoomActive ? 1 / orbitRadius : 1; }
+
+export function updateDeepZoom() {
+  if (minOrbitOverride !== null && minOrbitOverride < DEEP_ZOOM_ENTER) {
+    if (!deepZoomActive && orbitRadius < DEEP_ZOOM_ENTER) {
+      deepZoomActive = true;
+      deepZoomOrigin.copy(target);
+    } else if (deepZoomActive && orbitRadius > DEEP_ZOOM_EXIT) {
+      deepZoomActive = false;
+    }
+  } else if (deepZoomActive) {
+    deepZoomActive = false;
+  }
+
+  if (!deepZoomActive) return;
+
+  // Position deep zoom camera in local space (BH at origin, scale so camera is at distance ~1)
+  const scale = 1 / orbitRadius;
+  const sinPhi = Math.sin(orbitPhi);
+  const cosPhi = Math.cos(orbitPhi);
+  const sinTheta = Math.sin(orbitTheta);
+  const cosTheta = Math.cos(orbitTheta);
+  deepZoomCamera.position.set(
+    sinPhi * cosTheta,
+    cosPhi,
+    sinPhi * sinTheta,
+  );
+  deepZoomCamera.lookAt(0, 0, 0);
+  deepZoomCamera.near = 0.001;
+  deepZoomCamera.far = 100;
+  deepZoomCamera.aspect = camera.aspect;
+  deepZoomCamera.updateProjectionMatrix();
+}
+
+// Cubemap for starfield background in deep zoom
+export let deepZoomCubeRT: THREE.WebGLCubeRenderTarget | null = null;
+let cubeCamera: THREE.CubeCamera | null = null;
+
+export function captureDeepZoomCubemap(renderer: THREE.WebGLRenderer, mainScene: THREE.Scene) {
+  if (!deepZoomCubeRT) {
+    deepZoomCubeRT = new THREE.WebGLCubeRenderTarget(512, {
+      format: THREE.RGBAFormat,
+      generateMipmaps: false,
+    });
+    cubeCamera = new THREE.CubeCamera(0.01, 20000, deepZoomCubeRT);
+  }
+  cubeCamera!.position.copy(deepZoomOrigin);
+  cubeCamera!.update(renderer, mainScene);
 }
 
 export function onWheel(e: WheelEvent) {
@@ -271,6 +337,8 @@ let lastDPR = window.devicePixelRatio;
 export function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  deepZoomCamera.aspect = camera.aspect;
+  deepZoomCamera.updateProjectionMatrix();
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (window.devicePixelRatio !== lastDPR) {

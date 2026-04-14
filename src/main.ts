@@ -7,7 +7,9 @@ import {
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
   orbitRadius, orbitPhi, orbitTheta, target,
-  setOrbitRadius, setOrbitPhi, setOrbitTheta,
+  setOrbitRadius, setOrbitPhi, setOrbitTheta, getEffectiveMinOrbit,
+  updateDeepZoom, isDeepZoom, deepZoomScene, deepZoomCamera,
+  captureDeepZoomCubemap,
 } from "./scene.ts";
 import {
   registerLabelMap,
@@ -236,7 +238,7 @@ renderer.domElement.addEventListener("touchmove", (e) => {
     const dist = Math.sqrt(dx * dx + dy * dy);
     setOrbitRadius(THREE.MathUtils.clamp(
       touchStartRadius * Math.pow(touchStartDist / dist, 2.0),
-      MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS,
+      getEffectiveMinOrbit(), MAX_ORBIT_RADIUS,
     ));
     updateCamera();
   }
@@ -490,14 +492,27 @@ if (debugEnabled) {
 }
 
 // Render loop
+let wasDeepZoom = false;
+
 function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
+  updateDeepZoom();
   checkCameraMoved();
   updateStarfield();
   updateDust();
   updateAllLabels();
   updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor);
+
+  const inDeepZoom = isDeepZoom();
+
+  // Capture cubemap on deep zoom entry
+  if (inDeepZoom && !wasDeepZoom) {
+    captureDeepZoomCubemap(renderer, scene);
+  }
+  wasDeepZoom = inDeepZoom;
+
+  // Main scene pass
   if (debugEnabled && debug.directRender) {
     renderer.render(scene, camera);
   } else {
@@ -506,6 +521,15 @@ function animate(now: number) {
     endBloomRender();
   }
   renderDustPostBloom(renderer);
+
+  // Deep zoom overlay pass
+  if (inDeepZoom) {
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.render(deepZoomScene, deepZoomCamera);
+    renderer.autoClear = true;
+  }
+
   labelRenderer.render(scene, camera);
   if (debugEnabled) tickDebug();
 }
