@@ -35,6 +35,10 @@ let selectedNebula: NebulaLabel | null = null;
 let hoveredNebula: NebulaLabel | null = null;
 let maxSolDist = 0;
 
+export function getSelectedNebulaName(): string | null {
+  return selectedNebula?.name ?? null;
+}
+
 function formatDist(pc: number): string {
   const ly = pc * LY_PER_PARSEC;
   return ly < 100 ? `${ly.toFixed(1)} ly` : `${Math.round(ly)} ly`;
