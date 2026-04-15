@@ -34,7 +34,6 @@ import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
 import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, isDustVisible, handleDustResize } from "./dust.ts";
-import { loadJSON, saveJSON } from "./storage.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels, getSelectedBlackHoleName } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
@@ -341,38 +340,22 @@ labelRenderer.domElement.addEventListener("mouseup", (e) => {
   }
 });
 
-interface ToggleState {
-  grid?: boolean;
-  constellations?: boolean;
-  dust?: boolean;
-  labels?: boolean;
-}
-
-function saveToggles() {
-  saveJSON("toggles", {
-    grid: gridHelper.visible,
-    constellations: constellationsVisible(),
-    dust: isDustVisible(),
-    labels: labelsVisible,
-  } satisfies ToggleState);
-}
-
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLInputElement) return;
   if (e.key === "l") {
     labelsVisible = !labelsVisible;
     doUpdateLabelVisibility();
-    saveToggles();
+    scheduleUrlWrite();
   } else if (e.key === "g") {
     gridHelper.visible = !gridHelper.visible;
-    saveToggles();
+    scheduleUrlWrite();
   } else if (e.key === "c") {
     toggleConstellations();
-    saveToggles();
+    scheduleUrlWrite();
   } else if (e.key === "n") {
     toggleDust();
     doUpdateLabelVisibility();
-    saveToggles();
+    scheduleUrlWrite();
   } else if (e.key === "f") {
     const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name;
     if (name) {
@@ -456,18 +439,13 @@ await initDust();
 await initNebulaeLabels();
 await initBlackHoleLabels();
 
-const savedToggles = loadJSON<ToggleState>("toggles", {});
-if (savedToggles.grid !== undefined) gridHelper.visible = savedToggles.grid;
-if (savedToggles.constellations !== undefined) setConstellationsVisible(savedToggles.constellations);
-if (savedToggles.dust !== undefined) setDustVisible(savedToggles.dust);
-if (savedToggles.labels !== undefined) labelsVisible = savedToggles.labels;
-
-// URL query param overrides (read-only, not written back)
+// Restore toggle state from URL (defaults: labels on, grid off, constellations on, nebulae on)
 {
-  const q = new URLSearchParams(window.location.search);
-  if (q.has("labels")) labelsVisible = q.get("labels") !== "0";
-  if (q.has("grid")) gridHelper.visible = q.get("grid") !== "0";
-  if (q.has("nebulae")) setDustVisible(q.get("nebulae") !== "0");
+  const urlToggles = parseUrlState(window.location.search).toggles;
+  if (urlToggles?.labels !== undefined) labelsVisible = urlToggles.labels;
+  if (urlToggles?.grid !== undefined) gridHelper.visible = urlToggles.grid;
+  if (urlToggles?.constellations !== undefined) setConstellationsVisible(urlToggles.constellations);
+  if (urlToggles?.nebulae !== undefined) setDustVisible(urlToggles.nebulae);
 }
 doUpdateLabelVisibility();
 
@@ -524,6 +502,12 @@ initUrlState({
   getState: () => ({
     orbit: { radius: orbitRadius, phi: orbitPhi, theta: orbitTheta },
     focus: currentFocusName(),
+    toggles: {
+      labels: labelsVisible,
+      grid: gridHelper.visible,
+      constellations: constellationsVisible(),
+      nebulae: isDustVisible(),
+    },
   }),
 });
 enableUrlWrites();
