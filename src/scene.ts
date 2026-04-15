@@ -333,7 +333,7 @@ const lensingPass = new ShaderPass({
       // Shadow: black inside capture radius
       if (b < 0.95) {
         float ringWidth = max(uScreenScale * 2.0, 50.0);
-        float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 1.5;
+        float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 0.0;
         gl_FragColor = vec4(vec3(1.0, 0.97, 0.95) * ring, 1.0);
         return;
       }
@@ -350,7 +350,7 @@ const lensingPass = new ShaderPass({
       color *= shadow;
 
       float ringWidth = max(uScreenScale * 2.0, 50.0);
-      float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 1.5;
+      float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 0.0;
       color += vec3(1.0, 0.97, 0.95) * ring;
 
       gl_FragColor = vec4(color, 1.0);
