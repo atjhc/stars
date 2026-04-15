@@ -19,6 +19,14 @@ const TOGGLE_DEFAULTS: Record<string, boolean> = {
   labels: true, grid: false, constellations: true, nebulae: true,
 };
 
+// Short aliases for toggle params (both forms accepted on read)
+const TOGGLE_SHORT: Record<string, string> = {
+  labels: "l", grid: "g", constellations: "c", nebulae: "n",
+};
+
+// Track which form was used in the original URL so we preserve it on write
+let preferShort: Record<string, boolean> = {};
+
 export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLSearchParams {
   const q = new URLSearchParams(base ?? "");
   if (state.orbit) {
@@ -30,9 +38,15 @@ export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLS
   else q.delete("focus");
   if (state.toggles) {
     for (const [key, def] of Object.entries(TOGGLE_DEFAULTS)) {
+      const short = TOGGLE_SHORT[key];
       const val = (state.toggles as Record<string, boolean | undefined>)[key];
-      if (val !== undefined && val !== def) q.set(key, val ? "1" : "0");
-      else q.delete(key);
+      // Clean up both forms before writing the preferred one
+      q.delete(key);
+      q.delete(short);
+      if (val !== undefined && val !== def) {
+        const paramName = preferShort[key] ? short : key;
+        q.set(paramName, val ? "1" : "0");
+      }
     }
   }
   return q;
@@ -56,8 +70,14 @@ export function parseUrlState(search: string): UrlState {
   const toggles: UrlState["toggles"] = {};
   let hasToggle = false;
   for (const key of Object.keys(TOGGLE_DEFAULTS)) {
-    if (q.has(key)) {
+    const short = TOGGLE_SHORT[key];
+    if (q.has(short)) {
+      (toggles as Record<string, boolean>)[key] = q.get(short) !== "0";
+      preferShort[key] = true;
+      hasToggle = true;
+    } else if (q.has(key)) {
       (toggles as Record<string, boolean>)[key] = q.get(key) !== "0";
+      preferShort[key] = false;
       hasToggle = true;
     }
   }
