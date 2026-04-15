@@ -458,6 +458,14 @@ if (savedToggles.grid !== undefined) gridHelper.visible = savedToggles.grid;
 if (savedToggles.constellations !== undefined) setConstellationsVisible(savedToggles.constellations);
 if (savedToggles.dust !== undefined) setDustVisible(savedToggles.dust);
 if (savedToggles.labels !== undefined) labelsVisible = savedToggles.labels;
+
+// URL query param overrides (read-only, not written back)
+{
+  const q = new URLSearchParams(window.location.search);
+  if (q.has("labels")) labelsVisible = q.get("labels") !== "0";
+  if (q.has("grid")) gridHelper.visible = q.get("grid") !== "0";
+  if (q.has("nebulae")) setDustVisible(q.get("nebulae") !== "0");
+}
 doUpdateLabelVisibility();
 
 // Restore focus + orbit from URL query params (?focus=, ?r=, ?phi=, ?theta=).
