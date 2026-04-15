@@ -170,6 +170,9 @@ function wireSystemLabels() {
 onLabelsChanged(() => {
   wireSystemLabels();
   setLabelsDirty(true);
+  // New labels need one CSS2DRenderer pass before collision rects are valid.
+  // Schedule a second dirty so they get re-evaluated after positioning.
+  requestAnimationFrame(() => setLabelsDirty(true));
   if (pendingClusterSelect && trySelectCluster(pendingClusterSelect)) {
     pendingClusterSelect = null;
     scheduleUrlWrite();
@@ -485,6 +488,7 @@ doUpdateLabelVisibility();
     const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
     if (solAnchor) {
       selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
+      setTargetImmediate(solAnchor.position);
     }
   }
 
@@ -497,6 +501,9 @@ doUpdateLabelVisibility();
     updateDeepZoom();
     updateCamera();
   }
+  setLabelsDirty(true);
+  // Ensure collision runs after any startup animation clears (ANIM_DURATION = 600ms)
+  setTimeout(() => setLabelsDirty(true), 700);
 }
 
 function currentFocusName(): string | undefined {
@@ -568,4 +575,6 @@ function animate(now: number) {
   labelRenderer.render(scene, camera);
   if (debugEnabled) tickDebug();
 }
+// Position labels in the DOM before the first frame so collision rects are valid
+labelRenderer.render(scene, camera);
 animate(performance.now());

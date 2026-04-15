@@ -21,6 +21,10 @@ export function isLabelInteractive(div: HTMLElement): boolean {
   return visibleLabels.has(div) && !collisionHidden.has(div);
 }
 
+export function isCollisionHidden(div: HTMLElement): boolean {
+  return collisionHidden.has(div);
+}
+
 function setLabelOpacity(div: HTMLElement, from: number, to: number) {
   // Cancel any running animation first
   const prev = activeAnim.get(div);
@@ -36,7 +40,6 @@ function setLabelOpacity(div: HTMLElement, from: number, to: number) {
     { duration: FADE_MS, easing: "ease-in-out" },
   );
   activeAnim.set(div, anim);
-  // Commit final value to inline style when done, then release the Animation
   anim.onfinish = () => {
     div.style.opacity = String(to);
     activeAnim.delete(div);
@@ -47,7 +50,6 @@ function hideLabel(div: HTMLElement) {
   const prev = lastOpacity.get(div) ?? 0;
   setLabelOpacity(div, prev, 0);
   lastOpacity.set(div, 0);
-  // visibility:hidden after the fade completes to block pointer events
   if (prev > 0) {
     setTimeout(() => { if (collisionHidden.has(div)) div.style.visibility = "hidden"; }, FADE_MS);
   } else {
@@ -57,9 +59,18 @@ function hideLabel(div: HTMLElement) {
 }
 
 function showLabel(div: HTMLElement, opacity: number) {
-  const prev = lastOpacity.get(div) ?? opacity;
+  const wasHidden = collisionHidden.has(div);
   div.style.visibility = "";
-  setLabelOpacity(div, prev, opacity);
+  if (wasHidden) {
+    // Transitioning from hidden: animate the fade-in
+    const prev = lastOpacity.get(div) ?? 0;
+    setLabelOpacity(div, prev, opacity);
+  } else {
+    // Already visible: set opacity directly (no animation for camera-driven changes)
+    const prev = activeAnim.get(div);
+    if (prev) { prev.cancel(); activeAnim.delete(div); }
+    div.style.opacity = String(opacity);
+  }
   lastOpacity.set(div, opacity);
   collisionHidden.delete(div);
 }
@@ -76,14 +87,10 @@ export function resolveCollisions(labels: RankedLabel[]): void {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     return b.rank - a.rank;
   });
-  collisionHidden.clear();
+  // Don't clear collisionHidden — labels keep their hidden state between runs.
+  // Each label in the current frame is re-evaluated below; labels no longer in
+  // the frame stay in whatever state they were in (hidden labels remain hidden).
 
-  // Restore visibility so getBoundingClientRect returns real sizes
-  for (const label of labels) {
-    label.div.style.visibility = "";
-  }
-
-  // BH shadow occlusion circle (screen space)
   const bhOcc = getBHScreenOcclusion();
 
   const grid = new Map<number, DOMRect[]>();
@@ -144,7 +151,11 @@ export function resolveCollisions(labels: RankedLabel[]): void {
     // Use first child (name line) for collision rect, ignoring subtitle
     const el = div.firstElementChild as HTMLElement | null;
     const rect = (el ?? div).getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) continue;
+    if (rect.width === 0 || rect.height === 0) {
+      // Not yet positioned by CSS2DRenderer — hide until next frame
+      hideLabel(div);
+      continue;
+    }
 
     // Hide labels occluded by the black hole shadow
     if (bhOcc) {

@@ -7,7 +7,7 @@ import {
 import { camera, animation, isDeepZoom, orbitRadius } from "./scene.ts";
 import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
 import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
-import { type RankedLabel, resolveCollisions, isLabelInteractive, visibleLabels } from "./labelCollision.ts";
+import { type RankedLabel, resolveCollisions, isLabelInteractive, isCollisionHidden, visibleLabels } from "./labelCollision.ts";
 import { collectAllRegisteredLabels } from "./labelRegistry.ts";
 import {
   getSelectedMesh, getSelectedSystem, getHoveredSystem, getLastHoveredMesh,
@@ -39,7 +39,11 @@ function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
 }
 
 function setLabelStyle(div: HTMLElement, opacity: string, zIndex: string) {
-  div.style.opacity = opacity;
+  // Skip opacity writes for labels hidden by collision — resolveCollisions
+  // is the sole authority on their opacity. Writing here would flash them
+  // visible for the remainder of the synchronous frame (before collision
+  // re-hides them) and confuse the lastOpacity tracking.
+  if (!isCollisionHidden(div)) div.style.opacity = opacity;
   div.style.zIndex = zIndex;
 }
 
