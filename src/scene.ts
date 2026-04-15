@@ -99,15 +99,16 @@ export function updateCamera() {
   const cosPhi = Math.cos(orbitPhi);
   const sinTheta = Math.sin(orbitTheta);
   const cosTheta = Math.cos(orbitTheta);
+  // Clamp radius for Float32 precision — lensing post-process handles the visual
+  const effectiveRadius = deepZoomActive ? Math.max(orbitRadius, 0.001) : orbitRadius;
   camera.position
     .copy(target)
-    .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
-    .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
-    .addScaledVector(galUp, orbitRadius * cosPhi);
+    .addScaledVector(galX, effectiveRadius * sinPhi * cosTheta)
+    .addScaledVector(galZ, effectiveRadius * sinPhi * sinTheta)
+    .addScaledVector(galUp, effectiveRadius * cosPhi);
   camera.lookAt(target);
-  // Tighten frustum at close zoom for depth precision
-  camera.near = Math.max(1e-6, orbitRadius * 0.001);
-  camera.far = Math.max(20000, orbitRadius * 100000);
+  camera.near = Math.max(1e-6, effectiveRadius * 0.001);
+  camera.far = Math.max(20000, effectiveRadius * 100000);
   camera.updateProjectionMatrix();
 }
 updateCamera();
@@ -187,8 +188,10 @@ export function setMinOrbitOverride(v: number | null) { minOrbitOverride = v; }
 export function getEffectiveMinOrbit(): number { return minOrbitOverride ?? MIN_ORBIT_RADIUS; }
 
 export function applyZoom(delta: number) {
-  const minR = minOrbitOverride ?? MIN_ORBIT_RADIUS;
-  orbitRadius = THREE.MathUtils.clamp(orbitRadius * Math.pow(1.0007, delta), minR, MAX_ORBIT_RADIUS);
+  // In deep zoom, orbit radius can go arbitrarily small and zoom accelerates
+  const minR = deepZoomActive ? 1e-15 : (minOrbitOverride ?? MIN_ORBIT_RADIUS);
+  const zoomRate = deepZoomActive ? 1.003 : 1.0007;
+  orbitRadius = THREE.MathUtils.clamp(orbitRadius * Math.pow(zoomRate, delta), minR, MAX_ORBIT_RADIUS);
   updateCamera();
 }
 
@@ -197,60 +200,19 @@ const DEEP_ZOOM_ENTER = 0.01;  // engage when orbit radius drops below this
 const DEEP_ZOOM_EXIT = 0.02;   // disengage when orbit radius rises above this
 
 let deepZoomActive = false;
-let deepZoomOrigin = new THREE.Vector3();
-
-export const deepZoomScene = new THREE.Scene();
-export const deepZoomCamera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.001, 100);
 
 export function isDeepZoom(): boolean { return deepZoomActive; }
-export function getDeepZoomScale(): number { return deepZoomActive ? 1 / orbitRadius : 1; }
 
 export function updateDeepZoom() {
   if (minOrbitOverride !== null && minOrbitOverride < DEEP_ZOOM_ENTER) {
     if (!deepZoomActive && orbitRadius < DEEP_ZOOM_ENTER) {
       deepZoomActive = true;
-      deepZoomOrigin.copy(target);
     } else if (deepZoomActive && orbitRadius > DEEP_ZOOM_EXIT) {
       deepZoomActive = false;
     }
   } else if (deepZoomActive) {
     deepZoomActive = false;
   }
-
-  if (!deepZoomActive) return;
-
-  // Position deep zoom camera in local space (BH at origin, scale so camera is at distance ~1)
-  const scale = 1 / orbitRadius;
-  const sinPhi = Math.sin(orbitPhi);
-  const cosPhi = Math.cos(orbitPhi);
-  const sinTheta = Math.sin(orbitTheta);
-  const cosTheta = Math.cos(orbitTheta);
-  deepZoomCamera.position.set(
-    sinPhi * cosTheta,
-    cosPhi,
-    sinPhi * sinTheta,
-  );
-  deepZoomCamera.lookAt(0, 0, 0);
-  deepZoomCamera.near = 0.001;
-  deepZoomCamera.far = 100;
-  deepZoomCamera.aspect = camera.aspect;
-  deepZoomCamera.updateProjectionMatrix();
-}
-
-// Cubemap for starfield background in deep zoom
-export let deepZoomCubeRT: THREE.WebGLCubeRenderTarget | null = null;
-let cubeCamera: THREE.CubeCamera | null = null;
-
-export function captureDeepZoomCubemap(renderer: THREE.WebGLRenderer, mainScene: THREE.Scene) {
-  if (!deepZoomCubeRT) {
-    deepZoomCubeRT = new THREE.WebGLCubeRenderTarget(512, {
-      format: THREE.RGBAFormat,
-      generateMipmaps: false,
-    });
-    cubeCamera = new THREE.CubeCamera(0.01, 20000, deepZoomCubeRT);
-  }
-  cubeCamera!.position.copy(deepZoomOrigin);
-  cubeCamera!.update(renderer, mainScene);
 }
 
 export function onWheel(e: WheelEvent) {
@@ -327,6 +289,78 @@ const cropPass = new ShaderPass({
     }
   `,
 });
+// Screen-space gravitational lensing pass (enabled during deep zoom)
+const lensingPass = new ShaderPass({
+  uniforms: {
+    tDiffuse: { value: null },
+    uBHScreen: { value: new THREE.Vector2(0.5, 0.5) },
+    uShadowRadius: { value: 0.0 },
+    uSchwarzRadius: { value: 0.0 },
+    uAspect: { value: 1.0 },
+    uScreenScale: { value: 100.0 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform vec2 uBHScreen;
+    uniform float uShadowRadius;
+    uniform float uSchwarzRadius;
+    uniform float uAspect;
+    uniform float uScreenScale;
+    varying vec2 vUv;
+
+    void main() {
+      vec2 uv = vUv;
+
+      if (uShadowRadius <= 0.0) {
+        gl_FragColor = texture2D(tDiffuse, uv);
+        return;
+      }
+
+      // Work in aspect-corrected space for circular geometry
+      vec2 offset = uv - uBHScreen;
+      vec2 corrected = vec2(offset.x * uAspect, offset.y);
+      float dist = length(corrected);
+
+      float b = dist / uShadowRadius;
+
+      // Shadow: black inside capture radius
+      if (b < 0.95) {
+        float ringWidth = max(uScreenScale * 2.0, 50.0);
+        float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 1.5;
+        gl_FragColor = vec4(vec3(1.0, 0.97, 0.95) * ring, 1.0);
+        return;
+      }
+
+      // Deflection in aspect-corrected space, then convert back to UV space
+      float deflection = uSchwarzRadius / max(dist, uShadowRadius * 0.5);
+      vec2 deflectDir = normalize(corrected);
+      vec2 uvDeflect = vec2(deflectDir.x / uAspect, deflectDir.y) * deflection;
+      vec2 bentUV = clamp(uv - uvDeflect, 0.0, 1.0);
+
+      vec3 color = texture2D(tDiffuse, bentUV).rgb;
+
+      float shadow = smoothstep(0.95, 1.05, b);
+      color *= shadow;
+
+      float ringWidth = max(uScreenScale * 2.0, 50.0);
+      float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 1.5;
+      color += vec3(1.0, 0.97, 0.95) * ring;
+
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `,
+});
+lensingPass.enabled = false;
+composer.addPass(lensingPass);
+export { lensingPass };
+
 composer.addPass(cropPass);
 
 // Camera FOV widening helpers — called from main's animate loop so the
@@ -348,8 +382,6 @@ let lastDPR = window.devicePixelRatio;
 export function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  deepZoomCamera.aspect = camera.aspect;
-  deepZoomCamera.updateProjectionMatrix();
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (window.devicePixelRatio !== lastDPR) {

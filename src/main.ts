@@ -8,7 +8,7 @@ import {
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
   orbitRadius, orbitPhi, orbitTheta, target,
   setOrbitRadius, setOrbitPhi, setOrbitTheta, getEffectiveMinOrbit,
-  setTargetImmediate, updateDeepZoom, isDeepZoom,
+  setTargetImmediate, updateDeepZoom,
 } from "./scene.ts";
 import {
   initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
@@ -36,7 +36,7 @@ import { initConstellations, toggleConstellations, setConstellationsVisible, con
 import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, isDustVisible, handleDustResize } from "./dust.ts";
 import { loadJSON, saveJSON } from "./storage.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
-import { initBlackHoleLabels } from "./blackholes.ts";
+import { initBlackHoleLabels, getSelectedBlackHoleName } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debug.ts";
 import {
@@ -410,8 +410,10 @@ function handleSearchSelect(entry: SearchEntry) {
     return;
   }
   if (entry.k === "b") {
+    clearAllSelections();
     selectByType("blackhole", entry.n);
     updateDetailPanel();
+    scheduleUrlWrite();
     return;
   }
   if (entry.k === "c") {
@@ -458,20 +460,19 @@ if (savedToggles.dust !== undefined) setDustVisible(savedToggles.dust);
 if (savedToggles.labels !== undefined) labelsVisible = savedToggles.labels;
 doUpdateLabelVisibility();
 
-// Apply URL parameters: ?name=Sol&r=5&phi=1.2&theta=0.5
+// Restore focus + orbit from URL query params (?focus=, ?r=, ?phi=, ?theta=).
+// Also supports legacy ?name= param.
 {
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlName = urlParams.get("name");
-  const urlR = urlParams.get("r");
-  const urlPhi = urlParams.get("phi");
-  const urlTheta = urlParams.get("theta");
+  const urlState = parseUrlState(window.location.search);
+  const legacyName = new URLSearchParams(window.location.search).get("name");
+  const focusName = urlState.focus ?? legacyName;
 
-  const selectName = urlName ?? "Sol";
-  const nameEntry = getSearchIndex().find((e) => e.n === selectName || e.sy === selectName);
-  if (nameEntry) {
-    // Set target position instantly (no animation on initial load)
-    target.set(nameEntry.p[0], nameEntry.p[1], nameEntry.p[2]);
-    handleSearchSelect(nameEntry);
+  if (focusName) {
+    const entry = getSearchIndex().find((e) => e.n === focusName || e.sy === focusName);
+    if (entry) {
+      handleSearchSelect(entry);
+      setTargetImmediate(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+    }
   } else {
     const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
     if (solAnchor) {
@@ -479,34 +480,15 @@ doUpdateLabelVisibility();
     }
   }
 
-  // Orbit params override after target is set
-  if (urlR) setOrbitRadius(parseFloat(urlR));
-  if (urlPhi) setOrbitPhi(parseFloat(urlPhi));
-  if (urlTheta) setOrbitTheta(parseFloat(urlTheta));
-  updateCamera();
-}
-
-// Restore focus + orbit from URL query params. The focus entity drives
-// the target position through the same search-select path used elsewhere;
-// we then snap the target immediately (using the catalog entry's known
-// position) to skip the default selection lerp, since restoring a shared
-// URL shouldn't show a flyby animation.
-const urlState = parseUrlState(window.location.search);
-if (urlState.focus) {
-  const entry = getSearchIndex().find((e) => e.n === urlState.focus);
-  if (entry) {
-    handleSearchSelect(entry);
-    setTargetImmediate(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+  if (urlState.orbit) {
+    const { radius, phi, theta } = urlState.orbit;
+    // Set radius directly — deep zoom allows arbitrarily small values
+    setOrbitRadius(radius);
+    setOrbitPhi(THREE.MathUtils.clamp(phi, 0.1, Math.PI - 0.1));
+    setOrbitTheta(theta);
+    updateDeepZoom();
+    updateCamera();
   }
-}
-if (urlState.orbit) {
-  // Clamp the same way applyOrbitDrag / applyZoom do, so a hand-edited
-  // URL can't leave the camera in a degenerate (flipped, too close, etc.) state.
-  const { radius, phi, theta } = urlState.orbit;
-  setOrbitRadius(THREE.MathUtils.clamp(radius, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS));
-  setOrbitPhi(THREE.MathUtils.clamp(phi, 0.1, Math.PI - 0.1));
-  setOrbitTheta(theta);
-  updateCamera();
 }
 
 function currentFocusName(): string | undefined {
@@ -518,7 +500,9 @@ function currentFocusName(): string | undefined {
     if (name) return name;
   }
   const nebula = getSelectedNebulaName();
-  return nebula ?? undefined;
+  if (nebula) return nebula;
+  const bh = getSelectedBlackHoleName();
+  return bh ?? undefined;
 }
 
 initUrlState({
@@ -553,8 +537,6 @@ if (debugEnabled) {
 }
 
 // Render loop
-let wasDeepZoom = false;
-
 function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
@@ -565,15 +547,7 @@ function animate(now: number) {
   updateAllLabels();
   updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor);
 
-  const inDeepZoom = isDeepZoom();
-
-  // Capture cubemap on deep zoom entry
-  if (inDeepZoom && !wasDeepZoom) {
-    captureDeepZoomCubemap(renderer, scene);
-  }
-  wasDeepZoom = inDeepZoom;
-
-  // Main scene pass
+  // Main scene pass (lensing pass is in the composer, auto-enabled by blackholes.ts)
   if (debugEnabled && debug.directRender) {
     renderer.render(scene, camera);
   } else {
@@ -582,14 +556,6 @@ function animate(now: number) {
     endBloomRender();
   }
   renderDustPostBloom(renderer);
-
-  // Deep zoom overlay pass
-  if (inDeepZoom) {
-    renderer.autoClear = false;
-    renderer.clearDepth();
-    renderer.render(deepZoomScene, deepZoomCamera);
-    renderer.autoClear = true;
-  }
 
   labelRenderer.render(scene, camera);
   if (debugEnabled) tickDebug();

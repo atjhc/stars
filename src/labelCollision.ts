@@ -1,4 +1,5 @@
 import { COLLISION_PAD_PX, COLLISION_ALPHA_CUTOFF } from "./constants.ts";
+import { getBHScreenOcclusion } from "./blackholes.ts";
 
 export type RankedLabel = {
   div: HTMLElement;
@@ -82,6 +83,9 @@ export function resolveCollisions(labels: RankedLabel[]): void {
     label.div.style.visibility = "";
   }
 
+  // BH shadow occlusion circle (screen space)
+  const bhOcc = getBHScreenOcclusion();
+
   const grid = new Map<number, DOMRect[]>();
 
   function overlapsPlaced(r: DOMRect): boolean {
@@ -141,6 +145,18 @@ export function resolveCollisions(labels: RankedLabel[]): void {
     const el = div.firstElementChild as HTMLElement | null;
     const rect = (el ?? div).getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
+
+    // Hide labels occluded by the black hole shadow
+    if (bhOcc) {
+      const labelCx = (rect.left + rect.right) / 2;
+      const labelCy = (rect.top + rect.bottom) / 2;
+      const dx = labelCx - bhOcc.cx;
+      const dy = labelCy - bhOcc.cy;
+      if (dx * dx + dy * dy < bhOcc.radius * bhOcc.radius) {
+        hideLabel(div);
+        continue;
+      }
+    }
 
     if (overlapsPlaced(rect)) {
       hideLabel(div);

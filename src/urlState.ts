@@ -8,6 +8,8 @@ export interface UrlState {
 }
 
 function fmt(n: number): string {
+  // Use exponential notation for very small values (deep zoom)
+  if (n !== 0 && Math.abs(n) < 0.01) return n.toExponential(4);
   return Number(n.toFixed(2)).toString();
 }
 

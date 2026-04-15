@@ -3,6 +3,7 @@
 // visibility toggling, selection clearing, click dispatch, detail panel.
 
 import type { RankedLabel } from "./labelCollision.ts";
+import { clearStarSystemSelection } from "./interaction.ts";
 
 export interface LabelTypeHandler {
   readonly type: string;
@@ -30,6 +31,7 @@ export function updateAllLabels(): void {
 }
 
 export function clearAllSelections(except?: string): void {
+  clearStarSystemSelection();
   for (const h of handlers) {
     if (h.type !== except) h.clearSelection();
   }

@@ -4,7 +4,7 @@ import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, SCALE,
   LY_PER_PARSEC, solDistanceFade,
 } from "./constants.ts";
-import { camera, animation } from "./scene.ts";
+import { camera, animation, isDeepZoom, orbitRadius } from "./scene.ts";
 import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
 import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
 import { type RankedLabel, resolveCollisions, isLabelInteractive, visibleLabels } from "./labelCollision.ts";
@@ -333,10 +333,14 @@ export function updateLabels(
 const CAMERA_CHECK_INTERVAL = 300;
 let lastCameraCheckTime = 0;
 
+let prevOrbitRadius = 0;
+
 export function checkCameraMoved() {
-  if (prevCamPos.equals(camera.position)) return;
+  const radiusChanged = isDeepZoom() && orbitRadius !== prevOrbitRadius;
+  prevOrbitRadius = orbitRadius;
+  if (!radiusChanged && prevCamPos.equals(camera.position)) return;
   const now = performance.now();
-  if (now - lastCameraCheckTime < CAMERA_CHECK_INTERVAL) return;
+  if (!isDeepZoom() && now - lastCameraCheckTime < CAMERA_CHECK_INTERVAL) return;
   lastCameraCheckTime = now;
   setLabelsDirty(true);
 }

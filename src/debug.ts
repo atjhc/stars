@@ -106,6 +106,7 @@ let lastTgtText = "";
 let lastOrbText = "";
 
 function fmt(n: number) {
+  if (n !== 0 && Math.abs(n) < 0.01) return n.toExponential(4);
   return n.toFixed(2);
 }
 

@@ -179,6 +179,20 @@ export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) 
   updateDetailPanel();
 }
 
+export function clearStarSystemSelection() {
+  const prevMesh = getSelectedMesh();
+  if (prevMesh) {
+    unhighlightStar(prevMesh);
+    const prevLabel = getLabelDiv(prevMesh);
+    if (prevLabel) removeLabelGlow(prevLabel);
+  }
+  setSelectedMesh(null);
+  setPinnedTile(null);
+  const prevSys = getSelectedSystem();
+  if (prevSys) { hideSystemMembers(prevSys); setSelectedSystem(null); }
+  setLabelsDirty(true);
+}
+
 export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void, updateLabelVisibility: () => void) {
   const prevMesh = getSelectedMesh();
   if (prevMesh) {
