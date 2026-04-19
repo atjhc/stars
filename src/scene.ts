@@ -6,11 +6,35 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { GRID_SIZE, GRID_DIVISIONS, GRID_FADE_RADIUS, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD } from "./constants.ts";
+import {
+  halfViewportPxUniform,
+  starTargetUniform, starCameraOffsetUniform, starViewRotationUniform,
+} from "./shaderUniforms.ts";
 
 export const scene = new THREE.Scene();
 export const camera = new THREE.PerspectiveCamera(
   55, window.innerWidth / window.innerHeight, 0.01, 20000,
 );
+
+// Shadow camera used by CSS2DRenderer for label projection. Matches the
+// main camera's rotation and projection, but its `matrixWorld` carries
+// the UNCLAMPED camera position (main camera's position is clamped for
+// Float32 safety in the scene render). CSS2DRenderer projects anchors
+// in JS-land Float64, so using an unclamped-position matrix here keeps
+// labels precisely aligned with their stars during deep zoom — the
+// same problem the instanced shader solves via target-relative coords.
+export const labelCamera = new THREE.PerspectiveCamera(
+  55, window.innerWidth / window.innerHeight, 0.01, 20000,
+);
+// CSS2DRenderer calls camera.updateMatrixWorld() each render; disable auto
+// update so our manually-composed matrixWorld (unclamped position) survives.
+labelCamera.matrixAutoUpdate = false;
+labelCamera.matrixWorldAutoUpdate = false;
+// Unclamped camera world position. camera.position is clamped to
+// MIN_ORBIT_RADIUS during deep zoom for Float32 safety in the GPU
+// render, but per-star angular-size math (disc px, label margin)
+// needs the real camera location.
+export const labelCamOffset = new THREE.Vector3();
 
 const viewport = document.getElementById("viewport")!;
 
@@ -110,6 +134,34 @@ export function updateCamera() {
   camera.near = Math.max(1e-6, effectiveRadius * 0.001);
   camera.far = Math.max(20000, effectiveRadius * 100000);
   camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+
+  // Publish a target-relative frame for the star shader. The offset is
+  // computed from the UNCLAMPED orbit radius — the shader uses this to
+  // recompose camera-space without going through the clamped
+  // camera.position, preserving Float32 precision during deep zoom.
+  starTargetUniform.value.copy(target);
+  starCameraOffsetUniform.value
+    .set(0, 0, 0)
+    .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
+    .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
+    .addScaledVector(galUp, orbitRadius * cosPhi);
+  starViewRotationUniform.value.setFromMatrix4(camera.matrixWorldInverse);
+
+  // Keep the label-projection camera in lockstep — same rotation, same
+  // projection, but positioned at the unclamped orbit radius. Anchors
+  // near the target project correctly for the user's real zoom level,
+  // so their labels don't drift away from the disc they represent.
+  labelCamera.projectionMatrix.copy(camera.projectionMatrix);
+  labelCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
+  labelCamera.matrixWorld.copy(camera.matrixWorld);
+  labelCamOffset
+    .copy(target)
+    .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
+    .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
+    .addScaledVector(galUp, orbitRadius * cosPhi);
+  labelCamera.matrixWorld.setPosition(labelCamOffset);
+  labelCamera.matrixWorldInverse.copy(labelCamera.matrixWorld).invert();
 }
 updateCamera();
 
@@ -119,10 +171,38 @@ export function updateGridCenter() {
   gridShaderMat.uniforms.uCenter.value.copy(scratchVec3);
 }
 
-export let animation: { from: THREE.Vector3; to: THREE.Vector3; start: number } | null = null;
+export let animation: {
+  from: THREE.Vector3;
+  to: THREE.Vector3;
+  fromRadius: number;
+  toRadius: number;
+  start: number;
+} | null = null;
 
-export function animateTo(pos: THREE.Vector3) {
-  animation = { from: target.clone(), to: pos.clone(), start: performance.now() };
+// Camera-to-star distance for angular-size math. Mid-animation, `orbitRadius`
+// is unrelated to the selected star (target is interpolating), so use the
+// actual distance. Otherwise `orbitRadius` is the right "conceptual" distance
+// (unclamped, unlike the Float32-clamped camera.position during deep zoom).
+export function effectiveCamDist(starPos: THREE.Vector3): number {
+  if (animation !== null) return camera.position.distanceTo(starPos);
+  return orbitRadius;
+}
+
+// Eases the camera target (and, if needed, the orbit radius). When the
+// caller doesn't pass toRadius, the default eases out to the current
+// target's min-orbit (per-star / per-cluster / per-nebula), guaranteeing
+// the camera ends at a sensible viewing distance for whatever was just
+// selected. setMinOrbitOverride must be called BEFORE animateTo for
+// this to pick up the new floor.
+export function animateTo(pos: THREE.Vector3, toRadius?: number) {
+  const targetRadius = toRadius ?? Math.max(orbitRadius, getEffectiveMinOrbit());
+  animation = {
+    from: target.clone(),
+    to: pos.clone(),
+    fromRadius: orbitRadius,
+    toRadius: targetRadius,
+    start: performance.now(),
+  };
 }
 
 // Jump directly to a target position, cancelling any in-flight target
@@ -142,6 +222,7 @@ export function tickAnimation(now: number) {
   const t = Math.min(1, (now - animation.start) / ANIM_DURATION);
   const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   target.lerpVectors(animation.from, animation.to, ease);
+  orbitRadius = animation.fromRadius + (animation.toRadius - animation.fromRadius) * ease;
   updateGridCenter();
   updateCamera();
   if (t >= 1) animation = null;
@@ -185,13 +266,20 @@ export function applyOrbitDrag(dx: number, dy: number) {
 
 let minOrbitOverride: number | null = null;
 export function setMinOrbitOverride(v: number | null) { minOrbitOverride = v; }
+// Selection-specific zoom floor. Callers set the exact value they want
+// (e.g. per-star min based on physical radius, cluster spread, nebula
+// volume). When no selection has an override active, fall back to the
+// default MIN_ORBIT_RADIUS.
 export function getEffectiveMinOrbit(): number { return minOrbitOverride ?? MIN_ORBIT_RADIUS; }
 
 export function applyZoom(delta: number) {
-  // In deep zoom, orbit radius can go arbitrarily small and zoom accelerates
-  const minR = deepZoomActive ? 1e-15 : (minOrbitOverride ?? MIN_ORBIT_RADIUS);
-  const zoomRate = deepZoomActive ? 1.003 : 1.0007;
+  // The override IS the floor — not a boolean "allow deep zoom" flag.
+  // Each selection type computes its own appropriate minimum.
+  const minR = minOrbitOverride ?? MIN_ORBIT_RADIUS;
+  const inDeepRange = orbitRadius < DEEP_ZOOM_ENTER;
+  const zoomRate = inDeepRange ? 1.003 : 1.0007;
   orbitRadius = THREE.MathUtils.clamp(orbitRadius * Math.pow(zoomRate, delta), minR, MAX_ORBIT_RADIUS);
+  updateDeepZoom();
   updateCamera();
 }
 
@@ -204,15 +292,12 @@ let deepZoomActive = false;
 export function isDeepZoom(): boolean { return deepZoomActive; }
 
 export function updateDeepZoom() {
-  if (minOrbitOverride !== null && minOrbitOverride < DEEP_ZOOM_ENTER) {
-    if (!deepZoomActive && orbitRadius < DEEP_ZOOM_ENTER) {
-      deepZoomActive = true;
-    } else if (deepZoomActive && orbitRadius > DEEP_ZOOM_EXIT) {
-      deepZoomActive = false;
-    }
-  } else if (deepZoomActive) {
+  if (minOrbitOverride === null) {
     deepZoomActive = false;
+    return;
   }
+  if (!deepZoomActive && orbitRadius < DEEP_ZOOM_ENTER) deepZoomActive = true;
+  else if (deepZoomActive && orbitRadius > DEEP_ZOOM_EXIT) deepZoomActive = false;
 }
 
 export function onWheel(e: WheelEvent) {
@@ -382,8 +467,10 @@ let lastDPR = window.devicePixelRatio;
 export function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  labelCamera.aspect = camera.aspect;
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  halfViewportPxUniform.value = window.innerHeight / 2;
   if (window.devicePixelRatio !== lastDPR) {
     lastDPR = window.devicePixelRatio;
     composerRT.dispose();

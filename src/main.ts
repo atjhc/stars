@@ -2,31 +2,32 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS } from "./constants.ts";
 import {
-  scene, camera, renderer, labelRenderer, composer,
+  scene, camera, labelCamera, renderer, labelRenderer, composer,
   gridHelper, handleResize, bloomPass,
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
   orbitRadius, orbitPhi, orbitTheta, target,
   setOrbitRadius, setOrbitPhi, setOrbitTheta, getEffectiveMinOrbit,
-  setTargetImmediate, updateDeepZoom,
+  setTargetImmediate, updateDeepZoom, effectiveCamDist, animation,
 } from "./scene.ts";
 import {
   initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
 } from "./urlState.ts";
 import { getSelectedNebulaName } from "./nebulaeLabels.ts";
+import { computeStarScreenMetrics, setOverlayActive, setOverlayUniforms } from "./stars.ts";
+import { starRadiusScene, bvToColor } from "./color.ts";
 import {
   registerLabelMap,
-  highlightStar,
   hoverTarget, unhoverAll,
   selectTarget, selectSystem, selectStar,
   showSystemMembers, hideSystemMembers,
 } from "./interaction.ts";
 import {
   getSelectedSystem, getHoveredSystem, setHoveredSystem,
-  getSelectedMesh, setLabelsDirty,
+  getSelectedMesh, getSelectedSubset, setLabelsDirty,
 } from "./systemStore.ts";
 import { toggleFavorite } from "./favorites.ts";
-import { isLabelInteractive } from "./labelCollision.ts";
+import { isLabelInteractive, resetCollisionFadeState } from "./labelCollision.ts";
 
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
@@ -46,8 +47,6 @@ import {
   setInitLabelDrag, onLabelsChanged,
   tier1LabelMeshFromDiv, tier1LabelDivFromMesh,
   streamedLabelMap,
-  canonicalTarget,
-  setStarMode, setPointDepthTest,
   requestTileFocus,
 } from "./starfield.ts";
 import { animateTo } from "./scene.ts";
@@ -101,13 +100,13 @@ function setMouseNDC(clientX: number, clientY: number) {
   mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 }
 
-function meshFromLabel(el: HTMLElement): THREE.Mesh | undefined {
+function meshFromLabel(el: HTMLElement): THREE.Object3D | undefined {
   const label = el.closest("[data-star-label]") as HTMLElement | null;
   if (!label) return undefined;
   return notableLabelMeshMap.get(label) || tier1LabelMeshFromDiv(label);
 }
 
-function divFor(mesh: THREE.Mesh): HTMLElement | undefined {
+function divFor(mesh: THREE.Object3D): HTMLElement | undefined {
   return notableLabelMap.get(mesh) || tier1LabelDivFromMesh(mesh);
 }
 
@@ -116,23 +115,43 @@ function trySelectAt(clientX: number, clientY: number) {
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(allInteractiveStars);
   for (const h of hits) {
-    const t = canonicalTarget(h.object);
-    const d = divFor(t as THREE.Mesh);
+    const t = h.object;
+    const d = divFor(t);
     if (!d || !isLabelInteractive(d)) continue;
     clearAllSelections();
-    selectTarget(t, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+    selectTarget(t, updateDetailPanel, doUpdateLabelVisibility);
     return;
   }
 }
 
 function doUpdateLabelVisibility() {
   if (!labelsVisible) {
-    for (const anchor of notableObjects) anchor.visible = false;
-    for (const obj of allInteractiveStars) obj.visible = false;
-    for (const group of systemGroups) group.label.visible = false;
+    // Hide only the CSS2DObject children — the billboard meshes stay
+    // rendered so the star's disc/glow remains visible. Toggling
+    // anchor.visible or mesh.visible would also hide the billboard's
+    // raycast and its rendering, which isn't what "hide labels" means.
+    for (const anchor of notableObjects) hideCss2dChild(anchor);
+    for (const obj of allInteractiveStars) hideCss2dChild(obj);
+    for (const group of systemGroups) {
+      group.label.visible = false;
+      (group.label.element as HTMLElement).style.opacity = "0";
+    }
+    // Clear collision fade state so labels coming back don't replay a
+    // stale fade-out animation from their pre-hide opacity.
+    resetCollisionFadeState();
   }
   setAllLabelsVisible(labelsVisible);
   setLabelsDirty(true);
+}
+
+function hideCss2dChild(parent: THREE.Object3D) {
+  for (const c of parent.children) {
+    if ((c as THREE.Object3D & { isCSS2DObject?: boolean }).isCSS2DObject) {
+      c.visible = false;
+      const el = (c as unknown as { element?: HTMLElement }).element;
+      if (el) el.style.opacity = "0";
+    }
+  }
 }
 
 // Wire system label divs each time the system list is rebuilt.
@@ -172,8 +191,8 @@ onLabelsChanged(() => {
   // New labels need one CSS2DRenderer pass before collision rects are valid.
   // Schedule a second dirty so they get re-evaluated after positioning.
   requestAnimationFrame(() => setLabelsDirty(true));
-  if (pendingClusterSelect && trySelectCluster(pendingClusterSelect)) {
-    pendingClusterSelect = null;
+  if (pendingSystemSelect && trySelectSystem(pendingSystemSelect.name, pendingSystemSelect.subsetNames)) {
+    pendingSystemSelect = null;
     scheduleUrlWrite();
   }
 });
@@ -281,9 +300,9 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   const intersects = raycaster.intersectObjects(allInteractiveStars);
   let hoverMesh: THREE.Object3D | undefined;
   for (const h of intersects) {
-    const t = canonicalTarget(h.object);
+    const t = h.object;
     // Check the star's own label
-    const d = divFor(t as THREE.Mesh);
+    const d = divFor(t);
     if (!d || !isLabelInteractive(d)) continue;
     // If the star belongs to a cluster, check the cluster label too
     const cluster = clusterOf.get(t);
@@ -335,7 +354,7 @@ labelRenderer.domElement.addEventListener("mouseup", (e) => {
   const mesh = meshFromLabel(e.target as HTMLElement);
   if (mesh) {
     clearAllSelections();
-    selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+    selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
     scheduleUrlWrite();
   }
 });
@@ -377,17 +396,29 @@ window.addEventListener("resize", () => {
 // entry whose tile isn't loaded, we force-load the tile and upgrade the
 // selection to a real mesh once it spawns. Cluster entries resolve to
 // the live SystemGroup by name.
-let pendingClusterSelect: string | null = null;
+// A system (binary/cluster) selected by name — possibly with a member-
+// name sub-selection — before its SystemGroup has been rebuilt. Retried
+// from onLabelsChanged when the group finally appears.
+let pendingSystemSelect: { name: string; subsetNames?: string[] } | null = null;
 
-function trySelectCluster(name: string): boolean {
+function trySelectSystem(name: string, subsetNames?: string[]): boolean {
   const group = systemGroups.find((g) => g.name === name);
   if (!group) return false;
-  selectSystem(group, updateDetailPanel);
+  let subset: THREE.Object3D[] | undefined;
+  if (subsetNames && subsetNames.length >= 2) {
+    const byName = new Map<string, THREE.Object3D>();
+    for (const m of group.meshes) byName.set((m.userData as Star).name, m);
+    subset = subsetNames
+      .map((n) => byName.get(n))
+      .filter((m): m is THREE.Object3D => m !== undefined);
+    if (subset.length < 2) subset = undefined;
+  }
+  selectSystem(group, updateDetailPanel, subset);
   return true;
 }
 
 function handleSearchSelect(entry: SearchEntry) {
-  pendingClusterSelect = null;
+  pendingSystemSelect = null;
   animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
   if (entry.k === "n") {
     selectByType("nebula", entry.n);
@@ -403,13 +434,13 @@ function handleSearchSelect(entry: SearchEntry) {
     return;
   }
   if (entry.k === "c") {
-    if (trySelectCluster(entry.n)) {
+    if (trySelectSystem(entry.n)) {
       scheduleUrlWrite();
     } else {
       // Group doesn't exist yet — member tiles haven't streamed.
       // Force-load a member tile; when rebuildSystems fires, the
       // onLabelsChanged callback retries the selection and writes the URL.
-      pendingClusterSelect = entry.n;
+      pendingSystemSelect = { name: entry.n };
       const member = getSearchIndex().find((e) => e.sy === entry.n && e.t);
       if (member?.t && member.i !== undefined) {
         requestTileFocus(member.t, member.i, () => {});
@@ -420,7 +451,7 @@ function handleSearchSelect(entry: SearchEntry) {
   if (entry.t !== undefined && entry.i !== undefined) {
     requestTileFocus(entry.t, entry.i, (mesh) => {
       clearAllSelections();
-      selectTarget(mesh, meshToSystem, updateDetailPanel, doUpdateLabelVisibility);
+      selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
       scheduleUrlWrite();
     });
   }
@@ -457,10 +488,30 @@ doUpdateLabelVisibility();
   const focusName = urlState.focus ?? legacyName;
 
   if (focusName) {
-    const entry = getSearchIndex().find((e) => e.n === focusName || e.sy === focusName);
-    if (entry) {
-      handleSearchSelect(entry);
-      setTargetImmediate(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+    // Sub-group syntax: "Rigil Kentaurus,Toliman" → find the system
+    // they belong to and select just those members.
+    if (focusName.includes(",")) {
+      const memberNames = focusName.split(",").map((s) => s.trim()).filter(Boolean);
+      const firstMember = getSearchIndex().find((e) => e.n === memberNames[0]);
+      const systemName = firstMember?.sy;
+      if (systemName) {
+        if (!trySelectSystem(systemName, memberNames)) {
+          pendingSystemSelect = { name: systemName, subsetNames: memberNames };
+          if (firstMember.t && firstMember.i !== undefined) {
+            requestTileFocus(firstMember.t, firstMember.i, () => {});
+          }
+        }
+        if (firstMember.p) setTargetImmediate(new THREE.Vector3(firstMember.p[0], firstMember.p[1], firstMember.p[2]));
+      }
+    } else if (trySelectSystem(focusName)) {
+      // Exact system-name match (binary/trinary or cluster).
+      scheduleUrlWrite();
+    } else {
+      const entry = getSearchIndex().find((e) => e.n === focusName || e.sy === focusName);
+      if (entry) {
+        handleSearchSelect(entry);
+        setTargetImmediate(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+      }
     }
   } else {
     const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
@@ -486,7 +537,17 @@ doUpdateLabelVisibility();
 
 function currentFocusName(): string | undefined {
   const sys = getSelectedSystem();
-  if (sys) return sys.name;
+  if (sys) {
+    // When the user has refined down to a sub-group (e.g. Rigil+Toliman
+    // within Alpha Centauri), serialize the member names comma-joined
+    // so reload lands back on that specific subset instead of a
+    // single lookup-winner member.
+    const subset = getSelectedSubset();
+    if (subset && subset.length < sys.meshes.length) {
+      return subset.map((m) => (m.userData as Star).name).join(",");
+    }
+    return sys.name;
+  }
   const mesh = getSelectedMesh();
   if (mesh) {
     const name = (mesh.userData as Star).name;
@@ -517,22 +578,51 @@ if (debugEnabled) {
   initDebug();
   onDebugChange((key, value) => {
     switch (key) {
-      case "textureGlow":
-        if (value) { debug.flatStars = false; setStarMode("texture"); }
-        else { setStarMode("math"); }
-        break;
-      case "flatStars":
-        if (value) { debug.textureGlow = false; setStarMode("flat"); }
-        else { setStarMode("math"); }
-        break;
       case "bloom":
         bloomPass.enabled = value;
         break;
-      case "depthTest":
-        setPointDepthTest(value);
-        break;
     }
   });
+}
+
+// Per-selection cache: radius and color are constant per star, so only
+// recompute them when the selection changes — not every frame.
+let lastSelected: THREE.Object3D | null = null;
+let cachedRadius = 0;
+const cachedColor = new THREE.Color();
+
+function updateStarDeepZoom() {
+  const selected = getSelectedMesh();
+  if (lastSelected !== selected) {
+    lastSelected = selected;
+    const selStar = selected?.userData as Star | undefined;
+    if (selStar) {
+      cachedRadius = starRadiusScene(selStar.lum, selStar.ci);
+      cachedColor.copy(bvToColor(selStar.ci));
+    }
+  }
+
+  const star = selected?.userData as Star | undefined;
+  // The overlay always renders at screen center (view-space origin),
+  // which only matches the selected star's on-screen position when
+  // `target` equals the star's world position. Mid-animation, target is
+  // lerping — the overlay would draw a ghost disc at the moving
+  // midpoint. Disable it during transit and let the instanced shader
+  // render the destination star at its real angular position, growing
+  // smoothly as the camera closes in. When the animation ends (target
+  // snaps to star.position), the overlay takes over for the crisp
+  // close-up render and uSkipSelected hides the instanced duplicate.
+  if (!selected || !star || animation) {
+    setOverlayActive(false);
+    return;
+  }
+  const { discPx, halfBillPx, intensity } = computeStarScreenMetrics(
+    cachedRadius,
+    star.absmag ?? 10,
+    effectiveCamDist(selected.position),
+  );
+  setOverlayUniforms(discPx, halfBillPx, cachedColor, intensity);
+  setOverlayActive(true);
 }
 
 // Render loop
@@ -540,6 +630,7 @@ function animate(now: number) {
   requestAnimationFrame(animate);
   tickAnimation(now);
   updateDeepZoom();
+  updateStarDeepZoom();
   checkCameraMoved();
   updateStarfield();
   updateDust();
@@ -556,9 +647,9 @@ function animate(now: number) {
   }
   renderDustPostBloom(renderer);
 
-  labelRenderer.render(scene, camera);
+  labelRenderer.render(scene, labelCamera);
   if (debugEnabled) tickDebug();
 }
 // Position labels in the DOM before the first frame so collision rects are valid
-labelRenderer.render(scene, camera);
+labelRenderer.render(scene, labelCamera);
 animate(performance.now());

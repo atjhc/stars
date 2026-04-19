@@ -1,19 +1,20 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
-import { HIGHLIGHT_BOOST } from "./constants.ts";
-import { camera, animateTo } from "./scene.ts";
+import { camera, animateTo, setMinOrbitOverride, effectiveCamDist } from "./scene.ts";
 import { addRecent } from "./recents.ts";
 import { refreshSearch } from "./search.ts";
-import { starGlowShadow } from "./color.ts";
+import { starGlowShadow, starRadiusScene } from "./color.ts";
+import { computeStarMinOrbit, setHoveredStar } from "./stars.ts";
 import {
   getSelectedSystem, setSelectedSystem,
   getHoveredSystem, setHoveredSystem,
   getSelectedMesh, setSelectedMesh,
   getLastHoveredMesh, setLastHoveredMesh,
+  setSelectedSubset,
   setLabelsDirty, isInSelectedGroup, setPinnedTile,
 } from "./systemStore.ts";
 import {
-  focusTarget,
+  focusTarget, effectiveSystemSubset,
   applySystemLabelGlow, removeSystemLabelGlow,
   labelContent,
 } from "./systemDispatch.ts";
@@ -32,14 +33,6 @@ function getLabelDiv(target: THREE.Object3D): HTMLElement | undefined {
   return undefined;
 }
 
-// Companion lookup: when a target without a shader (e.g. a notable anchor)
-// is highlighted, also ripple the highlight to its associated billboard if
-// one is currently spawned. Registered by starfield.ts.
-let companionResolver: ((target: THREE.Object3D) => THREE.Object3D | undefined) | null = null;
-export function setCompanionResolver(fn: (target: THREE.Object3D) => THREE.Object3D | undefined) {
-  companionResolver = fn;
-}
-
 function applyLabelGlow(div: HTMLElement, target: THREE.Object3D) {
   const star = target.userData as Star;
   div.classList.add("highlight");
@@ -51,34 +44,29 @@ function removeLabelGlow(div: HTMLElement) {
   div.style.textShadow = "";
 }
 
-// Star highlight: sets uHighlight uniform on the target's shader if any,
-// then ripples to a companion target (anchor → billboard or billboard → anchor).
-function setShaderHighlight(target: THREE.Object3D, value: number) {
-  const mesh = target as THREE.Mesh;
-  const mat = mesh.material as THREE.ShaderMaterial | undefined;
-  if (mat?.uniforms?.uHighlight) {
-    mat.uniforms.uHighlight.value = value;
-    mat.uniformsNeedUpdate = true;
-  }
+// Fade out the ".system-members" subtitle (distance / member names) on a
+// label whose selection is about to end. Setting opacity:0 triggers the
+// CSS transition; labels.ts will later swap the innerHTML to remove the
+// subtitle entirely when the animation completes and the label pass
+// reclassifies this target as unhighlighted.
+function fadeOutSubtitle(div: HTMLElement) {
+  const sub = div.querySelector(".system-members") as HTMLElement | null;
+  if (sub) sub.style.opacity = "0";
 }
-
-function setStarHighlight(target: THREE.Object3D, value: number) {
-  setShaderHighlight(target, value);
-  const companion = companionResolver?.(target);
-  if (companion) setShaderHighlight(companion, value);
-}
-
-export function highlightStar(target: THREE.Object3D) { setStarHighlight(target, HIGHLIGHT_BOOST); }
-export function unhighlightStar(target: THREE.Object3D) { setStarHighlight(target, 1.0); }
-function highlightSystem(group: SystemGroup) { group.meshes.forEach((m) => setStarHighlight(m, HIGHLIGHT_BOOST)); }
-function unhighlightSystem(group: SystemGroup) { group.meshes.forEach((m) => setStarHighlight(m, 1.0)); }
 
 // System label text
 const lastSystemLabelState = new WeakMap<SystemGroup, string>();
 
 export function updateSystemLabelText(group: SystemGroup) {
   const isActive = getHoveredSystem() === group || getSelectedSystem() === group;
-  const html = labelContent(group, isActive);
+  // When the system is the orbit target, effectiveCamDist returns the
+  // unclamped orbitRadius — correct even past the deep-zoom camera
+  // clamp. For just-hovered systems, fall back to the raw world-space
+  // distance to the centroid.
+  const camDist = getSelectedSystem() === group
+    ? effectiveCamDist(group.centroid)
+    : camera.position.distanceTo(group.centroid);
+  const html = labelContent(group, isActive, camDist);
   if (lastSystemLabelState.get(group) === html) return;
   lastSystemLabelState.set(group, html);
   const el = group.label.element as HTMLElement;
@@ -86,14 +74,12 @@ export function updateSystemLabelText(group: SystemGroup) {
 }
 
 export function showSystemMembers(group: SystemGroup) {
-  if (group.kind !== "cluster") highlightSystem(group);
   applySystemLabelGlow(group);
   updateSystemLabelText(group);
   setLabelsDirty(true);
 }
 
 export function hideSystemMembers(group: SystemGroup) {
-  if (group.kind !== "cluster") unhighlightSystem(group);
   removeSystemLabelGlow(group);
   updateSystemLabelText(group);
   setLabelsDirty(true);
@@ -104,52 +90,54 @@ export function showHover(target: THREE.Object3D) {
   const lastHovered = getLastHoveredMesh();
   if (lastHovered === target) return;
   if (lastHovered && lastHovered !== getSelectedMesh() && !isInSelectedGroup(lastHovered)) {
-    unhighlightStar(lastHovered);
     const prevLabel = getLabelDiv(lastHovered);
     if (prevLabel) removeLabelGlow(prevLabel);
   }
   setLastHoveredMesh(target);
-  if (target !== getSelectedMesh()) highlightStar(target);
   const label = getLabelDiv(target);
   if (label) applyLabelGlow(label, target);
+  setHoveredStar(target.position);
   setLabelsDirty(true);
 }
 
 export function hideHover() {
   const lastHovered = getLastHoveredMesh();
   if (lastHovered && lastHovered !== getSelectedMesh() && !isInSelectedGroup(lastHovered)) {
-    unhighlightStar(lastHovered);
     const label = getLabelDiv(lastHovered);
     if (label) removeLabelGlow(label);
   }
   setLastHoveredMesh(null);
+  setHoveredStar(null);
   setLabelsDirty(true);
 }
 
 export function hoverTarget(target: THREE.Object3D, meshToSystem: Map<THREE.Object3D, SystemGroup>, clusterOf?: Map<THREE.Object3D, SystemGroup>) {
-  const sys = meshToSystem.get(target);
   const cluster = clusterOf?.get(target);
-  const group = sys ?? cluster;
-  if (group) {
-    if (cluster) {
-      showHover(target);
-    } else {
-      hideHover();
-    }
-    if (getHoveredSystem() !== group && getSelectedSystem() !== group) {
+
+  // Clusters keep their aggregate hover — hovering any Pleiades member
+  // lights up the cluster label. That's the "cluster label" half of what
+  // the system designation drives.
+  if (cluster) {
+    showHover(target);
+    if (getHoveredSystem() !== cluster && getSelectedSystem() !== cluster) {
       const hovered = getHoveredSystem();
       if (hovered && hovered !== getSelectedSystem()) hideSystemMembers(hovered);
-      setHoveredSystem(group);
-      showSystemMembers(group);
+      setHoveredSystem(cluster);
+      showSystemMembers(cluster);
     }
-  } else {
-    const hovered = getHoveredSystem();
-    if (hovered && hovered !== getSelectedSystem()) {
-      hideSystemMembers(hovered);
-      setHoveredSystem(null);
-    }
-    showHover(target);
+    return;
   }
+
+  // Binary/trinary members and solo stars: individual hover only. The
+  // system grouping isn't a hover target — it's metadata for search and
+  // on-screen collapse — so hovering Toliman must not drag Proxima into
+  // a highlighted state.
+  const hovered = getHoveredSystem();
+  if (hovered && hovered !== getSelectedSystem()) {
+    hideSystemMembers(hovered);
+    setHoveredSystem(null);
+  }
+  showHover(target);
 }
 
 export function unhoverAll() {
@@ -161,15 +149,54 @@ export function unhoverAll() {
   }
 }
 
-// Selection
-export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) {
-  const prevMesh = getSelectedMesh();
-  if (prevMesh) unhighlightStar(prevMesh);
+// Minimum orbit radius for a system — keeps the effective members
+// framed when zoomed in. For a binary/trinary whose label is partially
+// collapsed on screen, "effective members" is just the collapsed
+// subset so the user can zoom in further to that sub-group (e.g. the
+// A+B pair within Alpha Centauri after Proxima breaks out).
+function systemMinOrbit(group: SystemGroup): number {
+  const { members, centroid } = effectiveSystemSubset(group);
+  if (members.length === 0) return 3;
+  let maxR = 0;
+  let maxMemberFloor = 0;
+  for (const m of members) {
+    const d = m.position.distanceTo(centroid);
+    if (d > maxR) maxR = d;
+    const star = m.userData as Star;
+    const mf = computeStarMinOrbit(starRadiusScene(star.lum, star.ci));
+    if (mf > maxMemberFloor) maxMemberFloor = mf;
+  }
+  // 1.5× gives the members room to breathe on screen. The member floor
+  // handles the coincident-binary edge case — you can't zoom closer
+  // than you could if you selected the largest member by itself.
+  return Math.max(maxR * 1.5, maxMemberFloor);
+}
+
+// Selection. `subset` lets a caller (URL restore, future features) pin
+// the effective-subset explicitly; without it, the current screen-space
+// collapsed members are snapshotted — so clicking a partially-collapsed
+// label like "Rigil Kentaurus · Toliman" refines the selection to just
+// those two.
+export function selectSystem(
+  group: SystemGroup,
+  updateDetailPanel: () => void,
+  subset?: THREE.Object3D[],
+) {
   setSelectedMesh(null);
   setPinnedTile(null);
   const prevSys = getSelectedSystem();
   if (prevSys && prevSys !== group) hideSystemMembers(prevSys);
   setSelectedSystem(group);
+  const snap = subset
+    ?? (group.kind !== "cluster"
+        && group.collapsedMembers.length >= 2
+        && group.collapsedMembers.length < group.meshes.length
+      ? [...group.collapsedMembers]
+      : null);
+  setSelectedSubset(snap);
+  // Must set the override BEFORE animateTo so its default toRadius picks
+  // up the new floor via getEffectiveMinOrbit.
+  setMinOrbitOverride(systemMinOrbit(group));
   showSystemMembers(group);
   setLabelsDirty(true);
   animateTo(focusTarget(group, camera.position));
@@ -182,12 +209,12 @@ export function selectSystem(group: SystemGroup, updateDetailPanel: () => void) 
 export function clearStarSystemSelection() {
   const prevMesh = getSelectedMesh();
   if (prevMesh) {
-    unhighlightStar(prevMesh);
     const prevLabel = getLabelDiv(prevMesh);
-    if (prevLabel) removeLabelGlow(prevLabel);
+    if (prevLabel) { removeLabelGlow(prevLabel); fadeOutSubtitle(prevLabel); }
   }
   setSelectedMesh(null);
   setPinnedTile(null);
+  setMinOrbitOverride(null);
   const prevSys = getSelectedSystem();
   if (prevSys) { hideSystemMembers(prevSys); setSelectedSystem(null); }
   setLabelsDirty(true);
@@ -196,18 +223,22 @@ export function clearStarSystemSelection() {
 export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void, updateLabelVisibility: () => void) {
   const prevMesh = getSelectedMesh();
   if (prevMesh) {
-    unhighlightStar(prevMesh);
     const prevLabel = getLabelDiv(prevMesh);
-    if (prevLabel) removeLabelGlow(prevLabel);
+    if (prevLabel) { removeLabelGlow(prevLabel); fadeOutSubtitle(prevLabel); }
   }
   const prevSys = getSelectedSystem();
   if (prevSys) { hideSystemMembers(prevSys); setSelectedSystem(null); }
   setSelectedMesh(target);
   const star = target.userData as Star;
   setPinnedTile(star.tile ?? null);
+  // Per-star zoom floor: a giant like Betelgeuse gets a larger floor
+  // than a red dwarf because its physical radius is much greater. Set
+  // BEFORE animateTo so its default toRadius picks up the new floor via
+  // getEffectiveMinOrbit.
+  const radius = starRadiusScene(star.lum, star.ci);
+  setMinOrbitOverride(computeStarMinOrbit(radius));
   addRecent(star.name);
   refreshSearch();
-  highlightStar(target);
   const label = getLabelDiv(target);
   if (label) applyLabelGlow(label, target);
   setLabelsDirty(true);
@@ -217,16 +248,13 @@ export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void
   updateDetailPanel();
 }
 
+// Clicking a member always selects the individual star so the user can
+// zoom close to a binary's components. System-level selection is still
+// reachable via the system label's click handler.
 export function selectTarget(
   target: THREE.Object3D,
-  meshToSystem: Map<THREE.Object3D, SystemGroup>,
   updateDetailPanel: () => void,
   updateLabelVisibility: () => void,
 ) {
-  const sys = meshToSystem.get(target);
-  if (sys) {
-    selectSystem(sys, updateDetailPanel);
-  } else {
-    selectStar(target, updateDetailPanel, updateLabelVisibility);
-  }
+  selectStar(target, updateDetailPanel, updateLabelVisibility);
 }

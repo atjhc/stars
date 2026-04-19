@@ -147,32 +147,3 @@ describe("search selection routing", () => {
   });
 });
 
-// Test the actual flow: does the highlight uniform get set?
-describe("highlight application contract", () => {
-  it("highlightStar on an Object3D anchor uses companionResolver for billboard", () => {
-    // Model: anchor has no material. Billboard (companion) has uHighlight.
-    const anchor = {} as any;
-    const billboard = {
-      material: { uniforms: { uHighlight: { value: 1.0 } }, uniformsNeedUpdate: false },
-    };
-
-    function setShaderHighlight(mesh: any, value: number) {
-      const mat = mesh.material;
-      if (mat?.uniforms?.uHighlight) {
-        mat.uniforms.uHighlight.value = value;
-      }
-    }
-
-    const companionResolver = (target: any) =>
-      target === anchor ? billboard : undefined;
-
-    function highlightStar(target: any) {
-      setShaderHighlight(target, 2.5);
-      const companion = companionResolver(target);
-      if (companion) setShaderHighlight(companion, 2.5);
-    }
-
-    highlightStar(anchor);
-    expect(billboard.material.uniforms.uHighlight.value).toBe(2.5);
-  });
-});

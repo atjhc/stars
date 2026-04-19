@@ -2,306 +2,267 @@
 
 ## Overview
 
-Stars are rendered in two complementary paths:
+Every star — every tier, every LOD — is a single instance of a unit quad
+drawn by one shader. The same formula covers sub-pixel points, resolved
+discs with limb darkening, and glowing coronas. No point cloud, no
+per-star billboard mesh, no post-bloom overlay.
 
-1. **Streamed point cloud** (`THREE.Points`) — every star in a loaded tile
-   renders as a single `GL_POINTS` primitive sized in the vertex shader.
-   This is the baseline always-on path.
-2. **Billboard quad** — spawned alongside tier-0 and in-range tier-1 stars
-   for detailed glow at close range.
+The one exception is the *selected* star, which gets rendered a second
+time by a screen-space overlay (clip-space, BH-lensing-pass style) so
+its position is precision-exact at any zoom level — see the
+[Selected-star overlay](#selected-star-overlay) section below.
 
-Both paths share the same radial glow profile (`src/starShader.ts`
-`GLOW_GLSL`): a Gaussian core + inverse-square halo + soft exponential outer
-glow. The point path samples that profile from a pre-baked mipmapped
-texture by default (`StarMode.texture`), which is critical for flicker-free
-bloom — see "Sub-pixel flicker" below.
+Related files:
+
+- `src/stars.ts` — unified shader, tile-binary decoder, InstancedMesh
+  builder, screen-space overlay, shared uniforms, and the single
+  CPU-side source of truth for pixel-space metrics
+  (`computeStarScreenMetrics`).
+- `src/starfield.ts` — tile streaming, anchor spawning, label rebuild.
+- `src/billboard.ts` — `createStarAnchor` / `createStarLabel` helpers.
+  Anchors are invisible `Object3D`s that carry labels and a screen-space
+  raycast hit sphere; they have no geometry.
+- `src/shaderUniforms.ts` — shared GPU uniforms referenced by multiple
+  materials (viewport size, target-relative coordinate frame).
+- `src/starOcclusion.ts` — CPU helpers for label-margin placement and
+  occlusion sizing; reads from `computeStarScreenMetrics`.
 
 ## Architecture
 
 ```
-Per-star Mesh (PlaneGeometry 0.4×0.4, ShaderMaterial)
-  ├── Per-instance attributes: starColor (vec3), starBrightness (float)
-  ├── Uniform: uHighlight (float, 1.0 normal / 1.6 highlighted)
-  ├── Additive blending, no depth write
-  ├── Vertex shader: billboard + distance-based scaling
-  └── Fragment shader: multi-layer procedural glow
+Tile binary (20 bytes/star)
+  ├── position (vec3, 12 B)
+  ├── brightness byte (1 B)         ← absMag encoded linearly as (M+10)·10
+  ├── color rgb (3 B)
+  └── radius float32 (4 B)          ← physical radius in scene units
+
+Per-tile mesh (InstancedBufferGeometry)
+  ├── shared unit-quad geometry (4 verts, 2 tris)
+  ├── instance attributes from the tile binary
+  └── one ShaderMaterial with additive blending
+
+Per-labeled-star anchor (Object3D)
+  ├── position — star's scene coordinate
+  ├── CSS2DObject child — the label
+  └── custom raycast — screen-space hit sphere
+
+Selected-star overlay (single Mesh in the main scene)
+  ├── PlaneGeometry(1,1)
+  └── screen-space shader; uniforms set per-frame from TS
 ```
 
-## Vertex Shader: Billboarding and Distance Scaling
+The tile binary format is authoritative; the renderer and
+`scripts/build-catalog.py` both reference the same 20-byte layout. The
+manifest (`meta.json`) reports `bytesPerStar: 20`; the renderer logs a
+loud error at startup if the format drifts. `notable.json` and
+`names.json` store positions Float32-quantized
+(`build-catalog.py#f32`) so anchors match tile instances bit-for-bit —
+without this, labels jitter as the camera orbits far-from-origin stars.
 
-The vertex shader positions each quad to always face the camera (billboarding)
-and scales it logarithmically based on camera distance:
+## Shader math
+
+Two physical quantities drive everything the instanced shader does:
 
 ```glsl
-vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-float dist = -mvCenter.z;
-float scale = clamp(log(1.0 + dist * 0.5) * 0.2, 0.05, 0.3);
-mvCenter.xy += position.xy * scale;
+angRadius = instanceRadius · DISC_SCALE / camDist   // screen-angle of disc
+discPx    = angRadius · F_HALF_TAN_INV · halfHeight // pixel radius
+appMag    = absMag + 5·log10(camDist / 10pc)        // distance modulus
 ```
 
-### Why logarithmic scaling?
+`DISC_SCALE = 8.0` is the one artistic multiplier: it scales every
+star's rendered disc uniformly, so relative sizes (Sol vs. Betelgeuse)
+stay physically proportional while the Sun at 1 AU feels thumb-sized
+instead of the geometrically correct ~10 pixels.
 
-Stars need to be small when zoomed in (so binary/trinary systems are
-distinguishable) but maintain visual presence when zoomed out. A linear scale
-would either be too large up close or too small far away. The logarithmic curve
-grows quickly at first then flattens, hitting the cap at moderate distances:
+The same math also lives in TS as `computeStarScreenMetrics(radius,
+absMag, camDist)` in `src/stars.ts`. The overlay driver
+(`main.ts#updateStarDeepZoom`), label margin
+(`starOcclusion.ts#getStarDiscPx`), and occluder
+(`starOcclusion.ts#getStarVisualPx`) all call it so the CPU can't drift
+from the shader. `HALO_FLOOR_PX` is similarly exported once from
+`stars.ts` and injected into the GLSL template.
 
-```
-scale
-0.30 |                               ·····························  ← cap
-     |                         ·····
-0.20 |                   ·····
-     |              ····
-0.10 |         ···
-     |     ··
-0.05 |·····                                                         ← floor
-     +---+---+---+---+---+---+---+---+---+---+---→ camera distance
-     0   1   2   3   4   5  10  15  20  30  40
-```
-
-| Camera distance | Raw `ln(1+d*0.5)*0.2` | Clamped scale | Effect |
-|---|---|---|---|
-| 0.5 (min zoom) | 0.045 | **0.05** (floor) | All stars same tiny size |
-| 1 | 0.081 | 0.081 | Starting to grow |
-| 2 | 0.139 | 0.139 | Mid-range |
-| 4 | 0.200 | 0.200 | Approaching cap |
-| 6+ | >0.3 | **0.30** (cap) | Max screen size |
-
-The uniform base quad size (0.4 units for all stars) ensures that when zoomed in,
-every star — from Vega to Wolf 359 — appears the same size. Brightness, not
-geometry, conveys luminosity differences.
-
-## Fragment Shader: Multi-Layer Glow
-
-The shader combines multiple radial falloff functions to approximate how a point
-light source appears. Each layer serves a distinct visual purpose:
-
-### Layer 1: Gaussian Core
+### Billboard size
 
 ```glsl
-float core = exp(-d * d * 30.0);
+coronaPx    = HALO_FLOOR_PX · clamp(0.5 + 0.3·rawBrightness, 1.0, 2.5)
+halfBillPx  = discPx + coronaPx
 ```
 
-A tight, bright center that appears nearly white regardless of the star's actual
-color. This mimics how the eye perceives the brightest part of a star —
-photoreceptors saturate, losing color information.
+Additive, not multiplicative: the corona is a fixed-thickness rim
+around the disc. Total size is strictly monotonic in `1/camDist` —
+nothing shrinks as you zoom in. For a sub-pixel star the disc
+contribution is zero and the entire visible element is the corona.
 
-### Layer 2: Inverse-Square Halo
+### Disc
 
 ```glsl
-float halo = 1.0 / (1.0 + pow(d * 6.0, 2.0));
+discMask  = smoothstep(discPx + 0.5, discPx - 0.5, rPx)   // 1 px AA edge
+limbDark  = 1 - 0.6·(1 - sqrt(1 - r²))                    // u = 0.6
+discColor = vColor · limbDark                             // LDR-saturated
 ```
 
-A physically-motivated halo where the star's color becomes visible. The `1.0 +`
-in the denominator prevents infinity at the center. This layer has heavier tails
-than the Gaussian, creating the characteristic "spread" seen in astrophotography.
+Disc intensity stays at LDR saturation (~1.0 per channel). The bloom
+pass extracts only `(1.0 − 0.1) = 0.9` per disc pixel, so the disc's
+contribution to bloom is modest — the edge reads as crisp in the final
+image rather than smeared into a fuzzy blob.
 
-### Layer 3: Exponential Outer Glow
+### Corona
+
+The shared `GLOW_GLSL` radial profile (Gaussian core + inverse-square
+halo + soft exponential tail) is sampled across the rim, normalized so
+`coronaT = 0` at the disc edge and `coronaT = 1` at the outer billboard
+edge. A constant `CORONA_PEAK_OFFSET = 0.15` lifts the sample slightly
+past the profile's peak — gives a soft falloff rather than a bright
+rim of light at the disc edge.
+
+Corona brightness scales with apparent magnitude (`vIntensity`), so
+bright stars get large bloomy halos and faint ones don't. A `tierFade`
+zeros the contribution as `appMag` crosses the magnitude-limit cutoff,
+so distant faint stars vanish cleanly.
+
+### Quad-corner edge fade
 
 ```glsl
-float outerGlow = exp(-d * 4.0) * 0.3;
+edgeFade = 1 - smoothstep(0.95, 1.0, rUv)
 ```
 
-A wide, soft atmospheric glow. The linear exponent (`-d` vs `-d²`) produces a
-longer tail than the Gaussian, giving bright stars their sense of presence.
+Cuts alpha past the inscribed circle of the square quad so the corners
+don't leak a visible rectangular edge.
 
-### Combined Intensity
+## Target-relative coordinate frame
+
+`scene.updateCamera` clamps `camera.position` during deep zoom so the
+view matrix stays Float32-safe. That clamp would normally prevent a
+star's `mvCenter.z` from dropping past the clamp threshold, capping
+effective `discPx`. Instead, the star shader recomposes camera-space
+from three uniforms published each frame by `updateCamera`:
 
 ```glsl
-float intensity = (core + halo * 0.4 + outerGlow) * vBrightness;
+relPos     = instancePos − uStarTarget          // star in target frame
+camRelPos  = relPos − uStarCameraOffset          // star relative to camera
+viewPos    = uStarViewRotation · camRelPos       // rotate into view space
 ```
 
-The `vBrightness` varying comes from the per-instance `starBrightness` attribute
-multiplied by the `uHighlight` uniform (1.0 normally, 1.6 when hovered/selected).
+`uStarCameraOffset` is computed from the *unclamped* orbit radius and
+orbit angles, not from the clamped `camera.position`. All subtractions
+stay near zero, so Float32 precision holds even tens of AU from stars
+hundreds of scene units from world origin (Betelgeuse, etc.).
 
-## Brightness Calculation
+## Selected-star overlay
 
-Per-star brightness is derived from luminosity on a logarithmic scale with a
-floor to ensure even the dimmest stars have visible halos:
-
-```javascript
-brightness = max(0.6, min(2.0, 0.7 + 0.3 * log10(max(lum, 0.001))))
-```
-
-| Star | Luminosity (L☉) | Brightness | Visual effect |
-|---|---|---|---|
-| Vega | 49.93 | 1.21 | Bright with prominent halo |
-| Sirius | 22.82 | 1.11 | Bright |
-| Sol | 1.00 | 0.70 | Moderate |
-| Proxima | 0.0001 | 0.60 | Floor — still visible |
-| Wolf 359 | 0.00002 | 0.60 | Floor — still visible |
-
-## Color Mapping
-
-Star color is derived from the [B-V color index](https://en.wikipedia.org/wiki/Color_index)
-using Ballesteros' formula for B-V → temperature, then Tanner Helland's algorithm
-for temperature → RGB. This is computed in JavaScript at initialization.
-
-| B-V   | Temperature | Color        | Example         |
-|-------|-------------|--------------|-----------------|
-| -0.33 | 30,000K+    | Blue-white   | O-type stars    |
-| 0.00  | 9,500K      | White        | Vega (A0V)      |
-| 0.65  | 5,800K      | Yellow-white | Sol (G2V)       |
-| 1.15  | 4,400K      | Orange       | K-type stars    |
-| 1.50  | 3,200K      | Red-orange   | Proxima (M5.5V) |
-
-At high intensity, the fragment shader desaturates toward white:
+A selected star is always at the orbit target, which is always at
+screen center (the camera looks at the target). The instanced pass
+*skips* that one instance (via `uSkipSelected` + `uStarTarget`
+comparison) and a separate overlay mesh draws it in pure clip space:
 
 ```glsl
-vec3 color = mix(vColor, vec3(1.0), smoothstep(0.3, 1.0, core * vBrightness));
+// overlay vertex shader — no world math at all.
+viewPos = vec4(position.xy · worldScale · 2.0, -OVERLAY_DEPTH, 1.0);
+gl_Position = projectionMatrix · viewPos;
 ```
 
-Only the halo shows color; the core appears white — matching how bright stars
-actually look to the eye.
+Using `projectionMatrix` (rather than raw `gl_Position = NDC`) is
+required: `beginBloomRender` widens `camera.fov` by `BLOOM_OVERSCAN =
+1.2×` and the composer RT also widens 1.2×, and those factors only
+cancel for geometry that goes through the projection matrix. A
+raw-NDC output would render 1.2× too big on screen.
 
-## Hover and Selection
+The overlay is immune to Float32 precision loss at any zoom level, for
+any star's world position — this is the same trick the black-hole
+lensing pass uses. Because it lives in the main scene, the composer's
+bloom still picks up its HDR output and the corona's glare is
+preserved.
 
-Stars highlight on hover and selection via the `uHighlight` uniform (1.6x
-brightness boost). Labels get a CSS glow effect (white text with blue
-text-shadow, 150ms transition). Hovered/selected labels maintain full opacity
-regardless of distance.
+## Anchor / label split
 
-## Label Distance Fade
+Visuals come from the instanced mesh. Interaction comes from
+`Object3D` anchors — one per labeled star (tier-0 + tier-1):
 
-Labels fade with camera distance using `smoothstep` for a gradual transition:
+- `src/billboard.ts#createStarAnchor` — invisible `Object3D` with a
+  custom `raycast` that intersects against a screen-space hit sphere
+  (`HIT_SCREEN_FRACTION` of the camera distance).
+- `src/billboard.ts#createStarLabel` — a CSS2D label child attached to
+  the anchor.
 
-```javascript
-opacity = 1.0 - smoothstep(dist, 5, 40)  // clamped to min 0.1
-```
+Tier-0 anchors are spawned eagerly at boot from `notable.json`. Tier-1
+anchors spawn when their containing tile's `.lbl.json` streams in and
+despawn when it evicts.
 
-Hovered and selected star labels override this to full opacity.
+`starOcclusion.ts#getStarDiscPx` returns the shader's `discPx`
+(physical disc radius) — the label margin pins to that. `getStarVisualPx`
+returns `halfBillPx` (disc + corona) — used by the screen-space
+occluder to hide background labels behind the bright star region.
 
-## Hitbox
+## Hover affordance
 
-Each star uses a custom `raycast` with a sphere whose radius scales with camera
-distance, giving a consistent screen-space hit area:
+`uHoveredPos` / `uHoveredActive` are shared uniforms. When the user
+hovers a star, `interaction.ts#showHover` publishes its world position;
+the shader matches the instance against that position and multiplies
+`vIntensity` by `HOVER_BOOST = 1.6`. The disc's physical size stays
+honest — only brightness bumps. Label glow (CSS `text-shadow`) is still
+the primary affordance; the intensity bump complements it.
 
-```javascript
-hitSphere.radius = cameraDistance * 0.02;
-```
+## Per-target zoom floors
 
-## Blending
+`setMinOrbitOverride(value)` sets a per-target orbit-radius floor. The
+value is the actual minimum — `applyZoom` clamps to it. Each selection
+type computes its own appropriate floor:
 
-Stars use `THREE.AdditiveBlending` with `depthWrite: false`. Additive blending
-means stars only add light — they never occlude each other, and overlapping halos
-naturally combine.
+- **Stars**: `computeStarMinOrbit(radius)` = `R · DISC_SCALE ·
+  F_HALF_TAN_INV / 0.5` — disc fills half the viewport height at
+  maximum zoom.
+- **Clusters / binaries**: max member distance from centroid × 1.5, with
+  a 3-scene-unit (≈1 pc) minimum so tight binaries still have a
+  reasonable floor.
+- **Nebulae**: fixed 15 scene units (≈5 pc). Nebulae are volumetric —
+  closer zooms put the camera inside the dust cube with nothing
+  interesting to see.
+- **Black holes**: `DEEP_ZOOM_MIN_ORBIT = 1e-20`. BH rendering is pure
+  screen-space (schwarzschild radius is a UV transform in
+  `scene.ts#lensingPass`), so precision holds down to the Float32 floor
+  and the user can zoom arbitrarily close to the event horizon.
 
-## Point cloud sizing and visibility
+`animateTo`'s default `toRadius` reads `getEffectiveMinOrbit()`, which
+returns the current override (or `MIN_ORBIT_RADIUS` if none). Callers
+must set the override *before* `animateTo` so the animation settles at
+the new target's appropriate viewing distance.
 
-The `THREE.Points` vertex shader (`src/starfield.ts`) renders every
-streamed star from every bucket (bright and medium) with a single
-physically-motivated formula driven by **apparent magnitude**.
+## Tile streaming
 
-The brightness byte in each tile's 16-byte record stores absolute
-magnitude linearly: `byte = (absmag + 10) · 10`, clamped to `[0, 255]`
-— i.e. one byte covers M ∈ [−10, +15.5] with 0.1-mag resolution. The
-vertex shader decodes it and computes apparent magnitude from the camera
-distance using the distance modulus:
+- Tiles are octree-spatialized. `bright` bucket (M < 0) is a single
+  always-loaded file; `medium` bucket streams by distance.
+- `precomputeTileSpheres` caches each tile's bounding sphere and
+  bucket `cullDist` at init. Per-frame tile iteration reads from this
+  cache — no `meta.tiles[path]` / `meta.buckets[...]` hash lookups
+  in the hot path.
+- Per-tile `opacityUniform` fades geometry in/out over `TILE_FADE_MS`
+  (400 ms) on load/evict.
+- **Distance fade**: `computeDistanceOpacity` multiplies in a smooth
+  1 → 0 ramp over the last `TILE_DIST_FADE_BAND = 20%` of `cullDist`.
+  Tiles cross the cull boundary at opacity 0, so there's no hard pop
+  on tile load/unload.
+- `MAX_LOADED_TILES = 80` — LRU eviction by `lastUsed` timestamp
+  keeps the active set bounded.
 
-```glsl
-float absMag = (brightness / 10.0) - 10.0;
-float dist   = max(-mvPosition.z, 1.0);
-float appMag = absMag + 5.0 * log(dist / 30.0) / 2.302585;  // 30 units = 10 pc
-```
+## Bloom
 
-The cutoff is driven by a `uMagLimit` uniform (default 7.5, tunable via
-the debug panel — a dark-sky naked-eye cutoff is 6.5; higher values
-simulate a more sensitive "eye" revealing more stars while preserving
-physically-correct relative brightness). Stars fainter than the limit
-are culled immediately. Brighter stars get larger points and higher
-intensity:
+`UnrealBloomPass` applies to the final image. Since each star has
+exactly one shader emitting its pixels (no stacking of point cloud +
+billboard + overlay), bloom bleeds from one coherent HDR source. Disc
+intensity stays near LDR saturation so the disc edge stays crisp; the
+corona's apparent-mag-driven intensity can go well above 1 and
+produces the bright bleeding halo that reads as "star glare."
 
-```glsl
-if (appMag > uMagLimit) { gl_Position = vec4(2, 2, 2, 1); return; }
-float visibility = 1.0 - smoothstep(uMagLimit - 1.5, uMagLimit, appMag);
-vBrightness = visibility * max(0.1, (uMagLimit - appMag) * 0.25);
-gl_PointSize = clamp((uMagLimit + 9.5) - appMag, 10.0, 32.0);
-```
-
-With the default `uMagLimit = 7.5`:
-
-| Apparent magnitude | Point size | Intensity factor | Notes |
-|---|---|---|---|
-| −5 (Venus-bright supergiant)   | 22 px | 3.1  | saturated core |
-| 0  (Vega, Rigel)               | 17 px | 1.9  | bright, prominent |
-| 3  (moderate naked-eye)        | 14 px | 1.1  | clear point |
-| 5  (naked-eye limit, dark sky) | 12 px | 0.63 | faint |
-| 7  (below dark-sky limit)      | 10 px | 0.13 (fading) | visible under the default eye |
-| 7.5+                           | —     | 0    | culled |
-
-The 10 px minimum is deliberately large. Smaller points have almost every
-pixel on the rasterized edge, where MSAA coverage fraction flickers as the
-point moves sub-pixel. Bloom amplifies that step into visible halo wobble.
-A 10 px minimum gives enough interior "fully-covered" pixels that the
-intensity stays stable across frames.
-
-Because the shader is driven by apparent magnitude, the **bright bucket**
-(always-loaded) and **medium bucket** (streamed) can share a single
-shader — a distant bright supergiant computes its own apparent mag from
-the camera's real distance and gets a large point, while a nearby dim red
-dwarf computes a mag close to the cutoff and gets a small, dim one.
-
-## Sub-pixel flicker and the texture-sampled glow
-
-The natural implementation — evaluate the glow profile in the fragment
-shader — produces visible halo flicker under bloom on slowly-moving stars.
-Root cause: the core is `exp(-d² · 30)`, a very steep gradient. Under
-sub-pixel sample jitter, neighboring frames land on different points of
-the gradient, changing fragment output. Bloom's Gaussian blur propagates
-that change outward, making it visible as a wobbling halo.
-
-The fix is to bake the glow profile once into a mipmapped `CanvasTexture`
-(`createStarGlowTexture` in `src/starShader.ts`) and sample it with
-trilinear filtering. The mipmap chain pre-filters the steep core across
-pixel footprints, so sub-pixel jitter produces bounded, smooth output.
-
-`StarMode.math` (evaluate in shader) and `StarMode.flat` (flat disc) are
-still available via the debug panel for visual comparison.
-
-## Post-Processing Bloom
-
-An `UnrealBloomPass` is applied to create light bleeding from bright stars:
-
-1. **Brightness extraction**: pixels above a luminance threshold are isolated
-2. **Multi-pass Gaussian blur**: separable horizontal/vertical blur on a mip chain
-3. **Additive composite**: blurred brightness is added back to the scene
-
-Current tuned parameters (`src/constants.ts`): `strength = 0.3`,
-`radius = 0.4`, `threshold = 0.1`.
-
-### HDR + MSAA composer render target
-
-The composer renders into a custom `WebGLRenderTarget` with
-`{ samples: 8, type: HalfFloatType }`:
-
-- **8× MSAA** eliminates geometry-edge coverage aliasing that would
-  otherwise accumulate into bloom flicker alongside the shader-gradient
-  flicker described above.
-- **HalfFloat** precision avoids the posterized contour banding visible
-  on bright-star halos when the composer RT is the default 8-bit type —
-  bloom blur accumulates many small contributions whose quantization
-  error shows up as visible step contours.
-
-The bloom pass's internal horizontal/vertical blur targets are also
-flipped to `HalfFloatType` for the same reason.
-
-### Bloom overscan
-
-`UnrealBloomPass` clamps blur samples to the edge of its render target.
-At screen edges that biases the kernel sum upward, making stars at the
-edge of the viewport bloom brighter than stars in the middle.
-
-Fix: render into a target ~1.2× larger than the viewport
-(`BLOOM_OVERSCAN = 1.2` in `src/scene.ts`) by temporarily widening the
-camera FOV in `beginBloomRender()`. Bloom runs on the oversized buffer
-with real scene data in the gutter. A final `ShaderPass` crops the
-center `1/OVERSCAN` region back to viewport size for display.
+Composer overscan (`BLOOM_OVERSCAN = 1.2`) widens the render target
+and camera fov by the same factor so bloom blur samples have valid
+data past the visible viewport edge; a final crop pass takes the
+center `1 / OVERSCAN` portion back to display. The instanced shader
+and selected-star overlay both render through `projectionMatrix`, so
+the widening self-compensates automatically.
 
 ## References
 
 - [Tanner Helland: Temperature to RGB](https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html)
 - [tiffnix: Rendering Star Fields in 3D](https://tiffnix.com/star-rendering)
 - [LearnOpenGL: Bloom](https://learnopengl.com/Advanced-Lighting/Bloom)
-- [Three.js UnrealBloomPass](https://threejs.org/docs/pages/UnrealBloomPass.html)
-- [Shadertoy: Glow Shader Tutorial](https://inspirnathan.com/posts/65-glow-shader-in-shadertoy/)
-- [SpaceEngine: Better Looking Stars](https://spaceengine.org/news/blog141015/)

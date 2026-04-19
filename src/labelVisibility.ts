@@ -6,16 +6,18 @@ export interface HighlightContext {
   clusterOf: Map<THREE.Object3D, SystemGroup>;
   hoveredSystem: SystemGroup | null;
   selectedSystem: SystemGroup | null;
+  selectedSubset: THREE.Object3D[] | null;
   lastHoveredMesh: THREE.Object3D | null;
   selectedMesh: THREE.Object3D | null;
 }
 
 // Label highlight = full opacity + glow + subtitle. True for individually
-// hovered/selected stars, and for binary/trinary system members whose
-// system is active. Cluster members are NOT label-highlighted when only
-// their cluster is active — they get billboard glow via highlightSystem
-// but their labels stay at normal opacity. A cluster member IS
-// label-highlighted when individually hovered or selected.
+// hovered/selected stars, and for binary/trinary system members that are
+// part of the active sub-selection. When a subset is pinned (e.g. A+B in
+// Alpha Centauri), non-subset members (Proxima) render independently —
+// the system designation is just a grouping for search/cluster labels,
+// not a blanket highlight. Cluster members keep normal label opacity
+// when only their cluster is active.
 export function shouldHighlightLabel(
   target: THREE.Object3D,
   ctx: HighlightContext,
@@ -23,10 +25,12 @@ export function shouldHighlightLabel(
   if (target === ctx.lastHoveredMesh || target === ctx.selectedMesh) return true;
 
   const sys = ctx.meshToSystem.get(target);
-  if (sys && (sys === ctx.hoveredSystem || sys === ctx.selectedSystem)) return true;
+  if (!sys) return false;
 
-  // Cluster membership does NOT trigger label highlight — only billboard glow.
-  return false;
+  if (sys === ctx.hoveredSystem) return true;
+  if (sys !== ctx.selectedSystem) return false;
+
+  return ctx.selectedSubset ? ctx.selectedSubset.includes(target) : true;
 }
 
 // Whether the target should be kept visible (target.visible = true) even

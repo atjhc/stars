@@ -3,21 +3,44 @@ import type { Star, SystemGroup, ClusterGroup } from "./types.ts";
 import { starGlowShadow } from "./color.ts";
 import { formatDist } from "./detail.ts";
 import { camera } from "./scene.ts";
-import { SCALE, LY_PER_PARSEC } from "./constants.ts";
+import { formatAstroDistance } from "./constants.ts";
 import { favoriteIcon } from "./detail.ts";
+import { getSelectedSystem, getSelectedSubset } from "./systemStore.ts";
 
 const CLUSTER_HIGHLIGHT_GLOW = "0 0 8px rgba(160,200,255,0.9), 0 0 20px rgba(130,170,255,0.4), 0 0 4px #000";
 
+// Returns the effective member subset for zoom-floor / focus-target /
+// URL-serialize purposes. When the user clicks a partially-collapsed
+// system label (e.g. "Rigil Kentaurus · Toliman" after Proxima
+// separates on screen), interaction.selectSystem snapshots that subset
+// into systemStore; this helper returns the snapshot so the selection
+// stays stable across subsequent zoom changes. Falls back to the full
+// group when no snapshot or the group isn't the active selection.
+export function effectiveSystemSubset(
+  group: SystemGroup,
+): { members: THREE.Object3D[]; centroid: THREE.Vector3 } {
+  if (getSelectedSystem() === group) {
+    const subset = getSelectedSubset();
+    if (subset && subset.length >= 2 && subset.length < group.meshes.length) {
+      const c = new THREE.Vector3();
+      for (const m of subset) c.add(m.position);
+      c.divideScalar(subset.length);
+      return { members: subset, centroid: c };
+    }
+  }
+  return { members: group.meshes, centroid: group.centroid };
+}
+
 export function focusTarget(group: SystemGroup, cameraPos: THREE.Vector3): THREE.Vector3 {
-  if (group.kind === "cluster") return group.centroid;
-  let nearest = group.meshes[0];
+  const { members, centroid } = effectiveSystemSubset(group);
+  if (group.kind === "cluster") return centroid;
+  let nearest = members[0];
   let nearestDist = Infinity;
-  for (const m of group.meshes) {
+  for (const m of members) {
     const d = m.position.distanceTo(cameraPos);
     if (d < nearestDist) { nearest = m; nearestDist = d; }
   }
-  return nearest.position.distanceTo(group.centroid) < 0.5
-    ? group.centroid : nearest.position;
+  return nearest.position.distanceTo(centroid) < 0.5 ? centroid : nearest.position;
 }
 
 export function applySystemLabelGlow(group: SystemGroup) {
@@ -39,23 +62,17 @@ export function removeSystemLabelGlow(group: SystemGroup) {
     group.kind === "cluster" ? group.defaultShadow : "";
 }
 
-function formatSceneDist(sceneUnits: number): string {
-  const ly = (sceneUnits / SCALE) * LY_PER_PARSEC;
-  if (ly < 1) return `${ly.toFixed(3)} ly`;
-  if (ly < 10) return `${ly.toFixed(2)} ly`;
-  return `${ly.toFixed(1)} ly`;
-}
-
-export function labelContent(group: SystemGroup, isActive: boolean): string {
-  if (group.kind === "cluster") {
-    if (!isActive) return group.name;
-    const dist = group.anchor.position.distanceTo(camera.position);
-    return `<div>${group.name}</div><div class="system-members">${formatSceneDist(dist)}</div>`;
-  }
+export function labelContent(group: SystemGroup, isActive: boolean, camDist: number): string {
   if (!isActive) return group.name;
+  const distLine = `<div class="system-members">${formatAstroDistance(camDist)}</div>`;
+  if (group.kind === "cluster") {
+    return `<div>${group.name}</div>${distLine}`;
+  }
   const members = group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes;
   const names = members.map((m) => (m.userData as Star).name);
-  return `<div>${group.name}</div><div class="system-members">${names.join(" · ")}</div>`;
+  return `<div>${group.name}</div>` +
+    `<div class="system-members">${names.join(" · ")}</div>` +
+    distLine;
 }
 
 function renderWikiLink(url: string | undefined): string {

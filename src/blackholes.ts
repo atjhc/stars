@@ -4,16 +4,16 @@ import {
   scene, camera, animateTo, setMinOrbitOverride,
   isDeepZoom, orbitRadius, lensingPass, BLOOM_OVERSCAN,
 } from "./scene.ts";
-import { SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL } from "./constants.ts";
+import {
+  SCALE, solDistanceFade, TILE_BASE_URL,
+  DEEP_ZOOM_MIN_ORBIT, formatAstroDistance,
+} from "./constants.ts";
 import { initLabelDragFn } from "./starfield.ts";
 import { setLabelsDirty } from "./systemStore.ts";
-import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
+import { registerLabelType, registerScreenOccluder, type LabelTypeHandler } from "./labelRegistry.ts";
 import type { RankedLabel } from "./labelCollision.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
-
-// 0.001 ly ≈ 3e-4 pc × SCALE(3) ≈ 0.001 scene units
-const BH_MIN_ORBIT = 0.001;
 
 const BH_LABEL_CSS = `
   color: rgba(180,140,220,0.85); font-size: 12px;
@@ -50,16 +50,6 @@ let selectedBH: BlackHoleLabel | null = null;
 let hoveredBH: BlackHoleLabel | null = null;
 let maxSolDist = 0;
 
-function formatBHDist(pc: number): string {
-  const ly = pc * LY_PER_PARSEC;
-  const au = ly * 63241;
-  const km = au * 1.496e8;
-  if (km < 1e6) return `${km.toFixed(0)} km`;
-  if (au < 1000) return `${au.toFixed(1)} AU`;
-  if (ly < 10) return `${ly.toFixed(2)} ly`;
-  return `${ly.toFixed(1)} ly`;
-}
-
 function applyGlow(bh: BlackHoleLabel) {
   bh.div.style.textShadow = BH_GLOW;
   setLabelsDirty(true);
@@ -72,7 +62,7 @@ function removeGlow(bh: BlackHoleLabel) {
 
 function buildDetailHtml(bh: BlackHoleLabel): string {
   const e = bh.entry;
-  const distPc = (bh === selectedBH ? orbitRadius : bh.anchor.position.distanceTo(camera.position)) / SCALE;
+  const dist = bh === selectedBH ? orbitRadius : bh.anchor.position.distanceTo(camera.position);
   const aliasLine = e.aliases && e.aliases.length > 0
     ? `<div class="star-aliases">${e.aliases.join(" · ")}</div>` : "";
   const wikiLink = e.wikipedia
@@ -85,7 +75,7 @@ function buildDetailHtml(bh: BlackHoleLabel): string {
     ${aliasLine}
     <div class="detail-body">
       <div class="star-detail">
-        Distance: ${formatBHDist(distPc)}<br>
+        Distance: ${formatAstroDistance(dist)}<br>
         Mass: ${e.mass_msun} M☉<br>
         Type: Stellar-mass black hole
       </div>
@@ -158,18 +148,10 @@ const bhHandler: LabelTypeHandler = {
     for (const bh of blackHoleLabels) {
       const isActive = bh === selectedBH || bh === hoveredBH;
       if (isActive) {
-        // Use orbitRadius for true distance (main camera is clamped in deep zoom)
+        // orbitRadius for the selected BH (main camera clamped during deep zoom);
+        // actual distance for a merely-hovered one.
         const trueDist = bh === selectedBH ? orbitRadius : bh.anchor.position.distanceTo(camera.position);
-        const pc = trueDist / SCALE;
-        const ly = pc * LY_PER_PARSEC;
-        const au = ly * 63241;
-        const km = au * 1.496e8;
-        let distText: string;
-        if (km < 1e6) distText = `${km.toFixed(0)} km`;
-        else if (au < 1000) distText = `${au.toFixed(1)} AU`;
-        else if (ly < 10) distText = `${ly.toFixed(2)} ly`;
-        else distText = `${ly.toFixed(1)} ly`;
-        bh.distDiv.textContent = distText;
+        bh.distDiv.textContent = formatAstroDistance(trueDist);
         bh.distDiv.style.display = "";
       } else {
         bh.distDiv.style.display = "none";
@@ -190,7 +172,7 @@ const bhHandler: LabelTypeHandler = {
     if (selectedBH && selectedBH !== bh) removeGlow(selectedBH);
     selectedBH = bh;
     applyGlow(bh);
-    setMinOrbitOverride(BH_MIN_ORBIT);
+    setMinOrbitOverride(DEEP_ZOOM_MIN_ORBIT);
     animateTo(bh.anchor.position);
     setLabelsDirty(true);
     return true;
@@ -263,4 +245,5 @@ export async function initBlackHoleLabels(): Promise<void> {
   }
 
   registerLabelType(bhHandler);
+  registerScreenOccluder(getBHScreenOcclusion);
 }

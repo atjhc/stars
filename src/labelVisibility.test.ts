@@ -38,7 +38,7 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(alcyone, {
       meshToSystem, clusterOf,
       hoveredSystem: pleiades, selectedSystem: null,
-      lastHoveredMesh: null, selectedMesh: null,
+      selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
   });
 
@@ -46,7 +46,7 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(maia, {
       meshToSystem, clusterOf,
       hoveredSystem: null, selectedSystem: pleiades,
-      lastHoveredMesh: null, selectedMesh: null,
+      selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
   });
 
@@ -54,7 +54,7 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(alcyone, {
       meshToSystem, clusterOf,
       hoveredSystem: pleiades, selectedSystem: null,
-      lastHoveredMesh: alcyone, selectedMesh: null,
+      selectedSubset: null, lastHoveredMesh: alcyone, selectedMesh: null,
     })).toBe(true);
   });
 
@@ -62,7 +62,7 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(alcyone, {
       meshToSystem, clusterOf,
       hoveredSystem: null, selectedSystem: null,
-      lastHoveredMesh: null, selectedMesh: null,
+      selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
   });
 
@@ -70,7 +70,7 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(siriusA, {
       meshToSystem, clusterOf,
       hoveredSystem: sirius, selectedSystem: null,
-      lastHoveredMesh: null, selectedMesh: null,
+      selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(true);
   });
 
@@ -78,7 +78,7 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(alcyone, {
       meshToSystem, clusterOf,
       hoveredSystem: null, selectedSystem: null,
-      lastHoveredMesh: alcyone, selectedMesh: null,
+      selectedSubset: null, lastHoveredMesh: alcyone, selectedMesh: null,
     })).toBe(true);
   });
 
@@ -86,7 +86,7 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(maia, {
       meshToSystem, clusterOf,
       hoveredSystem: null, selectedSystem: null,
-      lastHoveredMesh: null, selectedMesh: maia,
+      selectedSubset: null, lastHoveredMesh: null, selectedMesh: maia,
     })).toBe(true);
   });
 
@@ -94,8 +94,56 @@ describe("shouldHighlightLabel", () => {
     expect(shouldHighlightLabel(siriusA, {
       meshToSystem, clusterOf,
       hoveredSystem: pleiades, selectedSystem: null,
+      selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
+    })).toBe(false);
+  });
+
+  it("non-subset member is NOT highlighted when system is selected with subset", () => {
+    const proxima = makeMesh("Proxima Centauri");
+    const alphaCen = makeGroup("Alpha Centauri");
+    alphaCen.meshes = [siriusA, siriusB, proxima]; // reusing siriusA/B as A+B stand-ins
+    const m2s = new Map<any, SystemGroup>();
+    m2s.set(siriusA, alphaCen);
+    m2s.set(siriusB, alphaCen);
+    m2s.set(proxima, alphaCen);
+    expect(shouldHighlightLabel(proxima, {
+      meshToSystem: m2s, clusterOf,
+      hoveredSystem: null, selectedSystem: alphaCen,
+      selectedSubset: [siriusA, siriusB],
       lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
+  });
+
+  it("subset member IS highlighted when system is selected with subset", () => {
+    const proxima = makeMesh("Proxima Centauri");
+    const alphaCen = makeGroup("Alpha Centauri");
+    alphaCen.meshes = [siriusA, siriusB, proxima];
+    const m2s = new Map<any, SystemGroup>();
+    m2s.set(siriusA, alphaCen);
+    m2s.set(siriusB, alphaCen);
+    m2s.set(proxima, alphaCen);
+    expect(shouldHighlightLabel(siriusA, {
+      meshToSystem: m2s, clusterOf,
+      hoveredSystem: null, selectedSystem: alphaCen,
+      selectedSubset: [siriusA, siriusB],
+      lastHoveredMesh: null, selectedMesh: null,
+    })).toBe(true);
+  });
+
+  it("hover still spans whole system even when a subset is selected", () => {
+    const proxima = makeMesh("Proxima Centauri");
+    const alphaCen = makeGroup("Alpha Centauri");
+    alphaCen.meshes = [siriusA, siriusB, proxima];
+    const m2s = new Map<any, SystemGroup>();
+    m2s.set(siriusA, alphaCen);
+    m2s.set(siriusB, alphaCen);
+    m2s.set(proxima, alphaCen);
+    expect(shouldHighlightLabel(proxima, {
+      meshToSystem: m2s, clusterOf,
+      hoveredSystem: alphaCen, selectedSystem: null,
+      selectedSubset: null,
+      lastHoveredMesh: null, selectedMesh: null,
+    })).toBe(true);
   });
 });
 

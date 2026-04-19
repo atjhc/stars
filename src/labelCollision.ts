@@ -1,5 +1,13 @@
 import { COLLISION_PAD_PX, COLLISION_ALPHA_CUTOFF } from "./constants.ts";
-import { getBHScreenOcclusion } from "./blackholes.ts";
+import { collectScreenOccluders, type Occluder } from "./labelRegistry.ts";
+
+function rectInside(rect: DOMRect, occ: Occluder): boolean {
+  const cx = (rect.left + rect.right) / 2;
+  const cy = (rect.top + rect.bottom) / 2;
+  const dx = cx - occ.cx;
+  const dy = cy - occ.cy;
+  return dx * dx + dy * dy < occ.radius * occ.radius;
+}
 
 export type RankedLabel = {
   div: HTMLElement;
@@ -13,6 +21,32 @@ const FADE_MS = 400;
 const collisionHidden = new Set<HTMLElement>();
 const lastOpacity = new Map<HTMLElement, number>();
 const activeAnim = new WeakMap<HTMLElement, Animation>();
+
+// Drop every reference to a label's collision state. Called from the
+// tile streamer when a tier-1 label's div is torn down — otherwise the
+// tracking Maps/Sets leak HTMLElement references across long sessions.
+export function untrackLabel(div: HTMLElement): void {
+  const anim = activeAnim.get(div);
+  if (anim) { anim.cancel(); activeAnim.delete(div); }
+  collisionHidden.delete(div);
+  lastOpacity.delete(div);
+  visibleLabels.delete(div);
+}
+
+// Cancel in-flight fades and fully clear the collision tracking state for
+// every label we've touched. Called when the whole label layer is being
+// hidden so the next resolveCollisions pass treats labels as fresh —
+// otherwise labels that were collision-hidden stay hidden, and labels
+// that were visible replay a fade-out from the stale pre-hide opacity.
+export function resetCollisionFadeState(): void {
+  for (const [div] of lastOpacity) {
+    const anim = activeAnim.get(div);
+    if (anim) { anim.cancel(); activeAnim.delete(div); }
+    div.style.visibility = "";
+  }
+  lastOpacity.clear();
+  collisionHidden.clear();
+}
 
 // Labels currently rendered on screen (populated by labels.ts each dirty frame)
 export const visibleLabels = new Set<HTMLElement>();
@@ -91,7 +125,9 @@ export function resolveCollisions(labels: RankedLabel[]): void {
   // Each label in the current frame is re-evaluated below; labels no longer in
   // the frame stay in whatever state they were in (hidden labels remain hidden).
 
-  const bhOcc = getBHScreenOcclusion();
+  // Screen-space occlusion circles (BH shadow, selected star's disc, …).
+  // Sources register via labelRegistry.registerScreenOccluder.
+  const occluders = collectScreenOccluders();
 
   const grid = new Map<number, DOMRect[]>();
 
@@ -157,17 +193,12 @@ export function resolveCollisions(labels: RankedLabel[]): void {
       continue;
     }
 
-    // Hide labels occluded by the black hole shadow
-    if (bhOcc) {
-      const labelCx = (rect.left + rect.right) / 2;
-      const labelCy = (rect.top + rect.bottom) / 2;
-      const dx = labelCx - bhOcc.cx;
-      const dy = labelCy - bhOcc.cy;
-      if (dx * dx + dy * dy < bhOcc.radius * bhOcc.radius) {
-        hideLabel(div);
-        continue;
-      }
+    // Hide labels behind any registered occluder (BH shadow, star disc, …)
+    let occluded = false;
+    for (const occ of occluders) {
+      if (rectInside(rect, occ)) { occluded = true; break; }
     }
+    if (occluded) { hideLabel(div); continue; }
 
     if (overlapsPlaced(rect)) {
       hideLabel(div);

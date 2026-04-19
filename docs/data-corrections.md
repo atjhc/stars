@@ -23,6 +23,80 @@ The real 36 Ophiuchi stars (Gl 663A/B, aka Guniibuu) remain at ~5.9 pc.
 
 ## Corrections
 
+### Sol position offset
+
+- **Source**: AT-HYG stores Sol at `x0=0.000005, y0=0, z0=0` parsecs (a ~1 AU
+  offset from the heliocentric origin, possibly SSB-origin related)
+- **Problem**: At deep-zoom distances (≤ 1 AU from Sol), the 1 AU offset
+  between Sol's point-cloud position (from tile binary) and its notable
+  billboard position (rounded to 4 decimals → 0) becomes visible as two
+  separate renderings of the same star
+- **Fix**: Force `Sol` to `(0, 0, 0)` in `build-catalog.py`
+
+### Cartesian positions derived from ra/dec (not AT-HYG's x0/y0/z0)
+
+- **Source**: AT-HYG's pre-computed `x0`/`y0`/`z0` columns are rounded to
+  3 decimals of parsec (~4.8 AU resolution at 1 pc). The `ra` and `dec`
+  columns are preserved at 8-decimal precision.
+- **Problem**: For tight binaries, the 4.8 AU rounding is coarser than
+  their actual separation, collapsing both components to the identical
+  cartesian coordinate. Example: Rigil Kentaurus (HIP 71683) and
+  Toliman (HIP 71681) have distinct RA/Dec but both round to
+  `(-0.495, -0.414, -1.157) pc` even though their real 3D separation at
+  that epoch is 25.3 AU.
+- **Fix**: `build-catalog.py` now derives equatorial cartesian directly
+  from `ra`/`dec`/`dist` at full precision. This uses the same real
+  Hipparcos astrometry AT-HYG used when producing `x0`/`y0`/`z0` — we
+  just skip the intermediate rounding. Relative positions for well-
+  separated stars are unaffected (the per-component shift is well under
+  the original rounding error).
+- **Notes**: Gaia doesn't help for Alpha Cen A/B — they're too bright
+  (mag 0 and 1.35) for Gaia's detectors, which saturate around mag 3.
+  Only Proxima (mag 11) has a Gaia ID in AT-HYG.
+
+### `pos_offset_au` augmentation field
+
+Augmentations accept an optional `pos_offset_au: [dx, dy, dz]` field
+(equatorial-cartesian AU) to nudge a catalog star's final position.
+Escape hatch for cases where the derived RA/Dec cartesian still needs
+a manual correction; currently unused by any curated entry.
+
+### Synthetic companion entries with parent + offset
+
+Some well-known multi-star systems are absent from AT-HYG because the
+companions are too faint for Hipparcos, too bright for Gaia, or simply
+not catalogued under a Gliese/HD/HIP identifier that AT-HYG includes.
+The `synthetic` block in an augmentation now supports three position
+forms:
+
+```
+synthetic:
+  parent:    "Sirius"         # name of an existing primary
+  offset_au: [14, 14, 0]      # equatorial-cartesian AU, relative to parent
+# — OR —
+  ra:   6.752767              # hours
+  dec: -16.711650             # degrees
+  dist: 2.6371                # parsecs
+# — OR —
+  x: -0.495, y: 2.477, z: -0.758  # equatorial cartesian, parsecs (legacy)
+```
+
+`parent + offset_au` is preferred for companions whose position is
+naturally specified as "N AU from the primary." The offset uses
+equatorial cartesian coordinates; magnitude matches real linear
+separation, direction is approximated (true orbital orientation isn't
+reconstructible from a static render).
+
+Companions currently added this way:
+
+- **Sirius B** (white dwarf): 20 AU from Sirius A. Orbital semi-major
+  axis 19.8 AU; current separation ~29 AU widening toward apastron.
+- **40 Eridani B** (white dwarf): 415 AU from Keid. AT-HYG has only
+  Keid (HIP 19849); B is absent. 83" apparent separation from A at PA
+  ~104°.
+- **40 Eridani C** (red dwarf, DY Eri): 415 AU from Keid, 20 AU from
+  B (230-year inner B+C orbit).
+
 ### System Misattributions
 
 #### Gl 664 assigned to wrong system

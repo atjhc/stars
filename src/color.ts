@@ -1,9 +1,24 @@
 import * as THREE from "three";
+import { SCALE } from "./constants.ts";
+
+const T_SUN = 5778;
+const R_SUN_SCENE = 2.254e-8 * SCALE; // solar radius in scene units
+
+// B-V color index → blackbody temperature (Ballesteros' approximation).
+function bvToTemp(ci: number): number {
+  const c = Math.max(-0.4, Math.min(2.0, ci));
+  return 4600.0 * (1.0 / (0.92 * c + 1.7) + 1.0 / (0.92 * c + 0.62));
+}
+
+// Physical stellar radius in scene units via Stefan-Boltzmann.
+export function starRadiusScene(lum: number, ci: number): number {
+  const temp = bvToTemp(ci);
+  const rSolar = Math.sqrt(Math.max(lum, 1e-6)) / Math.pow(temp / T_SUN, 2);
+  return rSolar * R_SUN_SCENE;
+}
 
 export function bvToColor(ci: number): THREE.Color {
-  if (ci < -0.4) ci = -0.4;
-  if (ci > 2.0) ci = 2.0;
-  const temp = 4600.0 * (1.0 / (0.92 * ci + 1.7) + 1.0 / (0.92 * ci + 0.62));
+  const temp = bvToTemp(ci);
   const t = temp / 100.0;
   let r: number, g: number, b: number;
   if (t <= 66) { r = 1.0; } else { r = Math.min(1, 329.698727446 * Math.pow(t - 60, -0.1332047592) / 255); }

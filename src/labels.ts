@@ -1,17 +1,22 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
-  LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ, SCALE,
-  LY_PER_PARSEC, solDistanceFade,
+  LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ,
+  solDistanceFade, formatAstroDistance,
 } from "./constants.ts";
-import { camera, animation, isDeepZoom, orbitRadius } from "./scene.ts";
+import {
+  camera, animation, isDeepZoom, orbitRadius, labelCamera, labelCamOffset,
+} from "./scene.ts";
 import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
+import { computeStarScreenMetrics } from "./stars.ts";
+import { starRadiusScene } from "./color.ts";
+import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
 import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
 import { type RankedLabel, resolveCollisions, isLabelInteractive, isCollisionHidden, visibleLabels } from "./labelCollision.ts";
-import { collectAllRegisteredLabels } from "./labelRegistry.ts";
+import { collectAllRegisteredLabels, clearFrameOccluders, pushFrameOccluder } from "./labelRegistry.ts";
 import {
-  getSelectedMesh, getSelectedSystem, getHoveredSystem, getLastHoveredMesh,
-  isLabelsDirty, setLabelsDirty,
+  getSelectedMesh, getSelectedSystem, getSelectedSubset, getHoveredSystem,
+  getLastHoveredMesh, isLabelsDirty, setLabelsDirty,
 } from "./systemStore.ts";
 import { updateSystemLabelText, unhoverAll } from "./interaction.ts";
 import { starGlowShadow } from "./color.ts";
@@ -22,19 +27,18 @@ const labelsWithSubtitle = new WeakSet<HTMLElement>();
 let cachedMaxNotableSolDist = 0;
 let cachedMaxClusterSolDist = 0;
 
-function formatSceneDistance(sceneUnits: number): string {
-  const ly = (sceneUnits / SCALE) * LY_PER_PARSEC;
-  if (ly < 1) return `${ly.toFixed(3)} ly`;
-  if (ly < 10) return `${ly.toFixed(2)} ly`;
-  return `${ly.toFixed(1)} ly`;
-}
 
 const projVec = new THREE.Vector3();
-const screenBuf = { x: 0, y: 0 };
+const screenBuf = { x: 0, y: 0, behind: false };
+// Use labelCamera (unclamped world position) so screen positions match
+// where CSS2DRenderer actually places the <div>s and where the shader
+// draws the disc (target-relative render, also unclamped). The main
+// `camera` is Float32-clamped at deep zoom and would mis-project.
 function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
-  projVec.copy(pos).project(camera);
+  projVec.copy(pos).project(labelCamera);
   screenBuf.x = (projVec.x * 0.5 + 0.5) * window.innerWidth;
   screenBuf.y = (-projVec.y * 0.5 + 0.5) * window.innerHeight;
+  screenBuf.behind = projVec.z > 1;
   return screenBuf;
 }
 
@@ -50,14 +54,6 @@ function setLabelStyle(div: HTMLElement, opacity: string, zIndex: string) {
 function cssLabelChild(target: THREE.Object3D): THREE.Object3D | undefined {
   for (const c of target.children) if ((c as THREE.Object3D & { isCSS2DObject?: boolean }).isCSS2DObject) return c;
   return undefined;
-}
-
-function projectGroupToScreen(group: import("./types.ts").BinarySystem) {
-  for (let i = 0; i < group.meshes.length; i++) {
-    const s = projectToScreen(group.meshes[i].position);
-    group.screens[i].x = s.x;
-    group.screens[i].y = s.y;
-  }
 }
 
 const prevCamPos = new THREE.Vector3();
@@ -78,9 +74,15 @@ export function updateLabels(
 
   const frameLabels: RankedLabel[] = [];
   visibleLabels.clear();
+  clearFrameOccluders();
 
   const magLimit = magLimitUniform.value;
-  const tier0FadeStart = magLimit - 1.5;
+  // Narrow fade band: tier-0 labels stay at full opacity until the star
+  // is nearly at the render cutoff, then ease out over 0.5 mag. A wider
+  // band muted nearby-but-intrinsically-dim notables (e.g. Proxima
+  // viewed from Alpha Centauri A+B), which the user expects to see
+  // clearly whenever they'd be rendered at all.
+  const tier0FadeStart = magLimit - 0.5;
 
   // Cache max Sol distance for notables (positions are static after init).
   if (cachedMaxNotableSolDist === 0 && notableAnchors.length > 0) {
@@ -91,13 +93,14 @@ export function updateLabels(
   }
 
   const selectedSystem = getSelectedSystem();
+  const selectedSubset = getSelectedSubset();
   const hoveredSystem = getHoveredSystem();
   const selectedMesh = getSelectedMesh();
   const lastHoveredMesh = getLastHoveredMesh();
 
   const hlCtx: import("./labelVisibility.ts").HighlightContext = {
     meshToSystem, clusterOf,
-    hoveredSystem, selectedSystem,
+    hoveredSystem, selectedSystem, selectedSubset,
     lastHoveredMesh, selectedMesh,
   };
 
@@ -146,11 +149,34 @@ export function updateLabels(
       continue;
     }
 
+    // Any focus on a member of this group disables the on-screen
+    // collapse — the user explicitly asked for the other members to
+    // render as normal stars, so Proxima's label shouldn't disappear
+    // into an "Alpha Centauri · A · B" aggregate when the user is
+    // zoomed in on the pair. Collisions between individual labels
+    // are then handled naturally by resolveCollisions.
+    const memberInFocus = (m: THREE.Object3D | null) =>
+      m !== null && meshToSystem.get(m) === group;
+    const skipCollapse =
+      (selectedSystem === group && selectedSubset !== null)
+      || memberInFocus(selectedMesh)
+      || memberInFocus(lastHoveredMesh);
+
+    if (skipCollapse) {
+      group.collapsedMembers = [];
+      group.label.visible = false;
+      continue;
+    }
+
     const n = group.meshes.length;
     const screens = group.screens;
     const parent = group.parents;
 
-    projectGroupToScreen(group);
+    for (let i = 0; i < n; i++) {
+      const s = projectToScreen(group.meshes[i].position);
+      screens[i].x = s.x;
+      screens[i].y = s.y;
+    }
     for (let i = 0; i < n; i++) parent[i] = i;
 
     function find(i: number): number { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
@@ -175,7 +201,7 @@ export function updateLabels(
     }
 
     if (bestRoot >= 0) {
-      const members: THREE.Mesh[] = [];
+      const members: THREE.Object3D[] = [];
       for (let i = 0; i < n; i++) {
         if (find(i) === bestRoot) members.push(group.meshes[i]);
       }
@@ -223,9 +249,26 @@ export function updateLabels(
     const div = divFor(target);
     if (!div) return;
 
-    const camDist = target.position.distanceTo(camera.position);
-    const sys = meshToSystem.get(target);
+    // Unclamped camera position: camera.position is clamped to 0.001
+    // during deep zoom (Float32 safety), which would vastly over-estimate
+    // camDist for stars near the target and shrink their disc-size math.
+    const camDist = target.position.distanceTo(labelCamOffset);
     const star = target.userData as Star;
+    const radius = starRadiusScene(star.lum, star.ci);
+    const discPx = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20)).discPx;
+
+    // Every rendered star's disc occludes labels behind it. Register
+    // the occluder before any early-return so a collapsed-system
+    // member (whose individual label is hidden) still hides labels
+    // that project inside its visible disc.
+    if (discPx > 2) {
+      const s = projectToScreen(target.position);
+      if (!s.behind) {
+        pushFrameOccluder({ cx: s.x, cy: s.y, radius: discPx });
+      }
+    }
+
+    const sys = meshToSystem.get(target);
     const isHighlighted = shouldHighlightLabel(target, hlCtx);
 
     // CSS2DObject child; toggled separately from target.visible so a
@@ -243,6 +286,11 @@ export function updateLabels(
     }
     if (css) css.visible = true;
 
+    // Label margin clears the star's disc (which can grow past the
+    // default 16px when the camera is close).
+    const margin = Math.min(discPx, window.innerHeight) + LABEL_DISC_BUFFER_PX;
+    div.style.marginTop = `${margin}px`;
+
     const zIndex = String(Math.round(10000 - camDist * 100));
     const isTier0 = star.tier === 0;
     const owningGroup = sys ?? clusterOf.get(target);
@@ -252,8 +300,9 @@ export function updateLabels(
       target.visible = true;
       setLabelStyle(div, "1", zIndex);
 
-      // Selected target(s) show distance from camera. Hovered others show
-      // distance from the current selection (star position or system centroid).
+      // Selected target(s) show distance from camera. Hovered others
+      // show distance from the current selection (so the user sees how
+      // far the hovered star is from what they're orbiting).
       const isSelectedTarget = target === selectedMesh
         || (sys !== undefined && sys === selectedSystem);
       let subtitleDist = camDist;
@@ -261,7 +310,7 @@ export function updateLabels(
         if (selectedMesh) subtitleDist = target.position.distanceTo(selectedMesh.position);
         else if (selectedSystem) subtitleDist = target.position.distanceTo(selectedSystem.centroid);
       }
-      div.innerHTML = `<div>${star.name}</div><div class="system-members">${formatSceneDistance(subtitleDist)}</div>`;
+      div.innerHTML = `<div>${star.name}</div><div class="system-members">${formatAstroDistance(subtitleDist)}</div>`;
       labelsWithSubtitle.add(div);
       if (isSystemMemberHighlighted) {
         div.style.textShadow = starGlowShadow(star.ci);
@@ -277,15 +326,14 @@ export function updateLabels(
     }
     if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
 
-    // Cluster members whose cluster is active: keep the Object3D visible
-    // (so the billboard glow from highlightSystem renders) but don't
-    // override the label's normal fade styling.
+    // Keep cluster members visible when their cluster is active, but
+    // leave the label's normal fade styling intact.
     const forceVis = shouldForceVisible(target, hlCtx);
     const favBonus = isFavorite(star.name) ? 5000 : 0;
 
     if (isTier0) {
-      const appMag = apparentMag(star.absmag ?? 10, camDist);
-      const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 1.5, 0, 1);
+      const appMag = apparentMag(star.absmag ?? 10, Math.max(camDist, 1e-20));
+      const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 0.5, 0, 1);
       if (t >= 1) {
         target.visible = forceVis;
         return;

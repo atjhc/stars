@@ -115,7 +115,12 @@ function createEmissionMaterial(
       uVolumeSize: { value: volSize },
       uSceneToGal: { value: new THREE.Matrix3().copy(GAL_TO_SCENE).invert() },
       uCameraPos: { value: new THREE.Vector3() },
-      uOpacity: { value: 0.12 },
+      // Calibrated against the physical star rendering in stars.ts —
+      // stars past the naked-eye magnitude limit now fade to zero, so
+      // the old 0.12 made nebulae pop against an unnaturally dark
+      // stellar background. ~1/3 that intensity matches the feel of
+      // nearby bright stars without overwhelming them.
+      uOpacity: { value: 0.04 },
       uMagLimit: magLimitUniform,
     },
     vertexShader: SHARED_VERTEX,

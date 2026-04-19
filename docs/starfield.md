@@ -64,9 +64,9 @@ be rich without being promoted to tier 0.
 
 | Tier | Selection criteria | Runtime cost | Visible at |
 |---|---|---|---|
-| **0 — notable** | `(has_proper AND mag < 4.0)` OR `aug.notable === true` | Eager: persistent `Object3D` anchor + always-on CSS2D label at boot. Billboard mesh spawns/despawns with its tile for close-range visual glow. | All distances (subject to `NOTABLE_FADE_NEAR/FAR`) |
-| **1 — named** | Has a catalog name (Bayer/Flamsteed/Gliese/HIP/HD/HR) AND (`mag < 6.0` OR `aug.system` present) | Lazy: billboard + child CSS2D label spawn when tile enters tier-1 range; despawn on eviction | Only when its tile is within `meta.labelTierVisibility["1"]` (~50 ly) |
-| **2 — none** | No name, too faint, or `aug.notable === false` | Pure point cloud, no billboard, no label, not interactive | Never has a label |
+| **0 — notable** | `(has_proper AND mag < 4.0)` OR `aug.notable === true` | Eager: `Object3D` anchor + always-on CSS2D label at boot. Rendered by the instanced mesh like every other star. | All distances (subject to `NOTABLE_FADE_NEAR/FAR`) |
+| **1 — named** | Has a catalog name (Bayer/Flamsteed/Gliese/HIP/HD/HR) AND (`mag < 6.0` OR `aug.system` present) | Lazy: anchor + child CSS2D label spawn when tile enters tier-1 range; despawn on eviction | Only when its tile is within `meta.labelTierVisibility["1"]` (~50 ly) |
+| **2 — none** | No name, too faint, or `aug.notable === false` | Rendered by the instanced mesh; no anchor, no label, not interactive | Never has a label |
 
 The tier-0 magnitude cutoff gives ~265 globally-labeled stars — mostly the
 bright naked-eye IAU names (Sirius, Vega, Deneb, …). Dim-but-famous nearby
@@ -77,42 +77,40 @@ a bright star (rarely needed).
 
 The tier-1 magnitude filter is the single biggest reason the label layer is
 only ~1 MB instead of ~40 MB. AT-HYG includes catalog identifiers for hundreds
-of thousands of stars far below naked-eye visibility — they render in the
-point cloud but don't get individual labels.
+of thousands of stars far below naked-eye visibility — the instanced mesh
+still draws them, but they don't get individual labels.
 
 The `aug.system` exception in tier-1 ensures multi-star system companions like
 Sirius B (mag ~8) stay selectable so the system clustering still works.
 
-## Rendering model: anchors vs billboards
+## Rendering model: one instanced mesh + anchors for interaction
 
-Tier-0 stars use a two-object model that decouples label persistence from
-visual cost:
+All stars render through a single instanced-quad mesh per tile — see
+[docs/stars.md](./stars.md) for the shader math and architecture. Tiers
+differ only in whether they have an **anchor** attached for interaction.
 
-- An **anchor** (`Object3D`, no geometry, no shader) is created once at boot
-  from `notable.json` and lives in the scene forever. It carries the
-  `CSS2DObject` label and the star's `userData`.
-- A **billboard mesh** (`Mesh` with the billboard shader + screen-space hit
-  sphere) is spawned *alongside* the anchor at boot — also from `notable.json`,
-  which bakes the scene-space position, luminosity, and color index needed
-  for the shader. This means canvas hover works for every notable star
-  regardless of whether its octree tile is currently streamed. The billboard
-  shader fades its visible glow out past `camDist ≈ 40`, so distant tier-0
-  billboards are visually invisible; the point cloud handles their appearance
-  while the eager billboard provides only the raycast hit target.
+An anchor is a lightweight `Object3D` (no geometry, no material) placed at
+the star's scene position. It carries the `CSS2DObject` label and a custom
+`raycast` that intersects against a screen-space hit sphere. Anchors come
+in two flavors:
 
-Raycast hits on a tier-0 billboard are normalized back to the anchor via
-`canonicalTarget()` so hover/select identity is consistent regardless of
-how the user interacted (canvas click or label click). A ripple-highlight
-via `setCompanionResolver()` mirrors `uHighlight` between anchor and
-billboard so the shader glow still fires when the user hovers.
+- **Tier-0 anchors** are spawned at boot from `notable.json`. Their labels
+  are always subject to distance-fade styling but never evicted.
+- **Tier-1 anchors** spawn when their containing tile's `.lbl.json`
+  streams in and despawn on eviction.
 
-Tier-1 stars use a single-object model: the billboard mesh *is* the
-label-bearing target, with the `CSS2DObject` as a child. Lifecycle is bound
-to the tile.
+Tier-2 stars have no anchor — they're drawn by the instanced mesh but not
+interactive.
+
+The *selected* star gets rendered a second time by a screen-space overlay
+(same trick as the black-hole lensing pass) so its position is
+precision-exact at any zoom level; the instanced pass skips that one
+instance to avoid double-drawing. See
+[docs/stars.md#selected-star-overlay](./stars.md#selected-star-overlay).
 
 When system clustering collapses nearby members in screen space, `labels.ts`
 hides the individual labels via `cssLabelChild.visible = false` (the child
-`CSS2DObject`), keeping the parent mesh/anchor visible and raycastable so
+`CSS2DObject`), keeping the parent anchor visible and raycastable so
 clicking a collapsed star's orb still routes to the system via
 `meshToSystem`.
 
@@ -120,7 +118,7 @@ clicking a collapsed star's orb still routes to the system via
 
 ### `tile_<path>.bin` (geometry, lazy)
 
-Flat binary, no header. Stars packed contiguously at 16 bytes each, little-endian:
+Flat binary, no header. Stars packed contiguously at 20 bytes each, little-endian:
 
 ```
 Offset  Size    Type      Field
@@ -128,14 +126,16 @@ Offset  Size    Type      Field
 0       4       float32   x (scene-space)
 4       4       float32   y (scene-space)
 8       4       float32   z (scene-space)
-12      1       uint8     brightness (0–255)
+12      1       uint8     brightness byte (absmag encoded linearly)
 13      1       uint8     r
 14      1       uint8     g
 15      1       uint8     b
+16      4       float32   physical radius (scene units)
 ```
 
-A tile with N stars is exactly `N × 16` bytes. Designed for direct upload to
-GPU buffers with minimal client-side processing.
+A tile with N stars is exactly `N × 20` bytes. The per-star record maps
+directly to the instanced shader's attribute layout — no reshaping
+client-side beyond a single `DataView` loop.
 
 Scene-space coordinates apply a Y/Z swap on top of the catalog's galactic
 Cartesian frame:
@@ -148,13 +148,19 @@ scene_z = -catalog_y × SCALE
 
 `SCALE = 3` (parsecs to scene units), so 1 ly ≈ 0.92 units.
 
-Brightness encoding mirrors the billboard formula:
+Brightness byte encodes absolute magnitude linearly:
 
 ```
-lum = 10^((4.74 - absMag) / 2.5)
-raw = max(0.8, min(2.5, 0.9 + 0.35 × log10(lum)))
-byte = raw / 2.5 × 255
+byte = clamp(round((absmag + 10) × 10), 0, 255)   // M ∈ [-10, +15.5] at 0.1-mag
 ```
+
+The shader recovers `absMag = byte × 0.1 − 10` and computes apparent
+magnitude per-frame via the distance modulus.
+
+Radius is computed at build time via Stefan-Boltzmann (`radius_scene`
+helper in `build-catalog.py`, identical formula to `src/color.ts`'s
+`starRadiusScene`). Baking it in removes the need to reconstruct
+temperature from the quantized RGB color at runtime.
 
 Color bytes come from B-V via Ballesteros + Tanner Helland with 1.8× saturation.
 
@@ -185,8 +191,7 @@ references the binary by index:
 ```
 
 `i` is the index into `tile_<path>.bin`. The runtime looks up the position
-(and color, brightness) from the binary array and creates a billboard mesh
-at that location.
+from the instance attribute at that index and spawns an anchor there.
 
 ### `meta.json` (catalog manifest, eager)
 
@@ -194,7 +199,7 @@ at that location.
 {
   "tileCount": 183,
   "totalStars": 1855430,
-  "bytesPerStar": 16,
+  "bytesPerStar": 20,
   "labelTierVisibility": { "0": 100000, "1": 150 },
   "bounds": { "min": [...], "max": [...] },
   "tiles": {
@@ -235,9 +240,9 @@ Pre-computed system groupings. Members are referenced by `(tile, i)`:
 }
 ```
 
-The runtime rebuilds `SystemGroup` objects whenever the set of currently-spawned
-billboards changes; only systems whose members are all present render their
-collapsing-cluster label.
+The runtime rebuilds `SystemGroup` objects whenever the set of
+currently-spawned anchors changes; only systems whose members are all
+present render their collapsing-cluster label.
 
 ## Brightness buckets
 
@@ -296,56 +301,61 @@ Pure data layer. Boots by fetching `meta.json`, `notable.json`, and
 
 ### `src/starfield.ts`
 
-Owns all tile lifecycle: geometry tiles, label tiles, billboard meshes, and
-dynamic `SystemGroup` rebuilding. Per-frame (every 500 ms it):
+Owns tile lifecycle: geometry tiles, label tiles, anchors, and dynamic
+`SystemGroup` rebuilding. Every 500 ms:
 
 1. Computes the camera frustum and tests each tile's bounding sphere.
-2. For each tile, looks up its bucket's cull distance from
-   `meta.buckets[tile.bucket].cullDist`. If `null` (the `bright` bucket),
-   the tile is always loaded regardless of camera position. Otherwise the
-   tile loads when its center is within the bucket cull distance and in
-   the frustum, via `fetch()` → `DataView` → `BufferGeometry` → `THREE.Points`.
+2. For each tile, reads its cached `cullDist` from `tileStatic` (built
+   at init from `meta.buckets[tile.bucket].cullDist`). `null` means
+   always-loaded (the `bright` bucket). Otherwise the tile loads when
+   its center is within `cullDist` and in the frustum, via `fetch()` →
+   `DataView` → `InstancedBufferGeometry`.
 3. Independently triggers `loadTileLabels(path)` for any tile whose center is
    within `meta.labelTierVisibility["1"]` (default 150 units, ~50 ly).
 4. When a label tile arrives **and** its geometry tile is loaded, walks the
-   label rows and spawns a billboard mesh + CSS2D label for each tier-1 entry,
-   reading positions from the binary geometry buffer. Tier-0 entries are
-   skipped here — they were spawned eagerly from `notable.json` at boot.
+   label rows and spawns an anchor + CSS2D label for each tier-1 entry,
+   reading positions from the decoded instance buffer. Tier-0 entries
+   are skipped — they were spawned eagerly from `notable.json` at boot.
 5. When a tile is evicted (LRU past 80 loaded tiles, or it leaves the tier-1
-   radius), despawns its billboards, disposes their materials/geometries, and
-   removes their entries from the global interactive list. Always-loaded
-   buckets (`cullDist === null`) are exempt from LRU eviction.
-6. Rebuilds `SystemGroup` objects whenever the membership of the spawned-set
-   changes — only systems with all members currently present become groups.
+   radius), despawns its anchors, calls `untrackLabel` on each div to
+   clean collision-tracking state, disposes the instanced geometry and
+   material. Always-loaded buckets (`cullDist === null`) are exempt from
+   LRU eviction.
+6. Rebuilds `SystemGroup` objects whenever the anchor set changes —
+   only systems with all members currently present become groups.
+
+Every frame, `tickTileFades` runs:
+
+- Load/evict fade: the standard 400 ms opacity animation on tile
+  creation/disposal.
+- Distance fade: smooth 1 → 0 ramp over the last `TILE_DIST_FADE_BAND
+  = 20%` of `cullDist`. Tiles cross the cull boundary at opacity 0 so
+  there's no hard pop on load/unload.
+
+### `src/stars.ts`
+
+Unified rendering: the instanced shader, the selected-star overlay, the
+tile-binary decoder (`decodeTileBinary`), and the CPU-side single source
+of truth for per-star screen metrics (`computeStarScreenMetrics` — used
+by the overlay driver, label margin, and occluder). See
+[docs/stars.md](./stars.md).
 
 ### `src/main.ts`
 
-Slimmed down to wire-up only: input events, render loop, system label
-event handlers (re-attached via `onLabelsChanged`), Sol selection on boot.
-Does not own any star data.
-
-### Two-layer rendering
-
-Every star renders through the point cloud (`THREE.Points`) for visual
-consistency. Tier-0 and tier-1 stars *additionally* render as billboard meshes
-when in close range, providing the colored glow + click target. The billboard
-shader uses `proximityFade = smoothstep(40.0, 10.0, camDist)` to fade out at
-distance, so far-away billboards don't visually overpower the point cloud.
+Wire-up only: input events, render loop, system label event handlers
+(re-attached via `onLabelsChanged`), Sol selection on boot. Caches the
+selected star's `radius` / `color` on selection change so the per-frame
+overlay update doesn't recompute them. Does not own any star data.
 
 ## Streaming performance
 
-- **Fetch**: each geometry tile is 0.5–750 KB; each label tile is typically 1–50 KB
+- **Fetch**: each geometry tile is 0.5–900 KB; each label tile is typically 1–50 KB
 - **Decode**: parsing 50 K stars takes ~2 ms
-- **Render**: one point-cloud draw call per loaded tile (~80 max)
-- **Billboards**: tens to a few hundred at a time when zoomed in close
-- **Memory**: ~80 tiles × ~800 KB GPU buffer ≈ 64 MB GPU peak
-
-## Anti-aliasing
-
-Stars that would render smaller than 4 px get their brightness faded to zero
-via `smoothstep(4.0, 8.0, rawSize)` to prevent sub-pixel flickering during
-camera rotation. Stars below 4 px are discarded entirely (`gl_Position` moved
-off-screen).
+- **Render**: one instanced draw call per loaded tile (~80 max), plus the
+  selected-star overlay (a single additional mesh)
+- **Anchors**: tens to a few hundred at a time when zoomed in close — no
+  geometry, just `Object3D`s with custom `raycast`
+- **Memory**: ~80 tiles × ~1 MB GPU buffer ≈ 80 MB GPU peak
 
 ## Building
 
@@ -394,4 +404,4 @@ their catalog designation).
 
 - [AT-HYG Database](https://codeberg.org/astronexus/athyg) (CC-BY-SA 4.0)
 - [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) — source for 97.5% of distances
-- [Three.js Points](https://threejs.org/docs/#api/en/objects/Points)
+- [Three.js InstancedBufferGeometry](https://threejs.org/docs/#api/en/core/InstancedBufferGeometry)

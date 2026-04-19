@@ -40,6 +40,32 @@ MAX_DIST_PC = 1000                 # ~3260 ly
 NOTABLE_VISIBILITY_UNITS = 100000  # tier-0 labels: effectively always visible
 NAMED_VISIBILITY_UNITS = 150       # tier-1 labels: ~50 ly close-only window
 
+# Physical radius baked into the tile binary. Matches src/color.ts's
+# starRadiusScene so the renderer can use it directly as an instance
+# attribute (no B-V → temp derivation needed at runtime).
+T_SUN = 5778
+R_SUN_SCENE = 2.254e-8 * SCALE     # solar radius in scene units (~6.76e-8)
+
+
+def radius_scene(absmag: float, ci: float) -> float:
+    """Physical stellar radius in scene units via Stefan-Boltzmann."""
+    lum = max(10 ** ((4.74 - absmag) / 2.5) if absmag < 20 else 0.001, 1e-6)
+    ci_clamped = max(-0.4, min(2.0, ci))
+    temp = 4600.0 * (1.0 / (0.92 * ci_clamped + 1.7) + 1.0 / (0.92 * ci_clamped + 0.62))
+    r_solar = math.sqrt(lum) / (temp / T_SUN) ** 2
+    return r_solar * R_SUN_SCENE
+
+
+def f32(x: float) -> float:
+    """Round a Python float to its Float32 representation. JSON serializes
+    the result with enough decimal digits that JS's Float64 parse can
+    recover the exact same Float32 value when uploaded to the GPU — so
+    anchor positions (from notable.json) match the corresponding instance
+    positions (from the tile binary) bit-for-bit. At Tau Ceti's ~11-unit
+    world distance, a 4-decimal round introduces ~1 AU of error, which
+    jitters as the camera orbits; this avoids that."""
+    return struct.unpack("<f", struct.pack("<f", x))[0]
+
 # Absolute-magnitude buckets. Each bucket gets its own tileset with its own
 # runtime cull distance, chosen so that stars in the bucket stay visible
 # (apparent mag ≤ NAKED_EYE_MAG) out to the cull distance. Bright stars have
@@ -243,24 +269,41 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             if dist < 0 or dist > MAX_DIST_PC or dist >= 100000:
                 skipped += 1
                 continue
-            x0 = row.get("x0", "").strip()
-            y0 = row.get("y0", "").strip()
-            z0 = row.get("z0", "").strip()
-            if not (x0 and y0 and z0):
+            # Derive equatorial cartesian from ra/dec/dist directly rather
+            # than using AT-HYG's `x0`/`y0`/`z0` columns, which are rounded
+            # to 3 decimals of parsec (~4.8 AU precision) — coarser than
+            # the separation of tight binaries like Alpha Cen A/B (~25 AU
+            # apart), which then collapse to the same stored cartesian.
+            # The `ra`/`dec` fields are preserved at 8-decimal precision,
+            # so this recovers the real Hipparcos astrometry.
+            ra_raw = row.get("ra", "").strip()
+            dec_raw = row.get("dec", "").strip()
+            if not (ra_raw and dec_raw):
                 skipped += 1
                 continue
-
-            cx, cy, cz = float(x0), float(y0), float(z0)
+            ra_rad = math.radians(float(ra_raw) * 15.0)
+            dec_rad = math.radians(float(dec_raw))
+            cos_dec = math.cos(dec_rad)
+            cx = dist * cos_dec * math.cos(ra_rad)
+            cy = dist * cos_dec * math.sin(ra_rad)
+            cz = dist * math.sin(dec_rad)
             sx = cx * SCALE
             sy = cz * SCALE
             sz = -cy * SCALE
+
+            # Data correction: AT-HYG stores Sol at (0.000005 pc, 0, 0) — a
+            # ~1 AU offset from the heliocentric origin. Force Sol to (0,0,0)
+            # so its point-cloud rendering aligns with the notable billboard.
+            # See docs/data-corrections.md.
+            proper = row.get("proper", "").strip()
+            if proper == "Sol":
+                sx = sy = sz = 0.0
 
             mag = float(row.get("mag", "").strip() or 10.0)
             absmag = float(row.get("absmag", "").strip() or 10.0)
             ci = float(row.get("ci", "").strip() or 0.656)
 
             key = get_key(row)
-            proper = row.get("proper", "").strip()
             # Proper-name augmentation entries win over catalog-key ones so a
             # curated Vega entry takes precedence over a stale Gliese-keyed one.
             aug = {}
@@ -278,6 +321,16 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             for extra in aug.get("aliases", []) or []:
                 if extra and extra != primary and extra not in aliases:
                     aliases.insert(0, extra)
+
+            # Manual position offset (AU, equatorial cartesian). Escape
+            # hatch for edge cases where the catalog position needs a
+            # nudge. See docs/data-corrections.md.
+            offset_au = aug.get("pos_offset_au")
+            if offset_au and len(offset_au) == 3:
+                au_to_scene = (1.0 / 206265.0) * SCALE  # AU → pc → scene
+                sx += offset_au[0] * au_to_scene
+                sy += offset_au[1] * au_to_scene
+                sz += offset_au[2] * au_to_scene
 
             explicit_notable = aug.get("notable")
             if explicit_notable is True:
@@ -310,12 +363,49 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
     print(f"Loaded {len(stars)} stars (skipped {skipped})")
 
     existing_keys = {s["key"] for s in stars}
+    stars_by_name = {s["name"]: s for s in stars if s.get("name")}
     synth_count = 0
+    AU_TO_PC = 1.0 / 206265.0
     for key, aug in augmentations.items():
         synth = aug.get("synthetic")
         if not synth or key in existing_keys:
             continue
-        cx, cy, cz = synth["x"], synth["y"], synth["z"]
+
+        # Position can be specified three ways, in order of preference:
+        # 1. parent + offset_au: offset (AU, equatorial cartesian) from
+        #    a named primary star. Used for companions of wide binaries
+        #    like Sirius B or 40 Eridani B/C where AT-HYG lacks the
+        #    component entries — position stays consistent with the
+        #    primary's real catalog astrometry.
+        # 2. ra + dec + dist: standard astronomical coords, derived the
+        #    same way as AT-HYG entries.
+        # 3. x + y + z: explicit equatorial cartesian in parsecs.
+        if "parent" in synth:
+            parent = stars_by_name.get(synth["parent"])
+            if not parent:
+                print(f"WARNING: synthetic {key!r} parent {synth['parent']!r} not found; skipping", file=sys.stderr)
+                continue
+            # Recover the parent's equatorial-cartesian coords from its
+            # scene coords (inverse of the sx/sy/sz swap below), offset
+            # in AU, then let the normal swap re-derive scene coords.
+            pcx = parent["sx"] / SCALE
+            pcy = -parent["sz"] / SCALE
+            pcz = parent["sy"] / SCALE
+            offset = synth.get("offset_au", [0, 0, 0])
+            cx = pcx + offset[0] * AU_TO_PC
+            cy = pcy + offset[1] * AU_TO_PC
+            cz = pcz + offset[2] * AU_TO_PC
+        elif "ra" in synth and "dec" in synth and "dist" in synth:
+            ra_rad = math.radians(float(synth["ra"]) * 15.0)
+            dec_rad = math.radians(float(synth["dec"]))
+            d = float(synth["dist"])
+            cos_d = math.cos(dec_rad)
+            cx = d * cos_d * math.cos(ra_rad)
+            cy = d * cos_d * math.sin(ra_rad)
+            cz = d * math.sin(dec_rad)
+        else:
+            cx, cy, cz = synth["x"], synth["y"], synth["z"]
+
         sx = cx * SCALE
         sy = cz * SCALE
         sz = -cy * SCALE
@@ -545,8 +635,8 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
     meta = {
         "tileCount": len(tiles),
         "totalStars": len(stars),
-        "bytesPerStar": 16,
-        "format": "x:f32, y:f32, z:f32, brightness:u8, r:u8, g:u8, b:u8",
+        "bytesPerStar": 20,
+        "format": "x:f32, y:f32, z:f32, brightness:u8, r:u8, g:u8, b:u8, radius:f32",
         "labelTierVisibility": {
             "0": NOTABLE_VISIBILITY_UNITS,
             "1": NAMED_VISIBILITY_UNITS,
@@ -586,8 +676,13 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
         for i, s in enumerate(tile["stars"]):
             br = brightness_byte(s["absmag"])
             r, g, b = bv_to_color(s["ci"])
+            rscene = radius_scene(s["absmag"], s["ci"])
+            # 20 bytes: pos (12) + brightness byte (1) + color rgb (3) +
+            # radius f32 (4). The renderer uses radius directly as an
+            # instance attribute for physical angular-size computation.
             buf.extend(struct.pack("<fff", s["sx"], s["sy"], s["sz"]))
             buf.extend(struct.pack("BBBB", br, r, g, b))
+            buf.extend(struct.pack("<f", rscene))
 
             has_augmentation = s.get("wikipedia") or s.get("notes")
             if s["tier"] >= 2 and not has_augmentation:
@@ -598,7 +693,7 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
                     "n": s["name"],
                     "t": path,
                     "i": i,
-                    "p": [round(s["sx"], 4), round(s["sy"], 4), round(s["sz"], 4)],
+                    "p": [f32(s["sx"]), f32(s["sy"]), f32(s["sz"])],
                     "mg": round(s["mag"], 2),
                     "M": round(s["absmag"], 2),
                     "d": round(s["dist"], 4),
@@ -639,14 +734,14 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
                 notable.append({
                     **row,
                     "tile": path,
-                    "pos": [round(s["sx"], 4), round(s["sy"], 4), round(s["sz"], 4)],
+                    "pos": [f32(s["sx"]), f32(s["sy"]), f32(s["sz"])],
                 })
 
             search_entry: dict = {
                 "n": s["name"],
                 "t": path,
                 "i": i,
-                "p": [round(s["sx"], 4), round(s["sy"], 4), round(s["sz"], 4)],
+                "p": [f32(s["sx"]), f32(s["sy"]), f32(s["sz"])],
                 "mg": round(s["mag"], 2),
                 "M": round(s["absmag"], 2),
                 "d": round(s["dist"], 4),

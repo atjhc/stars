@@ -16,6 +16,30 @@ export interface LabelTypeHandler {
   collectVisibleLabels?(): RankedLabel[];
 }
 
+// Screen-space circular region that hides labels behind it (e.g. a black-hole
+// shadow or a selected star's disc). Sources can come from label handlers or
+// from any module that cares — register via registerScreenOccluder().
+export type Occluder = { cx: number; cy: number; radius: number };
+const occluders: Array<() => Occluder | null> = [];
+const frameOccluders: Occluder[] = [];
+export function registerScreenOccluder(fn: () => Occluder | null): void {
+  occluders.push(fn);
+}
+// Per-frame occluders published by the active label pass (e.g. every
+// rendered star's disc). Cleared each time updateLabels starts a dirty
+// pass so stale occluders don't linger between frames.
+export function clearFrameOccluders(): void { frameOccluders.length = 0; }
+export function pushFrameOccluder(o: Occluder): void { frameOccluders.push(o); }
+export function collectScreenOccluders(): Occluder[] {
+  const out: Occluder[] = [];
+  for (const fn of occluders) {
+    const o = fn();
+    if (o) out.push(o);
+  }
+  for (const o of frameOccluders) out.push(o);
+  return out;
+}
+
 const handlers: LabelTypeHandler[] = [];
 
 export function registerLabelType(handler: LabelTypeHandler): void {

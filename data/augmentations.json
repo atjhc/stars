@@ -61,9 +61,8 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Sirius#Sirius_B",
     "notes": "White dwarf companion of Sirius. First white dwarf discovered (1862). Orbits Sirius A every ~50 years at ~20 AU.",
     "synthetic": {
-      "x": -0.494,
-      "y": 2.477,
-      "z": -0.758,
+      "parent": "Sirius A",
+      "offset_au": [14, 14, 0],
       "dist": 2.6371,
       "mag": 8.44,
       "absmag": 11.18,
@@ -318,17 +317,37 @@
     "notes": "Primary of the 40 Eridani triple system. 'Keid' is the IAU-approved name for component A, but '40 Eridani' is more commonly used. Wikipedia article is '40 Eridani'. The system includes a white dwarf (B) and a red dwarf (C).",
     "system": "40 Eridani"
   },
-  "Gl 166B": {
+  "40 Eridani B": {
     "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
     "name": "40 Eridani B",
-    "notes": "White dwarf component of 40 Eridani. First white dwarf discovered (1910). Often cited as the location of Vulcan in Star Trek.",
-    "system": "40 Eridani"
+    "notes": "White dwarf component of 40 Eridani. First white dwarf discovered (1910). Often cited as the location of Vulcan in Star Trek. AT-HYG doesn't include this component; synthetic position based on WDS-measured ~83\" separation at ~104° PA from Keid (~415 AU linear).",
+    "system": "40 Eridani",
+    "synthetic": {
+      "parent": "40 Eridani A",
+      "offset_au": [-300, 286, 0],
+      "dist": 5.0098,
+      "mag": 9.52,
+      "absmag": 11.03,
+      "ci": 0.04,
+      "spect": "DA4",
+      "lum": 0.014
+    }
   },
-  "Gl 166C": {
+  "40 Eridani C": {
     "wikipedia": "https://en.wikipedia.org/wiki/40_Eridani",
     "name": "40 Eridani C",
-    "notes": "Red dwarf component of 40 Eridani. Flare star designated DY Eridani.",
-    "system": "40 Eridani"
+    "notes": "Red dwarf component of 40 Eridani, M4.5Ve flare star designated DY Eridani. AT-HYG doesn't include this component; synthetic position placed ~20 AU from B (230-year inner orbit), overall ~415 AU from Keid.",
+    "system": "40 Eridani",
+    "synthetic": {
+      "parent": "40 Eridani A",
+      "offset_au": [-314, 300, 0],
+      "dist": 5.0098,
+      "mag": 11.24,
+      "absmag": 12.75,
+      "ci": 1.62,
+      "spect": "M4.5Ve",
+      "lum": 0.008
+    }
   },
   "GJ 1005A": {
     "wikipedia": "https://en.wikipedia.org/wiki/GJ_1005",

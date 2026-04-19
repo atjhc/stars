@@ -2,6 +2,7 @@ import type * as THREE from "three";
 import type { SystemGroup } from "./types.ts";
 
 let _selected: SystemGroup | null = null;
+let _selectedSubset: THREE.Object3D[] | null = null;
 let _hovered: SystemGroup | null = null;
 let _selectedMesh: THREE.Object3D | null = null;
 let _lastHoveredMesh: THREE.Object3D | null = null;
@@ -15,7 +16,19 @@ function rebuildSelectedMembers() {
 export function getSelectedSystem() { return _selected; }
 export function setSelectedSystem(g: SystemGroup | null) {
   _selected = g;
+  if (!g) _selectedSubset = null;
   rebuildSelectedMembers();
+}
+
+// The specific sub-set of member anchors the user committed to — used
+// when a binary/trinary's label collapsed only part of the system on
+// screen (e.g. Alpha Cen's A+B still clustered while Proxima has
+// separated). null means "the whole selected group". Drives zoom floor,
+// focus target, and URL serialization so reloads land on the exact
+// sub-group.
+export function getSelectedSubset(): THREE.Object3D[] | null { return _selectedSubset; }
+export function setSelectedSubset(members: THREE.Object3D[] | null) {
+  _selectedSubset = members && members.length >= 2 ? members : null;
 }
 
 export function getHoveredSystem() { return _hovered; }
@@ -47,11 +60,20 @@ export function relinkAfterRebuild(
   if (_selected) {
     const replacement = systemGroups.find((g) => g.name === _selected!.name);
     if (replacement) {
+      // Map the subset by member name to the new mesh refs.
+      if (_selectedSubset) {
+        const names = new Set(_selectedSubset.map((m) => (m.userData as { name: string }).name));
+        _selectedSubset = replacement.meshes.filter((m) =>
+          names.has((m.userData as { name: string }).name),
+        );
+        if (_selectedSubset.length < 2) _selectedSubset = null;
+      }
       _selected = replacement;
       rebuildSelectedMembers();
       reapplyHighlight(replacement);
     } else {
       _selected = null;
+      _selectedSubset = null;
       rebuildSelectedMembers();
     }
   }

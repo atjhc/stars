@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-import { scene, camera, animateTo } from "./scene.ts";
+import { scene, camera, animateTo, setMinOrbitOverride } from "./scene.ts";
 import { NEBULA_LABEL_CSS, NEBULA_DEFAULT_SHADOW, SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL } from "./constants.ts";
 import { initLabelDragFn } from "./starfield.ts";
 import { setLabelsDirty } from "./systemStore.ts";
@@ -29,6 +29,11 @@ interface NebulaLabel {
   div: HTMLElement;
   distDiv: HTMLElement;
 }
+
+// Zoom floor for a selected nebula (~5 pc / 16 ly). Nebulae are
+// volumetric — too-close zoom puts the camera inside the dust cube
+// with nothing useful to see.
+const NEBULA_MIN_ORBIT = 15;
 
 const nebulaLabels: NebulaLabel[] = [];
 let selectedNebula: NebulaLabel | null = null;
@@ -105,13 +110,18 @@ const nebulaHandler: LabelTypeHandler = {
     if (selectedNebula && selectedNebula !== nl) removeGlow(selectedNebula);
     selectedNebula = nl;
     applyGlow(nl);
+    // The centroid of a nebula isn't interesting on its own — what
+    // matters is seeing the surrounding volume. 5 pc keeps enough of
+    // the dust structure in frame. Override goes BEFORE animateTo so
+    // its default toRadius picks up the new floor.
+    setMinOrbitOverride(NEBULA_MIN_ORBIT);
     animateTo(nl.anchor.position);
     setLabelsDirty(true);
     return true;
   },
 
   clearSelection() {
-    if (selectedNebula) { removeGlow(selectedNebula); selectedNebula = null; }
+    if (selectedNebula) { removeGlow(selectedNebula); selectedNebula = null; setMinOrbitOverride(null); }
     if (hoveredNebula) { removeGlow(hoveredNebula); hoveredNebula = null; }
   },
 

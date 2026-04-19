@@ -1,11 +1,12 @@
 export const SCALE = 3;
-export const HIGHLIGHT_BOOST = 2.5;
 export const ANIM_DURATION = 600;
 export const MIN_ORBIT_RADIUS = 0.5;
 export const MAX_ORBIT_RADIUS = 1000; // ~330 pc — enough to see cloud structure
 export const CLICK_THRESHOLD = 5;
 export const ORBIT_SENSITIVITY = 0.005;
 export const MAX_SEARCH_RESULTS = 20;
+export const LABEL_DISC_BUFFER_PX = 24;
+
 export const LABEL_FADE_NEAR = 8;
 export const LABEL_FADE_FAR = 50;
 export const LABEL_HIDE_DIST = 55;
@@ -17,6 +18,30 @@ export const GRID_FADE_RADIUS = 30.0;
 export const HIT_SCREEN_FRACTION = 0.02;
 
 export const LY_PER_PARSEC = 3.26156;
+export const AU_PER_LY = 63241;
+export const KM_PER_AU = 1.496e8;
+
+// Minimum orbit radius for black-hole selection. BH rendering is pure
+// screen-space, so precision holds down to the Float32 floor and the
+// user can zoom arbitrarily close to the event horizon. Per-star and
+// per-cluster selections set their own, much larger, floors based on
+// the target's physical extent.
+export const DEEP_ZOOM_MIN_ORBIT = 1e-20;
+
+// Shared label-subtitle / detail-panel distance formatter. Takes scene units
+// and cascades km → AU → ly with commas on large values. Used by label
+// subtitles, black-hole and star detail panels.
+export function formatAstroDistance(sceneUnits: number): string {
+  const ly = (sceneUnits / SCALE) * LY_PER_PARSEC;
+  const au = ly * AU_PER_LY;
+  const km = au * KM_PER_AU;
+  // Switch to km before AU rounds to "0.0 AU"
+  if (au < 0.05) return `${km.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`;
+  if (au < 1000) return `${au.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} AU`;
+  if (ly < 1) return `${ly.toFixed(3)} ly`;
+  if (ly < 10) return `${ly.toFixed(2)} ly`;
+  return `${ly.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ly`;
+}
 
 export function solDistanceFade(solDist: number, maxSolDist: number): number {
   if (maxSolDist <= 0) return 1.0;

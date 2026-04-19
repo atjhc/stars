@@ -184,19 +184,21 @@ Classification is independent of curation metadata — augmentations (wikipedia,
 aliases) still merge onto whatever tier the star ends up in, so a tier-1 star's detail
 panel can be rich without it being promoted to tier 0.
 
-- **Tier 0 (notable)** — IAU proper name AND apparent magnitude < 4.0, OR an
-  explicit `"notable": true` in its augmentation. ~265 stars globally. Loaded
-  eagerly from `notable.json` as persistent `Object3D` anchors with always-on
-  CSS2D labels (subject to `NOTABLE_FADE_NEAR/FAR` distance fade). When their
-  tile streams in at close range, a visual billboard mesh spawns alongside the
-  anchor; canvas raycast hits route through `canonicalTarget()` back to the
-  anchor so identity stays consistent.
-- **Tier 1 (named)** — any catalog name (Bayer/Flamsteed/Gliese/HIP/HD/HR) AND
-  either `mag < 6.0` OR an `aug.system` entry (to keep multi-star system
-  companions like Sirius B selectable). Billboard + child CSS2D label spawn
-  when the tile is within `meta.labelTierVisibility["1"]` of the camera and
-  despawn on eviction.
-- **Tier 2 (none)** — no name or too faint. Pure point cloud, not interactive.
+All stars render through the same instanced-quad shader (`src/stars.ts`)
+— tiers differ only in labeling and interaction. Anchors are lightweight
+`Object3D`s (no geometry); the instanced mesh draws every star.
+
+- **Tier 0 (notable)** — IAU proper name AND apparent magnitude < 4.0,
+  OR an explicit `"notable": true` in its augmentation. ~265 stars
+  globally. Anchors loaded eagerly from `notable.json` with always-on
+  CSS2D labels (subject to `NOTABLE_FADE_NEAR/FAR` distance fade).
+- **Tier 1 (named)** — any catalog name (Bayer/Flamsteed/Gliese/HIP/HD/HR)
+  AND either `mag < 6.0` OR an `aug.system` entry (to keep multi-star
+  system companions like Sirius B selectable). Anchor + child CSS2D
+  label spawn when the tile is within `meta.labelTierVisibility["1"]`
+  of the camera and despawn on eviction.
+- **Tier 2 (none)** — no name or too faint. Rendered by the instanced
+  mesh like everything else, but no anchor / label / hit target.
 - **Explicit `"notable": false`** — demotes a star to tier 2 regardless of
   brightness/name. Escape hatch; rarely used.
 
