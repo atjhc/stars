@@ -176,6 +176,7 @@ or the term "cluster".
 - `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown, planned improvements
 - `docs/data-sources.md` — External data sources, what we extract, known issues, coordinate transforms
 - `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap; consult before making decisions that would foreclose floating-origin retrofits or LOD/sub-scene splits.
+- `docs/profiling.md` — Perf measurement infrastructure (stats panel, P-key sampler, bench automation, phase timing) and a log of optimizations tried + what the bench said about each.
 - `vendor/athyg/` — AT-HYG v3.3 star catalog (git submodule, LFS for CSV data)
 
 ### Label tiers
