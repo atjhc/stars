@@ -244,17 +244,13 @@ describe("shouldHighlightLabel vs cluster requirements (CURRENT CODE)", () => {
   const sirius = makeGroup("Sirius");
   sirius.meshes = [siriusA];
 
-  const clusterOf = new Map<any, SystemGroup>();
-  clusterOf.set(alcyone, pleiades);
-  clusterOf.set(maia, pleiades);
-
   const meshToSystem = new Map<any, SystemGroup>();
   meshToSystem.set(siriusA, sirius);
 
   const base: HighlightContext = {
-    hoveredSystem: null, selectedSystem: null,
+    hoveredSystem: null, selectedSystem: null, selectedSubset: null,
     lastHoveredMesh: null, selectedMesh: null,
-    meshToSystem, clusterOf,
+    meshToSystem,
   };
 
   it("cluster hovered: member should NOT be label-highlighted", () => {

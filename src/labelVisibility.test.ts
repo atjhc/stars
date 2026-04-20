@@ -26,17 +26,13 @@ describe("shouldHighlightLabel", () => {
   const sirius = makeGroup("Sirius");
   sirius.meshes = [siriusA, siriusB];
 
-  const clusterOf = new Map<any, SystemGroup>();
-  clusterOf.set(alcyone, pleiades);
-  clusterOf.set(maia, pleiades);
-
   const meshToSystem = new Map<any, SystemGroup>();
   meshToSystem.set(siriusA, sirius);
   meshToSystem.set(siriusB, sirius);
 
   it("cluster member is NOT label-highlighted when only its cluster is hovered", () => {
     expect(shouldHighlightLabel(alcyone, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: pleiades, selectedSystem: null,
       selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
@@ -44,7 +40,7 @@ describe("shouldHighlightLabel", () => {
 
   it("cluster member is NOT label-highlighted when only its cluster is selected", () => {
     expect(shouldHighlightLabel(maia, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: null, selectedSystem: pleiades,
       selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
@@ -52,7 +48,7 @@ describe("shouldHighlightLabel", () => {
 
   it("cluster member IS label-highlighted when individually hovered", () => {
     expect(shouldHighlightLabel(alcyone, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: pleiades, selectedSystem: null,
       selectedSubset: null, lastHoveredMesh: alcyone, selectedMesh: null,
     })).toBe(true);
@@ -60,7 +56,7 @@ describe("shouldHighlightLabel", () => {
 
   it("cluster member is NOT highlighted when no cluster is active", () => {
     expect(shouldHighlightLabel(alcyone, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: null, selectedSystem: null,
       selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
@@ -68,7 +64,7 @@ describe("shouldHighlightLabel", () => {
 
   it("binary system member is highlighted when its system is hovered", () => {
     expect(shouldHighlightLabel(siriusA, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: sirius, selectedSystem: null,
       selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(true);
@@ -76,7 +72,7 @@ describe("shouldHighlightLabel", () => {
 
   it("directly hovered star is highlighted regardless of system", () => {
     expect(shouldHighlightLabel(alcyone, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: null, selectedSystem: null,
       selectedSubset: null, lastHoveredMesh: alcyone, selectedMesh: null,
     })).toBe(true);
@@ -84,7 +80,7 @@ describe("shouldHighlightLabel", () => {
 
   it("selected star is highlighted", () => {
     expect(shouldHighlightLabel(maia, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: null, selectedSystem: null,
       selectedSubset: null, lastHoveredMesh: null, selectedMesh: maia,
     })).toBe(true);
@@ -92,7 +88,7 @@ describe("shouldHighlightLabel", () => {
 
   it("unrelated star is NOT highlighted when a different cluster is active", () => {
     expect(shouldHighlightLabel(siriusA, {
-      meshToSystem, clusterOf,
+      meshToSystem,
       hoveredSystem: pleiades, selectedSystem: null,
       selectedSubset: null, lastHoveredMesh: null, selectedMesh: null,
     })).toBe(false);
@@ -107,7 +103,7 @@ describe("shouldHighlightLabel", () => {
     m2s.set(siriusB, alphaCen);
     m2s.set(proxima, alphaCen);
     expect(shouldHighlightLabel(proxima, {
-      meshToSystem: m2s, clusterOf,
+      meshToSystem: m2s,
       hoveredSystem: null, selectedSystem: alphaCen,
       selectedSubset: [siriusA, siriusB],
       lastHoveredMesh: null, selectedMesh: null,
@@ -123,7 +119,7 @@ describe("shouldHighlightLabel", () => {
     m2s.set(siriusB, alphaCen);
     m2s.set(proxima, alphaCen);
     expect(shouldHighlightLabel(siriusA, {
-      meshToSystem: m2s, clusterOf,
+      meshToSystem: m2s,
       hoveredSystem: null, selectedSystem: alphaCen,
       selectedSubset: [siriusA, siriusB],
       lastHoveredMesh: null, selectedMesh: null,
@@ -139,7 +135,7 @@ describe("shouldHighlightLabel", () => {
     m2s.set(siriusB, alphaCen);
     m2s.set(proxima, alphaCen);
     expect(shouldHighlightLabel(proxima, {
-      meshToSystem: m2s, clusterOf,
+      meshToSystem: m2s,
       hoveredSystem: alphaCen, selectedSystem: null,
       selectedSubset: null,
       lastHoveredMesh: null, selectedMesh: null,

@@ -3,7 +3,6 @@ import type { SystemGroup } from "./types.ts";
 
 export interface HighlightContext {
   meshToSystem: Map<THREE.Object3D, SystemGroup>;
-  clusterOf: Map<THREE.Object3D, SystemGroup>;
   hoveredSystem: SystemGroup | null;
   selectedSystem: SystemGroup | null;
   selectedSubset: THREE.Object3D[] | null;
@@ -31,16 +30,5 @@ export function shouldHighlightLabel(
   if (sys !== ctx.selectedSystem) return false;
 
   return ctx.selectedSubset ? ctx.selectedSubset.includes(target) : true;
-}
-
-// Whether the target should be kept visible (target.visible = true) even
-// when its normal fade would hide it. True for cluster members whose
-// cluster is active, so the billboard glow renders.
-export function shouldForceVisible(
-  target: THREE.Object3D,
-  ctx: HighlightContext,
-): boolean {
-  const cluster = ctx.clusterOf.get(target);
-  return cluster !== undefined && (cluster === ctx.hoveredSystem || cluster === ctx.selectedSystem);
 }
 

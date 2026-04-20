@@ -11,7 +11,7 @@ import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
 import { computeStarScreenMetrics } from "./stars.ts";
 import { starRadiusScene } from "./color.ts";
 import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
-import { shouldHighlightLabel, shouldForceVisible, type HighlightContext } from "./labelVisibility.ts";
+import { shouldHighlightLabel, type HighlightContext } from "./labelVisibility.ts";
 import { type RankedLabel, resolveCollisions, isLabelInteractive, isCollisionHidden, visibleLabels } from "./labelCollision.ts";
 import { collectAllRegisteredLabels, clearFrameOccluders, pushFrameOccluder } from "./labelRegistry.ts";
 import {
@@ -99,7 +99,7 @@ export function updateLabels(
   const lastHoveredMesh = getLastHoveredMesh();
 
   const hlCtx: import("./labelVisibility.ts").HighlightContext = {
-    meshToSystem, clusterOf,
+    meshToSystem,
     hoveredSystem, selectedSystem, selectedSubset,
     lastHoveredMesh, selectedMesh,
   };
@@ -127,7 +127,7 @@ export function updateLabels(
       const zIndex = Math.round(20000 - dist * 100);
       const clampedOpacity = Math.max(0.2, opacity);
       setLabelStyle(group.label.element as HTMLElement, String(clampedOpacity), String(zIndex));
-      if (isHighlighted) updateSystemLabelText(group);
+      if (isHighlighted) updateSystemLabelText(group, true);
       const favBonus = isFavorite(group.name) ? 5000 : 0;
       const clusterDiv = group.label.element as HTMLElement;
       visibleLabels.add(clusterDiv);
@@ -223,7 +223,7 @@ export function updateLabels(
       const zIndex = Math.round(10000 - dist * 100);
       const el = group.label.element as HTMLElement;
       setLabelStyle(el, String(clampedOpacity), String(zIndex));
-      updateSystemLabelText(group);
+      updateSystemLabelText(group, isSystemHighlighted);
       const favBonus = isFavorite(group.name) ? 5000 : 0;
       visibleLabels.add(el);
       frameLabels.push({
@@ -326,16 +326,13 @@ export function updateLabels(
     }
     if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
 
-    // Keep cluster members visible when their cluster is active, but
-    // leave the label's normal fade styling intact.
-    const forceVis = shouldForceVisible(target, hlCtx);
     const favBonus = isFavorite(star.name) ? 5000 : 0;
 
     if (isTier0) {
       const appMag = apparentMag(star.absmag ?? 10, Math.max(camDist, 1e-20));
       const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 0.5, 0, 1);
       if (t >= 1) {
-        target.visible = forceVis;
+        target.visible = false;
         return;
       }
       target.visible = true;
@@ -349,7 +346,7 @@ export function updateLabels(
       frameLabels.push({ div, rank: 500 + magRank + favBonus + solBonus, opacity: finalOpacity });
     } else {
       if (camDist > LABEL_HIDE_DIST) {
-        target.visible = forceVis;
+        target.visible = false;
         return;
       }
       target.visible = true;

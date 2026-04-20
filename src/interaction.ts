@@ -57,12 +57,10 @@ function fadeOutSubtitle(div: HTMLElement) {
 // System label text
 const lastSystemLabelState = new WeakMap<SystemGroup, string>();
 
-export function updateSystemLabelText(group: SystemGroup) {
-  const isActive = getHoveredSystem() === group || getSelectedSystem() === group;
-  // When the system is the orbit target, effectiveCamDist returns the
-  // unclamped orbitRadius — correct even past the deep-zoom camera
-  // clamp. For just-hovered systems, fall back to the raw world-space
-  // distance to the centroid.
+export function updateSystemLabelText(group: SystemGroup, isActive: boolean) {
+  // effectiveCamDist returns the unclamped orbit radius when the system
+  // is the orbit target — correct even past the deep-zoom camera clamp.
+  // For just-hovered systems fall back to raw world-space distance.
   const camDist = getSelectedSystem() === group
     ? effectiveCamDist(group.centroid)
     : camera.position.distanceTo(group.centroid);
@@ -75,13 +73,13 @@ export function updateSystemLabelText(group: SystemGroup) {
 
 export function showSystemMembers(group: SystemGroup) {
   applySystemLabelGlow(group);
-  updateSystemLabelText(group);
+  updateSystemLabelText(group, true);
   setLabelsDirty(true);
 }
 
 export function hideSystemMembers(group: SystemGroup) {
   removeSystemLabelGlow(group);
-  updateSystemLabelText(group);
+  updateSystemLabelText(group, false);
   setLabelsDirty(true);
 }
 
