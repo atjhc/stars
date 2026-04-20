@@ -105,6 +105,153 @@ let lastCamText = "";
 let lastTgtText = "";
 let lastOrbText = "";
 
+// Stats panels — FPS / MS / MB. One visible at a time; click cycles.
+// Adapted from stats.js (mrdoob) but draws bars from a history buffer
+// instead of blitting, so the canvas width can stretch to whatever the
+// debug panel's current width is without pixel-art distortion.
+interface StatsPanel {
+  dom: HTMLCanvasElement;
+  update(value: number, maxValue: number): void;
+}
+
+function createStatsPanel(name: string, fg: string, bg: string): StatsPanel {
+  const dpr = Math.round(window.devicePixelRatio || 1);
+  const HEIGHT_CSS = 48;
+  const TEXT_Y_CSS = 2;
+  const GRAPH_Y_CSS = 15;
+  const GRAPH_H_CSS = 30;
+  const PAD_CSS = 3;
+  const FONT_PX = 9;
+
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = `display:block;width:100%;height:${HEIGHT_CSS}px`;
+  const ctx = canvas.getContext("2d")!;
+
+  let min = Infinity;
+  let max = 0;
+  const history: Array<{ v: number; m: number }> = [];
+  let measuredWidth = 0;
+
+  function syncSize() {
+    const wCss = canvas.clientWidth || 80;
+    const targetW = wCss * dpr;
+    const targetH = HEIGHT_CSS * dpr;
+    if (canvas.width === targetW && canvas.height === targetH) return;
+    canvas.width = targetW;
+    canvas.height = targetH;
+    ctx.font = `bold ${FONT_PX * dpr}px Helvetica,Arial,sans-serif`;
+    ctx.textBaseline = "top";
+    measuredWidth = wCss;
+  }
+
+  function draw() {
+    syncSize();
+    const W = canvas.width;
+    const H = canvas.height;
+    const TEXT_X = PAD_CSS * dpr;
+    const TEXT_Y = TEXT_Y_CSS * dpr;
+    const GRAPH_X = PAD_CSS * dpr;
+    const GRAPH_Y = GRAPH_Y_CSS * dpr;
+    const GRAPH_W = W - 2 * PAD_CSS * dpr;
+    const GRAPH_H = GRAPH_H_CSS * dpr;
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = fg;
+    const label = history.length > 0
+      ? `${Math.round(history[history.length - 1]!.v)} ${name} (${Math.round(min)}-${Math.round(max)})`
+      : name;
+    ctx.fillText(label, TEXT_X, TEXT_Y);
+
+    // Graph background — fg tinted to near-bg via 0.9 alpha overlay.
+    ctx.fillStyle = fg;
+    ctx.fillRect(GRAPH_X, GRAPH_Y, GRAPH_W, GRAPH_H);
+    ctx.fillStyle = bg;
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(GRAPH_X, GRAPH_Y, GRAPH_W, GRAPH_H);
+    ctx.globalAlpha = 1;
+
+    // One CSS-pixel bar per sample, right-aligned.
+    ctx.fillStyle = fg;
+    const maxBars = Math.max(1, Math.floor(GRAPH_W / dpr));
+    const start = Math.max(0, history.length - maxBars);
+    for (let i = start; i < history.length; i++) {
+      const { v, m } = history[i]!;
+      const barH = Math.min(GRAPH_H, Math.max(1, (v / m) * GRAPH_H));
+      const x = GRAPH_X + (i - start) * dpr;
+      ctx.fillRect(x, GRAPH_Y + GRAPH_H - barH, dpr, barH);
+    }
+  }
+
+  function update(value: number, maxValue: number) {
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+    history.push({ v: value, m: maxValue });
+    const capacity = Math.max(1, measuredWidth - 2 * PAD_CSS);
+    while (history.length > capacity) history.shift();
+    draw();
+  }
+
+  return { dom: canvas, update };
+}
+
+interface StatsKit {
+  container: HTMLDivElement;
+  begin(): void;
+  end(): void;
+}
+
+function createStatsKit(): StatsKit {
+  const container = document.createElement("div");
+  container.style.cssText = "margin-top:8px;cursor:pointer;display:block";
+
+  const panels: StatsPanel[] = [
+    createStatsPanel("FPS", "#0ff", "#002"),
+    createStatsPanel("MS", "#0f0", "#020"),
+  ];
+  const memory = (performance as Performance & { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
+  if (memory) panels.push(createStatsPanel("MB", "#f08", "#201"));
+
+  let mode = 0;
+  const show = (i: number) => panels.forEach((p, idx) => { p.dom.style.display = idx === i ? "block" : "none"; });
+  for (const p of panels) container.appendChild(p.dom);
+  show(0);
+
+  // Eat mouse events so clicking the stats panel doesn't also toggle
+  // the enclosing debug panel via makeCollapsible's mouseup handler.
+  container.addEventListener("mousedown", (e) => e.stopPropagation());
+  container.addEventListener("mouseup", (e) => {
+    e.stopPropagation();
+    mode = (mode + 1) % panels.length;
+    show(mode);
+  });
+
+  let beginTime = performance.now();
+  let prevTime = beginTime;
+  let frames = 0;
+
+  return {
+    container,
+    begin() { beginTime = performance.now(); },
+    end() {
+      const now = performance.now();
+      frames++;
+      panels[1]!.update(now - beginTime, 200);
+      if (now >= prevTime + 1000) {
+        panels[0]!.update((frames * 1000) / (now - prevTime), 100);
+        frames = 0;
+        prevTime = now;
+        if (memory) {
+          panels[2]!.update(memory.usedJSHeapSize / 1048576, memory.jsHeapSizeLimit / 1048576);
+        }
+      }
+    },
+  };
+}
+
+let statsKit: StatsKit | null = null;
+
 function fmt(n: number) {
   if (n !== 0 && Math.abs(n) < 0.01) return n.toExponential(4);
   return n.toFixed(2);
@@ -173,6 +320,12 @@ function renderCamera() {
   if (ot !== lastOrbText) { orbLine.textContent = ot; lastOrbText = ot; }
 }
 
+// Bracket the frame's JS work — the MS panel reads ms spent between
+// begin/end, giving a headroom reading (16.7ms budget at 60fps) rather
+// than just FPS. No-ops when debug mode is off.
+export function statsBegin() { statsKit?.begin(); }
+export function statsEnd() { statsKit?.end(); }
+
 // Per-frame refresh — only the live camera block rewrites, not the full panel.
 export function tickDebug() {
   renderCamera();
@@ -226,6 +379,12 @@ export function initDebug() {
   panel.appendChild(bodyEl);
   panel.appendChild(bugIcon);
   document.body.appendChild(panel);
+
+  // FPS / MS / MB graphs — custom, full-width, crisp at any panel size.
+  // Click cycles which panel is showing; its own handlers stopPropagation
+  // so the debug panel's collapse click doesn't also fire.
+  statsKit = createStatsKit();
+  bodyEl.appendChild(statsKit.container);
 
   makeCollapsible(panel, "debug");
 

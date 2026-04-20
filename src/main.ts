@@ -38,7 +38,7 @@ import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, 
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels, getSelectedBlackHoleName } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
-import { initDebug, debugEnabled, debug, onDebugChange, tickDebug } from "./debug.ts";
+import { initDebug, debugEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd } from "./debug.ts";
 import {
   initStarfield, updateStarfield,
   notableObjects, notableLabelMap, notableLabelMeshMap,
@@ -628,6 +628,7 @@ function updateStarDeepZoom() {
 // Render loop
 function animate(now: number) {
   requestAnimationFrame(animate);
+  statsBegin();
   tickAnimation(now);
   updateDeepZoom();
   updateStarDeepZoom();
@@ -649,6 +650,7 @@ function animate(now: number) {
 
   labelRenderer.render(scene, labelCamera);
   if (debugEnabled) tickDebug();
+  statsEnd();
 }
 // Position labels in the DOM before the first frame so collision rects are valid
 labelRenderer.render(scene, labelCamera);
