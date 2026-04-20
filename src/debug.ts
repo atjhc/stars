@@ -200,6 +200,7 @@ interface StatsKit {
   container: HTMLDivElement;
   begin(): void;
   end(): void;
+  toggleSampling(): void;
 }
 
 function createStatsKit(): StatsKit {
@@ -218,6 +219,11 @@ function createStatsKit(): StatsKit {
   for (const p of panels) container.appendChild(p.dom);
   show(0);
 
+  // Status line under the graph — only shows text while sampling.
+  const statusEl = document.createElement("div");
+  statusEl.style.cssText = "font:10px/1.3 monospace;color:#fc6;margin-top:2px;min-height:12px;cursor:default";
+  container.appendChild(statusEl);
+
   // Eat mouse events so clicking the stats panel doesn't also toggle
   // the enclosing debug panel via makeCollapsible's mouseup handler.
   container.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -231,13 +237,49 @@ function createStatsKit(): StatsKit {
   let prevTime = beginTime;
   let frames = 0;
 
+  // Sampling: on toggle, collect every frame's MS reading into an array.
+  // On second toggle, compute percentiles and dump to console. Lets the
+  // user run a controlled 10-30s session (fly a path, zoom, hover),
+  // then A/B against a stashed change with solid numbers instead of
+  // watching the live graph jitter.
+  let samples: number[] | null = null;
+  let sampleStart = 0;
+
+  function summarize(arr: number[], elapsed: number) {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const pct = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))] ?? 0;
+    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+    const seconds = elapsed / 1000;
+    const row = {
+      frames: arr.length,
+      seconds: seconds.toFixed(1),
+      fps_avg: (arr.length / seconds).toFixed(1),
+      mean_ms: mean.toFixed(2),
+      p50_ms: pct(0.5).toFixed(2),
+      p95_ms: pct(0.95).toFixed(2),
+      p99_ms: pct(0.99).toFixed(2),
+      min_ms: sorted[0]!.toFixed(2),
+      max_ms: sorted[sorted.length - 1]!.toFixed(2),
+    };
+    // eslint-disable-next-line no-console
+    console.log(
+      `[stats sample] ${row.frames} frames / ${row.seconds}s — `
+      + `fps=${row.fps_avg} mean=${row.mean_ms}ms p50=${row.p50_ms}ms `
+      + `p95=${row.p95_ms}ms p99=${row.p99_ms}ms min=${row.min_ms}ms max=${row.max_ms}ms`,
+    );
+    // eslint-disable-next-line no-console
+    console.table(row);
+  }
+
   return {
     container,
     begin() { beginTime = performance.now(); },
     end() {
       const now = performance.now();
+      const frameMs = now - beginTime;
       frames++;
-      panels[1]!.update(now - beginTime, 200);
+      panels[1]!.update(frameMs, 200);
+      if (samples !== null) samples.push(frameMs);
       if (now >= prevTime + 1000) {
         panels[0]!.update((frames * 1000) / (now - prevTime), 100);
         frames = 0;
@@ -245,6 +287,22 @@ function createStatsKit(): StatsKit {
         if (memory) {
           panels[2]!.update(memory.usedJSHeapSize / 1048576, memory.jsHeapSizeLimit / 1048576);
         }
+        if (samples !== null) {
+          statusEl.textContent = `● sampling ${((now - sampleStart) / 1000).toFixed(0)}s / ${samples.length}f`;
+        }
+      }
+    },
+    toggleSampling() {
+      if (samples === null) {
+        samples = [];
+        sampleStart = performance.now();
+        statusEl.textContent = "● sampling 0s / 0f";
+      } else {
+        const elapsed = performance.now() - sampleStart;
+        const arr = samples;
+        samples = null;
+        statusEl.textContent = "";
+        if (arr.length > 0) summarize(arr, elapsed);
       }
     },
   };
@@ -404,6 +462,12 @@ export function initDebug() {
         e.preventDefault();
         return;
       }
+    }
+
+    if (e.code === "KeyP" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      statsKit?.toggleSampling();
+      e.preventDefault();
+      return;
     }
 
     for (const b of tuneBindings) {
