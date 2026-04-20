@@ -364,19 +364,38 @@ export function updateLabels(
   const registeredLabels = collectAllRegisteredLabels();
   for (const rl of registeredLabels) visibleLabels.add(rl.div);
   frameLabels.push(...registeredLabels);
-  resolveCollisions(frameLabels);
+
+  // Stash collision work for flushLabelCollisions to run AFTER
+  // labelRenderer.render has positioned the <div>s. Reading rects here
+  // would pick up last-frame's positions — during rapid orbit that
+  // one-frame lag flips collision decisions per frame and the user
+  // sees labels thrashing.
+  pendingCollision = { frameLabels, divFor };
+
+  setLabelsDirty(false);
+  prevCamPos.copy(camera.position);
+}
+
+let pendingCollision: { frameLabels: RankedLabel[]; divFor: DivResolver } | null = null;
+
+// Runs the collision resolver after the CSS2DRenderer has positioned
+// labels, so rect reads reflect the current frame. Also sweeps the
+// hover state through isLabelInteractive, which depends on whether
+// collision just hid the label in question.
+export function flushLabelCollisions() {
+  const work = pendingCollision;
+  if (!work) return;
+  pendingCollision = null;
+  resolveCollisions(work.frameLabels);
 
   const lastHovered = getLastHoveredMesh();
-  const hoverDiv = lastHovered ? divFor(lastHovered) : null;
+  const hoverDiv = lastHovered ? work.divFor(lastHovered) : null;
   const hovSys = getHoveredSystem();
   const sysDiv = hovSys ? hovSys.label.element as HTMLElement : null;
   if ((hoverDiv && !isLabelInteractive(hoverDiv))
     || (sysDiv && hovSys !== getSelectedSystem() && !isLabelInteractive(sysDiv))) {
     unhoverAll();
   }
-
-  setLabelsDirty(false);
-  prevCamPos.copy(camera.position);
 }
 
 const CAMERA_CHECK_INTERVAL = 300;

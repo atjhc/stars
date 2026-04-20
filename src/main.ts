@@ -32,7 +32,7 @@ import { isLabelInteractive, resetCollisionFadeState } from "./labelCollision.ts
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
-import { updateLabels, checkCameraMoved } from "./labels.ts";
+import { updateLabels, flushLabelCollisions, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
 import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, isDustVisible, handleDustResize } from "./dust.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
@@ -653,6 +653,9 @@ function animate(now: number) {
   renderDustPostBloom(renderer);
 
   labelRenderer.render(scene, labelCamera);
+  // Collision resolution reads DOM rects — must run AFTER
+  // labelRenderer positions the divs for this frame.
+  flushLabelCollisions();
   if (debugEnabled) tickDebug();
   statsEnd();
 }
