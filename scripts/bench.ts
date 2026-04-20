@@ -16,6 +16,7 @@ const CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrom
 const PORT = 3030;
 const URL = `http://localhost:${PORT}/?bench=1`;
 
+interface PhaseStat { calls: number; total_ms: number; per_frame_ms: number; }
 interface Summary {
   frames: number;
   seconds: number;
@@ -26,6 +27,7 @@ interface Summary {
   p99_ms: number;
   min_ms: number;
   max_ms: number;
+  phases: Record<string, PhaseStat>;
 }
 
 async function waitForServer(): Promise<void> {
@@ -50,6 +52,20 @@ async function startServer(): Promise<Subprocess> {
   return proc;
 }
 
+function printPhases(label: string, phases: Record<string, PhaseStat>) {
+  const keys = Object.keys(phases);
+  if (keys.length === 0) return;
+  console.log(`[${label}] phases (per-frame ms):`);
+  console.log(`  ${"phase".padEnd(18)} ${"per_frame".padStart(10)} ${"total".padStart(10)} ${"calls".padStart(8)}`);
+  for (const k of keys) {
+    const p = phases[k]!;
+    console.log(
+      `  ${k.padEnd(18)} ${p.per_frame_ms.toFixed(3).padStart(10)} `
+      + `${p.total_ms.toFixed(1).padStart(10)} ${String(p.calls).padStart(8)}`,
+    );
+  }
+}
+
 async function benchOnce(browser: Browser, label: string): Promise<Summary> {
   const page: Page = await browser.newPage();
   try {
@@ -57,7 +73,9 @@ async function benchOnce(browser: Browser, label: string): Promise<Summary> {
     await page.goto(URL, { waitUntil: "networkidle2", timeout: 60_000 });
     await page.waitForFunction("window.__benchDone === true", { timeout: 60_000 });
     const summary = (await page.evaluate("window.__benchResults")) as Summary;
-    console.log(`[${label}] ${JSON.stringify(summary)}`);
+    const { phases, ...top } = summary;
+    console.log(`[${label}] ${JSON.stringify(top)}`);
+    printPhases(label, phases);
     return summary;
   } finally {
     await page.close();

@@ -210,6 +210,7 @@ interface SampleSummary {
   p99_ms: number;
   min_ms: number;
   max_ms: number;
+  phases: Record<string, { calls: number; total_ms: number; per_frame_ms: number }>;
 }
 
 interface StatsKit {
@@ -218,6 +219,7 @@ interface StatsKit {
   end(): void;
   toggleSampling(): void;
   lastSummary(): SampleSummary | null;
+  phase<T>(name: string, fn: () => T): T;
 }
 
 function createStatsKit(): StatsKit {
@@ -261,6 +263,10 @@ function createStatsKit(): StatsKit {
   // watching the live graph jitter.
   let samples: number[] | null = null;
   let sampleStart = 0;
+  // Per-phase timing accumulator. Populated only while sampling is on;
+  // phase() is a straight passthrough otherwise so the instrumentation
+  // costs nothing in production use.
+  const phaseTotals = new Map<string, { calls: number; totalMs: number }>();
 
   let lastSummary: SampleSummary | null = null;
 
@@ -269,6 +275,14 @@ function createStatsKit(): StatsKit {
     const pct = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))] ?? 0;
     const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
     const seconds = elapsed / 1000;
+    const phases: SampleSummary["phases"] = {};
+    for (const [name, data] of phaseTotals) {
+      phases[name] = {
+        calls: data.calls,
+        total_ms: +data.totalMs.toFixed(2),
+        per_frame_ms: +(data.totalMs / arr.length).toFixed(3),
+      };
+    }
     const summary: SampleSummary = {
       frames: arr.length,
       seconds: +seconds.toFixed(2),
@@ -279,6 +293,7 @@ function createStatsKit(): StatsKit {
       p99_ms: +pct(0.99).toFixed(3),
       min_ms: +sorted[0]!.toFixed(3),
       max_ms: +sorted[sorted.length - 1]!.toFixed(3),
+      phases,
     };
     // eslint-disable-next-line no-console
     console.log(
@@ -289,6 +304,10 @@ function createStatsKit(): StatsKit {
     );
     // eslint-disable-next-line no-console
     console.table(summary);
+    if (Object.keys(phases).length > 0) {
+      // eslint-disable-next-line no-console
+      console.table(phases);
+    }
     return summary;
   }
 
@@ -317,6 +336,7 @@ function createStatsKit(): StatsKit {
       if (samples === null) {
         samples = [];
         sampleStart = performance.now();
+        phaseTotals.clear();
         statusEl.textContent = "● sampling 0s / 0f";
       } else {
         const elapsed = performance.now() - sampleStart;
@@ -327,6 +347,16 @@ function createStatsKit(): StatsKit {
       }
     },
     lastSummary() { return lastSummary; },
+    phase<T>(name: string, fn: () => T): T {
+      if (samples === null) return fn();
+      const t0 = performance.now();
+      const result = fn();
+      const elapsedMs = performance.now() - t0;
+      const cur = phaseTotals.get(name);
+      if (cur) { cur.calls++; cur.totalMs += elapsedMs; }
+      else phaseTotals.set(name, { calls: 1, totalMs: elapsedMs });
+      return result;
+    },
   };
 }
 
@@ -411,6 +441,14 @@ export function statsEnd() { statsKit?.end(); }
 // when debug mode is off. Bench mode forces initDebug to run.
 export function statsToggleSampling() { statsKit?.toggleSampling(); }
 export function getLastSampleSummary() { return statsKit?.lastSummary() ?? null; }
+
+// Phase timing — wraps a piece of the animate loop so its runtime
+// accumulates into the current sample's per-phase totals. Zero cost
+// when debug is off (?.phase is undefined → fn() runs directly via
+// the statsKit's own pass-through when sampling is idle).
+export function statsPhase<T>(name: string, fn: () => T): T {
+  return statsKit ? statsKit.phase(name, fn) : fn();
+}
 
 // Per-frame refresh — only the live camera block rewrites, not the full panel.
 export function tickDebug() {

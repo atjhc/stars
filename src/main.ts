@@ -38,7 +38,7 @@ import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, 
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels, getSelectedBlackHoleName } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
-import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd } from "./debug.ts";
+import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase } from "./debug.ts";
 import { runBench } from "./bench.ts";
 import {
   initStarfield, updateStarfield,
@@ -637,25 +637,27 @@ function animate(now: number) {
   updateDeepZoom();
   updateStarDeepZoom();
   checkCameraMoved();
-  updateStarfield();
-  updateDust();
-  updateAllLabels();
-  updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor);
+  statsPhase("updateStarfield", updateStarfield);
+  statsPhase("updateDust", updateDust);
+  statsPhase("updateAllLabels", updateAllLabels);
+  statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor));
 
   // Main scene pass (lensing pass is in the composer, auto-enabled by blackholes.ts)
-  if (debugEnabled && debug.directRender) {
-    renderer.render(scene, camera);
-  } else {
-    beginBloomRender();
-    composer.render();
-    endBloomRender();
-  }
-  renderDustPostBloom(renderer);
+  statsPhase("sceneRender", () => {
+    if (debugEnabled && debug.directRender) {
+      renderer.render(scene, camera);
+    } else {
+      beginBloomRender();
+      composer.render();
+      endBloomRender();
+    }
+    renderDustPostBloom(renderer);
+  });
 
-  labelRenderer.render(scene, labelCamera);
+  statsPhase("labelRenderer", () => labelRenderer.render(scene, labelCamera));
   // Collision resolution reads DOM rects — must run AFTER
   // labelRenderer positions the divs for this frame.
-  flushLabelCollisions();
+  statsPhase("flushCollisions", flushLabelCollisions);
   if (debugEnabled) tickDebug();
   statsEnd();
 }
