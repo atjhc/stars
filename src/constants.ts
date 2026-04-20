@@ -15,7 +15,11 @@ export const COLLAPSE_PX_SQ = COLLAPSE_PX * COLLAPSE_PX;
 export const GRID_SIZE = 300;
 export const GRID_DIVISIONS = 65;
 export const GRID_FADE_RADIUS = 30.0;
-export const HIT_SCREEN_FRACTION = 0.02;
+// Extra screen pixels added around each star's rendered disc radius
+// to give small / faint stars a clickable target. Stars with bigger
+// discs keep their generous hit area; tiny 1-2 px discs become a
+// ~8 px circle, enough to grab comfortably.
+export const HIT_PX_PADDING = 6;
 
 export const LY_PER_PARSEC = 3.26156;
 export const AU_PER_LY = 63241;
@@ -57,31 +61,3 @@ export const BLOOM_STRENGTH = 0.3;
 export const BLOOM_RADIUS = 0.4;
 export const BLOOM_THRESHOLD = 0.1;
 
-export const LABEL_CSS = `
-  color: rgba(255,255,255,0.7); font-size: 10px;
-  pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000;
-  transform: translateZ(0); -webkit-transform: translateZ(0);
-  margin-top: 16px; user-select: none; text-align: center; cursor: pointer;
-`;
-
-export const CLUSTER_DEFAULT_SHADOW = "0 0 8px rgba(100,150,220,0.6), 0 0 3px #000";
-
-export const NEBULA_DEFAULT_SHADOW = "0 0 8px rgba(200,120,60,0.5), 0 0 3px #000";
-
-export const NEBULA_LABEL_CSS = `
-  color: rgba(255,180,120,0.85); font-size: 13px;
-  letter-spacing: 0.5px;
-  pointer-events: auto; white-space: nowrap;
-  text-shadow: ${NEBULA_DEFAULT_SHADOW};
-  transform: translateZ(0); -webkit-transform: translateZ(0);
-  -webkit-user-select: none; user-select: none; text-align: center; cursor: pointer;
-`;
-
-export const CLUSTER_LABEL_CSS = `
-  color: rgba(180,210,255,0.85); font-size: 14px;
-  letter-spacing: 1px;
-  pointer-events: auto; white-space: nowrap;
-  text-shadow: ${CLUSTER_DEFAULT_SHADOW};
-  transform: translateZ(0); -webkit-transform: translateZ(0);
-  -webkit-user-select: none; user-select: none; text-align: center; cursor: pointer;
-`;

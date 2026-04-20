@@ -141,7 +141,8 @@ or the term "cluster".
 - `src/searchFilter.ts` — Pure search matching logic (testable without DOM)
 - `src/labelVisibility.ts` — Pure highlight/visibility decision functions (testable)
 - `src/labelRegistry.ts` — Unified label type registry for cross-type coordination
-- `src/nebulaeLabels.ts` — Nebula label CSS2DObjects, registered via labelRegistry
+- `src/labelCanvas.ts` — 2D canvas label overlay; sole label renderer (replaced CSS2DRenderer)
+- `src/nebulaeLabels.ts` — Nebula label registrations + selection handler
 - `src/blackholes.ts` — Black hole labels + point rendering, registered via labelRegistry
 - `src/dust.ts` — 3D dust volume ray marcher (Lallement/Vergely data + hot-star illumination)
 - `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
@@ -177,6 +178,7 @@ or the term "cluster".
 - `docs/data-sources.md` — External data sources, what we extract, known issues, coordinate transforms
 - `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap; consult before making decisions that would foreclose floating-origin retrofits or LOD/sub-scene splits.
 - `docs/profiling.md` — Perf measurement infrastructure (stats panel, P-key sampler, bench automation, phase timing) and a log of optimizations tried + what the bench said about each.
+- `docs/canvas-labels-plan.md` — Canvas-labels migration (shipped): replaced CSS2DRenderer with a 2D canvas overlay. Documents the 5-stage rollout and measured outcome.
 - `vendor/athyg/` — AT-HYG v3.3 star catalog (git submodule, LFS for CSV data)
 
 ### Label tiers
@@ -222,6 +224,6 @@ inject stars that don't exist in the source catalog (e.g. Sirius B).
 ### Stack
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
-- **3D:** Three.js with custom GLSL shaders, CSS2DRenderer for labels, UnrealBloomPass
+- **3D:** Three.js with custom GLSL shaders, 2D canvas overlay for labels, UnrealBloomPass
 - **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/athyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Lallement/Vergely 2022](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147) (CC-BY 4.0)
 - **Hosting:** Vercel (static)

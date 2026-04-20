@@ -1,13 +1,8 @@
 import * as THREE from "three";
-import type { Star, SystemGroup, ClusterGroup } from "./types.ts";
-import { starGlowShadow } from "./color.ts";
+import type { Star, SystemGroup } from "./types.ts";
 import { formatDist } from "./detail.ts";
-import { camera } from "./scene.ts";
-import { formatAstroDistance } from "./constants.ts";
 import { favoriteIcon } from "./detail.ts";
 import { getSelectedSystem, getSelectedSubset } from "./systemStore.ts";
-
-const CLUSTER_HIGHLIGHT_GLOW = "0 0 8px rgba(160,200,255,0.9), 0 0 20px rgba(130,170,255,0.4), 0 0 4px #000";
 
 // Returns the effective member subset for zoom-floor / focus-target /
 // URL-serialize purposes. When the user clicks a partially-collapsed
@@ -41,38 +36,6 @@ export function focusTarget(group: SystemGroup, cameraPos: THREE.Vector3): THREE
     if (d < nearestDist) { nearest = m; nearestDist = d; }
   }
   return nearest.position.distanceTo(centroid) < 0.5 ? centroid : nearest.position;
-}
-
-export function applySystemLabelGlow(group: SystemGroup) {
-  const el = group.label.element as HTMLElement;
-  if (group.meshes.length > 0) {
-    let brightestStar = group.meshes[0].userData as Star;
-    for (const m of group.meshes) {
-      const s = m.userData as Star;
-      if (s.lum > brightestStar.lum) brightestStar = s;
-    }
-    el.style.textShadow = starGlowShadow(brightestStar.ci);
-  } else {
-    el.style.textShadow = CLUSTER_HIGHLIGHT_GLOW;
-  }
-}
-
-export function removeSystemLabelGlow(group: SystemGroup) {
-  (group.label.element as HTMLElement).style.textShadow =
-    group.kind === "cluster" ? group.defaultShadow : "";
-}
-
-export function labelContent(group: SystemGroup, isActive: boolean, camDist: number): string {
-  if (!isActive) return group.name;
-  const distLine = `<div class="system-members">${formatAstroDistance(camDist)}</div>`;
-  if (group.kind === "cluster") {
-    return `<div>${group.name}</div>${distLine}`;
-  }
-  const members = group.collapsedMembers.length > 0 ? group.collapsedMembers : group.meshes;
-  const names = members.map((m) => (m.userData as Star).name);
-  return `<div>${group.name}</div>` +
-    `<div class="system-members">${names.join(" · ")}</div>` +
-    distLine;
 }
 
 function renderWikiLink(url: string | undefined): string {

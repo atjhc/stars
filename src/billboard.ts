@@ -1,7 +1,9 @@
 import * as THREE from "three";
-import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star } from "./types.ts";
-import { LABEL_CSS, HIT_SCREEN_FRACTION } from "./constants.ts";
+import { HIT_PX_PADDING } from "./constants.ts";
+import { starRadiusScene } from "./color.ts";
+import { computeStarScreenMetrics } from "./stars.ts";
+import { camera } from "./scene.ts";
 
 // Lightweight Object3D anchors for labeled stars. Carry a CSS2D label
 // and a screen-space raycast hit sphere. No geometry — visuals come
@@ -9,16 +11,25 @@ import { LABEL_CSS, HIT_SCREEN_FRACTION } from "./constants.ts";
 
 const scratchVec3 = new THREE.Vector3();
 
-// Screen-space hit sphere: the anchor raycast-intersects against a sphere
-// whose radius scales with camera distance, giving a consistent clickable
-// target size in pixels regardless of zoom.
+// Screen-space hit sphere sized from the star's full visible extent
+// (disc + halo corona) plus a few pixels of padding. At normal zoom,
+// discPx ≈ 0 for almost every star — the halo is what's visible — so
+// sizing off `halfBillPx` instead of `discPx` keeps bright stars with
+// big halos easy to click and gives sub-pixel stars a ~coronaPx +
+// HIT_PX_PADDING circle that still matches what the user sees.
 function attachHitSphere(obj: THREE.Object3D) {
   const hitSphere = new THREE.Sphere(new THREE.Vector3(), 0);
   obj.raycast = (raycaster, intersects) => {
     if (obj.visible === false) return;
     hitSphere.center.copy(obj.getWorldPosition(scratchVec3));
     const camDist = hitSphere.center.distanceTo(raycaster.ray.origin);
-    hitSphere.radius = camDist * HIT_SCREEN_FRACTION;
+    const star = obj.userData as Star;
+    const radius = starRadiusScene(star.lum, star.ci);
+    const { halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
+    // Convert hit pixel radius → scene-unit radius at camDist.
+    const fovRad = (camera.fov * Math.PI) / 180;
+    const scenePerPx = (camDist * Math.tan(fovRad / 2)) / (window.innerHeight / 2);
+    hitSphere.radius = (halfBillPx + HIT_PX_PADDING) * scenePerPx;
     const intersection = raycaster.ray.intersectSphere(hitSphere, scratchVec3);
     if (intersection) {
       const distance = raycaster.ray.origin.distanceTo(intersection);
@@ -42,18 +53,3 @@ export function createStarAnchor(star: Star, sx: number, sy: number, sz: number)
   return anchor;
 }
 
-export function createStarLabel(
-  star: Star,
-  parent: THREE.Object3D,
-  initLabelDrag: (div: HTMLElement) => void,
-): { div: HTMLElement; label: CSS2DObject } {
-  const labelDiv = document.createElement("div");
-  labelDiv.style.cssText = LABEL_CSS;
-  labelDiv.textContent = star.name;
-  initLabelDrag(labelDiv);
-  const label = new CSS2DObject(labelDiv);
-  label.center.set(0.5, 0);
-  label.userData.target = parent;
-  parent.add(label);
-  return { div: labelDiv, label };
-}

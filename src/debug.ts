@@ -17,7 +17,7 @@ type ToggleKey =
   | "bloom"         // composer bloom pass on/off
   | "flatStars"     // shade stars as flat color discs
   | "depthTest"     // depth test on star materials
-  | "directRender"; // bypass composer and render directly
+  | "hitTargets";   // overlay label hit rects + star disc occluders
 
 type ScalarKey =
   | "bloom_strength" | "bloom_radius" | "bloom_threshold"
@@ -28,7 +28,7 @@ interface DebugState {
   bloom: boolean;
   flatStars: boolean;
   depthTest: boolean;
-  directRender: boolean;
+  hitTargets: boolean;
   bloom_strength: number;
   bloom_radius: number;
   bloom_threshold: number;
@@ -40,7 +40,7 @@ const initialState: DebugState = {
   bloom: true,
   flatStars: false,
   depthTest: true,
-  directRender: false,
+  hitTargets: false,
   bloom_strength: BLOOM_STRENGTH,
   bloom_radius: BLOOM_RADIUS,
   bloom_threshold: BLOOM_THRESHOLD,
@@ -70,7 +70,7 @@ const toggles: Array<{ shiftNum: number; label: string; prop: ToggleKey }> = [
   { shiftNum: 2, label: "bloom", prop: "bloom" },
   { shiftNum: 3, label: "flat stars", prop: "flatStars" },
   { shiftNum: 4, label: "depth test", prop: "depthTest" },
-  { shiftNum: 5, label: "direct render", prop: "directRender" },
+  { shiftNum: 5, label: "hit targets", prop: "hitTargets" },
 ];
 
 interface TuneBinding {

@@ -88,20 +88,21 @@ on sample stop. **When sampling is off, the wrapper is a passthrough**
 — single branch, no timing overhead. It's safe to leave in the hot
 path permanently.
 
-Current phase breakdown on a typical 15s trajectory:
+Current phase breakdown on a typical 15s trajectory (post canvas-label
+migration — see `docs/canvas-labels-plan.md`):
 
 | phase             | per-frame ms | notes                                    |
 | ----------------- | ------------ | ---------------------------------------- |
-| updateLabels      | 6.66         | processLabel × ~500 labeled stars        |
-| labelRenderer     | 2.90         | CSS2DRenderer writes transform per div   |
-| flushCollisions   | 2.02         | sort + grid + some DOM rect reads        |
-| sceneRender       | 1.76         | composer (bloom + scene pass + lensing)  |
-| updateAllLabels   | 0.008        | registered handlers (nebula / BH)        |
+| updateLabels      | 1.99         | processLabel × ~500 labeled anchors      |
+| labelCanvas       | 1.63         | project + measure + collide + paint      |
+| sceneRender       | 1.03         | composer (bloom + scene pass + lensing)  |
+| updateAllLabels   | 0.03         | registered handlers (nebula / BH)        |
 | updateStarfield   | 0.03         | tile stream (throttled to 500ms)         |
 | updateDust        | 0.001        | dust uniform updates                     |
 
-Total mean: ~13.4 ms. The bulk is label work; scene render is
-surprisingly cheap.
+Total mean: ~4.7 ms. Pre-migration baseline was ~13.3 ms p50 — the
+`labelRenderer` (CSS2DRenderer) and `flushCollisions` (DOM rect reads
++ collision grid) phases were ~5 ms together and are both gone now.
 
 ### Architecture
 

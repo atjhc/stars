@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -16,18 +15,18 @@ export const camera = new THREE.PerspectiveCamera(
   55, window.innerWidth / window.innerHeight, 0.01, 20000,
 );
 
-// Shadow camera used by CSS2DRenderer for label projection. Matches the
-// main camera's rotation and projection, but its `matrixWorld` carries
-// the UNCLAMPED camera position (main camera's position is clamped for
-// Float32 safety in the scene render). CSS2DRenderer projects anchors
-// in JS-land Float64, so using an unclamped-position matrix here keeps
-// labels precisely aligned with their stars during deep zoom — the
-// same problem the instanced shader solves via target-relative coords.
+// Shadow camera used for canvas-label projection. Matches the main
+// camera's rotation and projection, but its `matrixWorld` carries the
+// UNCLAMPED camera position (main camera's position is clamped for
+// Float32 safety in the scene render). Canvas label projection happens
+// in JS-land Float64 — using an unclamped-position matrix here keeps
+// labels precisely aligned with their stars during deep zoom, the same
+// problem the instanced shader solves via target-relative coords.
 export const labelCamera = new THREE.PerspectiveCamera(
   55, window.innerWidth / window.innerHeight, 0.01, 20000,
 );
-// CSS2DRenderer calls camera.updateMatrixWorld() each render; disable auto
-// update so our manually-composed matrixWorld (unclamped position) survives.
+// Manually-composed matrixWorld (unclamped position) — disable auto
+// matrix updates so it survives the render pass.
 labelCamera.matrixAutoUpdate = false;
 labelCamera.matrixWorldAutoUpdate = false;
 // Unclamped camera world position. camera.position is clamped to
@@ -42,19 +41,6 @@ export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 viewport.appendChild(renderer.domElement);
-
-export const labelRenderer = new CSS2DRenderer();
-labelRenderer.sortObjects = false;
-labelRenderer.setSize(window.innerWidth, window.innerHeight);
-labelRenderer.domElement.style.position = "absolute";
-labelRenderer.domElement.style.top = "0";
-labelRenderer.domElement.style.left = "0";
-labelRenderer.domElement.style.overflow = "hidden";
-labelRenderer.domElement.style.pointerEvents = "none";
-labelRenderer.domElement.style.zIndex = "10";
-labelRenderer.domElement.style.userSelect = "none";
-labelRenderer.domElement.style.webkitUserSelect = "none";
-viewport.appendChild(labelRenderer.domElement);
 
 // Galactic plane grid
 const raGNP = (192.8595 * Math.PI) / 180;
@@ -481,5 +467,4 @@ export function handleResize() {
     Math.round(window.innerWidth * BLOOM_OVERSCAN),
     Math.round(window.innerHeight * BLOOM_OVERSCAN),
   );
-  labelRenderer.setSize(window.innerWidth, window.innerHeight);
 }

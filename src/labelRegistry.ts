@@ -2,7 +2,6 @@
 // registers a handler. The registry coordinates cross-type concerns:
 // visibility toggling, selection clearing, click dispatch, detail panel.
 
-import type { RankedLabel } from "./labelCollision.ts";
 import { clearStarSystemSelection } from "./interaction.ts";
 
 export interface LabelTypeHandler {
@@ -13,7 +12,6 @@ export interface LabelTypeHandler {
   clearSelection(): void;
   handleClick(div: HTMLElement): boolean;
   detailHtml(): string | null;
-  collectVisibleLabels?(): RankedLabel[];
 }
 
 // Screen-space circular region that hides labels behind it (e.g. a black-hole
@@ -61,28 +59,11 @@ export function clearAllSelections(except?: string): void {
   }
 }
 
-export function dispatchLabelClick(target: HTMLElement): boolean {
-  const labelDiv = target.closest("[data-label-type]") as HTMLElement | null;
-  if (!labelDiv) return false;
-  const type = labelDiv.getAttribute("data-label-type")!;
-  const handler = handlers.find((h) => h.type === type);
-  if (!handler) return false;
-  clearAllSelections(type);
-  return handler.handleClick(labelDiv);
-}
-
 export function selectByType(type: string, name: string): boolean {
   const handler = handlers.find((h) => h.type === type);
   if (!handler) return false;
+  clearAllSelections(type);
   return handler.selectByName(name);
-}
-
-export function collectAllRegisteredLabels(): RankedLabel[] {
-  const result: RankedLabel[] = [];
-  for (const h of handlers) {
-    if (h.collectVisibleLabels) result.push(...h.collectVisibleLabels());
-  }
-  return result;
 }
 
 export function getActiveDetailHtml(): string | null {

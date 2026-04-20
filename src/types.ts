@@ -1,5 +1,4 @@
 import type * as THREE from "three";
-import type { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { LabelRow } from "./catalog.ts";
 
 // Star is an alias for the streamed catalog row that's stored on
@@ -9,7 +8,6 @@ export type Star = LabelRow & { tile?: string };
 interface SystemGroupBase {
   name: string;
   meshes: THREE.Object3D[];
-  label: CSS2DObject;
   anchor: THREE.Object3D;
   centroid: THREE.Vector3;
   avgDist: number;
@@ -26,7 +24,6 @@ export interface BinarySystem extends SystemGroupBase {
 
 export interface ClusterGroup extends SystemGroupBase {
   kind: "cluster";
-  defaultShadow: string;
   aliases?: string[];
 }
 

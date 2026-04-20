@@ -14,7 +14,14 @@ import { spawn, type Subprocess } from "bun";
 
 const CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const PORT = 3030;
-const URL = `http://localhost:${PORT}/?bench=1`;
+
+// Extra query params passed via `--url-suffix="&labelsMode=canvas"` etc.
+// Lets the same harness A/B DOM vs canvas label modes without code edits.
+const EXTRA_QUERY = (() => {
+  const arg = process.argv.find((a) => a.startsWith("--url-suffix="));
+  return arg ? arg.slice("--url-suffix=".length) : "";
+})();
+const URL = `http://localhost:${PORT}/?bench=1${EXTRA_QUERY}`;
 
 interface PhaseStat { calls: number; total_ms: number; per_frame_ms: number; }
 interface Summary {

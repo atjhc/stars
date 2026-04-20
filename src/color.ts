@@ -41,3 +41,15 @@ export function starGlowShadow(ci: number): string {
   const b = Math.round(Math.min(255, color.b * 255 * 1.3));
   return `0 0 8px rgba(${r},${g},${b},0.9), 0 0 20px rgba(${r},${g},${b},0.4), 0 0 4px #000`;
 }
+
+// Canvas-friendly glow — one color/blur pair approximating the
+// multi-shadow CSS. Canvas shadowBlur is Gaussian like CSS text-shadow;
+// using the inner-bright layer keeps the hot-spot visible at the cost
+// of the soft 20px halo (visible only on very bright stars anyway).
+export function starGlowCanvas(ci: number): { color: string; blur: number } {
+  const color = bvToColor(ci);
+  const r = Math.round(Math.min(255, color.r * 255 * 1.3));
+  const g = Math.round(Math.min(255, color.g * 255 * 1.3));
+  const b = Math.round(Math.min(255, color.b * 255 * 1.3));
+  return { color: `rgba(${r},${g},${b},0.95)`, blur: 10 };
+}

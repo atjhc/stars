@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
-import { camera, animateTo, setMinOrbitOverride, effectiveCamDist } from "./scene.ts";
+import { camera, animateTo, setMinOrbitOverride } from "./scene.ts";
 import { addRecent } from "./recents.ts";
 import { refreshSearch } from "./search.ts";
-import { starGlowShadow, starRadiusScene } from "./color.ts";
+import { starRadiusScene } from "./color.ts";
 import { computeStarMinOrbit, setHoveredStar } from "./stars.ts";
 import {
   getSelectedSystem, setSelectedSystem,
@@ -13,97 +13,31 @@ import {
   setSelectedSubset,
   setLabelsDirty, isInSelectedGroup, setPinnedTile,
 } from "./systemStore.ts";
-import {
-  focusTarget, effectiveSystemSubset,
-  applySystemLabelGlow, removeSystemLabelGlow,
-  labelContent,
-} from "./systemDispatch.ts";
+import { focusTarget, effectiveSystemSubset } from "./systemDispatch.ts";
 
-// Label maps — registered by main.ts after starfield init
-const labelMaps: WeakMap<THREE.Object3D, HTMLElement>[] = [];
-export function registerLabelMap(map: WeakMap<THREE.Object3D, HTMLElement>) {
-  labelMaps.push(map);
-}
-
-function getLabelDiv(target: THREE.Object3D): HTMLElement | undefined {
-  for (const map of labelMaps) {
-    const div = map.get(target);
-    if (div) return div;
-  }
-  return undefined;
-}
-
-function applyLabelGlow(div: HTMLElement, target: THREE.Object3D) {
-  const star = target.userData as Star;
-  div.classList.add("highlight");
-  div.style.textShadow = starGlowShadow(star.ci);
-}
-
-function removeLabelGlow(div: HTMLElement) {
-  div.classList.remove("highlight");
-  div.style.textShadow = "";
-}
-
-// Fade out the ".system-members" subtitle (distance / member names) on a
-// label whose selection is about to end. Setting opacity:0 triggers the
-// CSS transition; labels.ts will later swap the innerHTML to remove the
-// subtitle entirely when the animation completes and the label pass
-// reclassifies this target as unhighlighted.
-function fadeOutSubtitle(div: HTMLElement) {
-  const sub = div.querySelector(".system-members") as HTMLElement | null;
-  if (sub) sub.style.opacity = "0";
-}
-
-// System label text
-const lastSystemLabelState = new WeakMap<SystemGroup, string>();
-
-export function updateSystemLabelText(group: SystemGroup, isActive: boolean) {
-  // effectiveCamDist returns the unclamped orbit radius when the system
-  // is the orbit target — correct even past the deep-zoom camera clamp.
-  // For just-hovered systems fall back to raw world-space distance.
-  const camDist = getSelectedSystem() === group
-    ? effectiveCamDist(group.centroid)
-    : camera.position.distanceTo(group.centroid);
-  const html = labelContent(group, isActive, camDist);
-  if (lastSystemLabelState.get(group) === html) return;
-  lastSystemLabelState.set(group, html);
-  const el = group.label.element as HTMLElement;
-  el.innerHTML = html.includes("<div") ? html : `<div>${html}</div>`;
-}
-
-export function showSystemMembers(group: SystemGroup) {
-  applySystemLabelGlow(group);
-  updateSystemLabelText(group, true);
+// System hover / select drivers. Canvas label updates — glow, subtitle
+// text, pinning — all happen in labels.ts's systemGroups loop once the
+// labels are dirty, so these just flip the dirty flag.
+export function showSystemMembers(_group: SystemGroup) {
   setLabelsDirty(true);
 }
 
-export function hideSystemMembers(group: SystemGroup) {
-  removeSystemLabelGlow(group);
-  updateSystemLabelText(group, false);
+export function hideSystemMembers(_group: SystemGroup) {
   setLabelsDirty(true);
 }
 
-// Hover
+// Hover. Canvas label glow is applied from labels.ts based on
+// shouldHighlightLabel(target, hlCtx) — which reads lastHoveredMesh —
+// so setting the mesh + flagging labels dirty is all we need.
 export function showHover(target: THREE.Object3D) {
   const lastHovered = getLastHoveredMesh();
   if (lastHovered === target) return;
-  if (lastHovered && lastHovered !== getSelectedMesh() && !isInSelectedGroup(lastHovered)) {
-    const prevLabel = getLabelDiv(lastHovered);
-    if (prevLabel) removeLabelGlow(prevLabel);
-  }
   setLastHoveredMesh(target);
-  const label = getLabelDiv(target);
-  if (label) applyLabelGlow(label, target);
   setHoveredStar(target.position);
   setLabelsDirty(true);
 }
 
 export function hideHover() {
-  const lastHovered = getLastHoveredMesh();
-  if (lastHovered && lastHovered !== getSelectedMesh() && !isInSelectedGroup(lastHovered)) {
-    const label = getLabelDiv(lastHovered);
-    if (label) removeLabelGlow(label);
-  }
   setLastHoveredMesh(null);
   setHoveredStar(null);
   setLabelsDirty(true);
@@ -205,11 +139,6 @@ export function selectSystem(
 }
 
 export function clearStarSystemSelection() {
-  const prevMesh = getSelectedMesh();
-  if (prevMesh) {
-    const prevLabel = getLabelDiv(prevMesh);
-    if (prevLabel) { removeLabelGlow(prevLabel); fadeOutSubtitle(prevLabel); }
-  }
   setSelectedMesh(null);
   setPinnedTile(null);
   setMinOrbitOverride(null);
@@ -219,11 +148,6 @@ export function clearStarSystemSelection() {
 }
 
 export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void, updateLabelVisibility: () => void) {
-  const prevMesh = getSelectedMesh();
-  if (prevMesh) {
-    const prevLabel = getLabelDiv(prevMesh);
-    if (prevLabel) { removeLabelGlow(prevLabel); fadeOutSubtitle(prevLabel); }
-  }
   const prevSys = getSelectedSystem();
   if (prevSys) { hideSystemMembers(prevSys); setSelectedSystem(null); }
   setSelectedMesh(target);
@@ -237,8 +161,6 @@ export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void
   setMinOrbitOverride(computeStarMinOrbit(radius));
   addRecent(star.name);
   refreshSearch();
-  const label = getLabelDiv(target);
-  if (label) applyLabelGlow(label, target);
   setLabelsDirty(true);
   animateTo(target.position);
   updateLabelVisibility();

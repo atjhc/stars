@@ -7,33 +7,28 @@ import {
 import {
   camera, animation, isDeepZoom, orbitRadius, labelCamera, labelCamOffset,
 } from "./scene.ts";
-import { apparentMag, magLimitUniform, clusterOf } from "./starfield.ts";
+import { apparentMag, magLimitUniform, clusterOf, systemCanvasLabelId } from "./starfield.ts";
 import { computeStarScreenMetrics } from "./stars.ts";
-import { starRadiusScene } from "./color.ts";
+import { starRadiusScene, starGlowCanvas } from "./color.ts";
 import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
 import { shouldHighlightLabel, type HighlightContext } from "./labelVisibility.ts";
-import { type RankedLabel, resolveCollisions, isLabelInteractive, isCollisionHidden, visibleLabels } from "./labelCollision.ts";
-import { collectAllRegisteredLabels, clearFrameOccluders, pushFrameOccluder } from "./labelRegistry.ts";
+import { clearFrameOccluders, pushFrameOccluder } from "./labelRegistry.ts";
+import { updateCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty } from "./labelCanvas.ts";
 import {
   getSelectedMesh, getSelectedSystem, getSelectedSubset, getHoveredSystem,
   getLastHoveredMesh, isLabelsDirty, setLabelsDirty,
 } from "./systemStore.ts";
-import { updateSystemLabelText, unhoverAll } from "./interaction.ts";
-import { starGlowShadow } from "./color.ts";
 import { isFavorite } from "./favorites.ts";
 
 const collapsed = new Set<THREE.Object3D>();
-const labelsWithSubtitle = new WeakSet<HTMLElement>();
 let cachedMaxNotableSolDist = 0;
 let cachedMaxClusterSolDist = 0;
 
-
 const projVec = new THREE.Vector3();
 const screenBuf = { x: 0, y: 0, behind: false };
-// Use labelCamera (unclamped world position) so screen positions match
-// where CSS2DRenderer actually places the <div>s and where the shader
-// draws the disc (target-relative render, also unclamped). The main
-// `camera` is Float32-clamped at deep zoom and would mis-project.
+// Project a world position to screen space using the unclamped
+// labelCamera. camera.position is Float32-clamped at deep zoom, which
+// would mis-project; labelCamera carries the true location.
 function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
   projVec.copy(pos).project(labelCamera);
   screenBuf.x = (projVec.x * 0.5 + 0.5) * window.innerWidth;
@@ -42,23 +37,7 @@ function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
   return screenBuf;
 }
 
-function setLabelStyle(div: HTMLElement, opacity: string, zIndex: string) {
-  // Skip opacity writes for labels hidden by collision — resolveCollisions
-  // is the sole authority on their opacity. Writing here would flash them
-  // visible for the remainder of the synchronous frame (before collision
-  // re-hides them) and confuse the lastOpacity tracking.
-  if (!isCollisionHidden(div)) div.style.opacity = opacity;
-  div.style.zIndex = zIndex;
-}
-
-function cssLabelChild(target: THREE.Object3D): THREE.Object3D | undefined {
-  for (const c of target.children) if ((c as THREE.Object3D & { isCSS2DObject?: boolean }).isCSS2DObject) return c;
-  return undefined;
-}
-
 const prevCamPos = new THREE.Vector3();
-
-export type DivResolver = (target: THREE.Object3D) => HTMLElement | undefined;
 
 export function updateLabels(
   labelsVisible: boolean,
@@ -66,14 +45,16 @@ export function updateLabels(
   interactiveStars: THREE.Object3D[],
   systemGroups: SystemGroup[],
   meshToSystem: Map<THREE.Object3D, SystemGroup>,
-  divFor: DivResolver,
 ) {
   if (!labelsVisible) return;
   if (animation) return;
   if (!isLabelsDirty()) return;
 
-  const frameLabels: RankedLabel[] = [];
-  visibleLabels.clear();
+  // This is the canonical "labels changed enough that we should
+  // re-evaluate who collides with whom" signal — checkCameraMoved
+  // throttles it to ~300 ms during orbit, which is exactly the cadence
+  // we want for batched collision decisions.
+  markCanvasCollisionDirty();
   clearFrameOccluders();
 
   const magLimit = magLimitUniform.value;
@@ -84,7 +65,6 @@ export function updateLabels(
   // clearly whenever they'd be rendered at all.
   const tier0FadeStart = magLimit - 0.5;
 
-  // Cache max Sol distance for notables (positions are static after init).
   if (cachedMaxNotableSolDist === 0 && notableAnchors.length > 0) {
     for (const anchor of notableAnchors) {
       const d = anchor.position.length();
@@ -98,7 +78,7 @@ export function updateLabels(
   const selectedMesh = getSelectedMesh();
   const lastHoveredMesh = getLastHoveredMesh();
 
-  const hlCtx: import("./labelVisibility.ts").HighlightContext = {
+  const hlCtx: HighlightContext = {
     meshToSystem,
     hoveredSystem, selectedSystem, selectedSubset,
     lastHoveredMesh, selectedMesh,
@@ -122,23 +102,25 @@ export function updateLabels(
       const solDist = group.anchor.position.length();
       const baseOpacity = solDistanceFade(solDist, maxClusterSolDist);
       const opacity = isHighlighted ? 1.0 : baseOpacity;
-      group.label.visible = true;
       const dist = group.anchor.position.distanceTo(camera.position);
-      const zIndex = Math.round(20000 - dist * 100);
       const clampedOpacity = Math.max(0.2, opacity);
-      setLabelStyle(group.label.element as HTMLElement, String(clampedOpacity), String(zIndex));
-      if (isHighlighted) updateSystemLabelText(group, true);
       const favBonus = isFavorite(group.name) ? 5000 : 0;
-      const clusterDiv = group.label.element as HTMLElement;
-      visibleLabels.add(clusterDiv);
-      frameLabels.push({
-        div: clusterDiv,
-        rank: 1500 + favBonus,
-        opacity: clampedOpacity,
-        pinned: isHighlighted,
-      });
+      const canvasId = systemCanvasLabelId(group);
+      if (canvasId) {
+        updateCanvasLabel(canvasId, {
+          opacityTarget: clampedOpacity,
+          pinned: isHighlighted,
+          hidden: false,
+          rank: 1500 + favBonus,
+          subtitles: isHighlighted ? [formatAstroDistance(dist)] : [],
+          shadowColor: isHighlighted ? "rgba(160,200,255,0.9)" : "#000",
+          shadowBlur: isHighlighted ? 10 : 4,
+        });
+      }
 
-      // Check each member against the cluster label position.
+      // Cluster-member collapse: members within COLLAPSE_PX of the
+      // cluster centroid hide their individual labels behind the
+      // cluster label (collapsed set consulted in processLabel).
       const anchorScreen = projectToScreen(group.anchor.position);
       const ax = anchorScreen.x, ay = anchorScreen.y;
       for (const m of group.meshes) {
@@ -154,7 +136,7 @@ export function updateLabels(
     // render as normal stars, so Proxima's label shouldn't disappear
     // into an "Alpha Centauri · A · B" aggregate when the user is
     // zoomed in on the pair. Collisions between individual labels
-    // are then handled naturally by resolveCollisions.
+    // are then handled naturally by the canvas collision pass.
     const memberInFocus = (m: THREE.Object3D | null) =>
       m !== null && meshToSystem.get(m) === group;
     const skipCollapse =
@@ -164,7 +146,8 @@ export function updateLabels(
 
     if (skipCollapse) {
       group.collapsedMembers = [];
-      group.label.visible = false;
+      const skipId = systemCanvasLabelId(group);
+      if (skipId) updateCanvasLabel(skipId, { hidden: true, pinned: false, subtitles: [] });
       continue;
     }
 
@@ -200,6 +183,8 @@ export function updateLabels(
       if (count > bestCount && count >= 2) { bestRoot = root; bestCount = count; }
     }
 
+    const canvasId = systemCanvasLabelId(group);
+
     if (bestRoot >= 0) {
       const members: THREE.Object3D[] = [];
       for (let i = 0; i < n; i++) {
@@ -215,40 +200,53 @@ export function updateLabels(
 
       const dist = group.anchor.position.distanceTo(camera.position);
       const isSystemHighlighted = hoveredSystem === group || selectedSystem === group;
-      group.label.visible = dist <= LABEL_HIDE_DIST || isSystemHighlighted;
-      if (!group.label.visible) continue;
-
-      const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
-      const clampedOpacity = Math.max(0.2, opacity);
-      const zIndex = Math.round(10000 - dist * 100);
-      const el = group.label.element as HTMLElement;
-      setLabelStyle(el, String(clampedOpacity), String(zIndex));
-      updateSystemLabelText(group, isSystemHighlighted);
+      const visible = dist <= LABEL_HIDE_DIST || isSystemHighlighted;
       const favBonus = isFavorite(group.name) ? 5000 : 0;
-      visibleLabels.add(el);
-      frameLabels.push({
-        div: el,
-        rank: 1000 + favBonus,
-        opacity: clampedOpacity,
-        pinned: isSystemHighlighted,
-      });
+
+      if (canvasId) {
+        if (!visible) {
+          updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
+        } else {
+          const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
+          const clampedOpacity = Math.max(0.2, opacity);
+          // Active binary label layout: main line = name, sub-lines =
+          // member names joined with " · ", then distance.
+          let subtitles: string[] = [];
+          if (isSystemHighlighted) {
+            const memberNames = members.map((m) => (m.userData as Star).name).join(" · ");
+            subtitles = [memberNames, formatAstroDistance(dist)];
+          }
+          // System glow uses brightest member's color.
+          let glowColor = "rgba(255,255,255,0.9)";
+          if (isSystemHighlighted && members.length > 0) {
+            let brightest = members[0]!.userData as Star;
+            for (const m of members) {
+              const s = m.userData as Star;
+              if (s.lum > brightest.lum) brightest = s;
+            }
+            glowColor = starGlowCanvas(brightest.ci).color;
+          }
+          updateCanvasLabel(canvasId, {
+            opacityTarget: clampedOpacity,
+            pinned: isSystemHighlighted,
+            hidden: false,
+            rank: 1000 + favBonus,
+            subtitles,
+            shadowColor: isSystemHighlighted ? glowColor : "#000",
+            shadowBlur: isSystemHighlighted ? 10 : 4,
+          });
+        }
+      }
     } else {
       group.collapsedMembers = [];
-      group.label.visible = false;
+      if (canvasId) updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
     }
   }
 
-  // Single pass over all label-bearing objects: notable anchors (tier 0,
-  // always-on fade) + interactive billboards (tier 1, close-only fade).
-  // Tier-0 billboards have no label child, so divFor() returns undefined for
-  // them and they're skipped automatically.
-  //
-  // Toggling target.visible short-circuits the CSS2DRenderer's per-frame
-  // matrix/projection work for out-of-range labels — the main perf lever.
+  // Per-anchor star label pass. Pushes a screen-space occluder for
+  // every rendered disc so labels behind bright stars hide; routes
+  // opacity / subtitle / highlight through the canvas updater.
   function processLabel(target: THREE.Object3D) {
-    const div = divFor(target);
-    if (!div) return;
-
     // Unclamped camera position: camera.position is clamped to 0.001
     // during deep zoom (Float32 safety), which would vastly over-estimate
     // camDist for stars near the target and shrink their disc-size math.
@@ -268,41 +266,43 @@ export function updateLabels(
       }
     }
 
+    const canvasId = getCanvasLabelIdForMesh(target);
+    if (!canvasId) return;
+
     const sys = meshToSystem.get(target);
     const isHighlighted = shouldHighlightLabel(target, hlCtx);
+    const owningGroup = sys ?? clusterOf.get(target);
+    const isSystemMemberHighlighted = owningGroup !== undefined
+      && (owningGroup === hoveredSystem || owningGroup === selectedSystem);
+    const margin = Math.min(discPx, window.innerHeight) + LABEL_DISC_BUFFER_PX;
+    updateCanvasStarLabel(
+      target, canvasId, camDist, margin,
+      isHighlighted, isSystemMemberHighlighted, sys, star.tier === 0,
+    );
+  }
 
-    // CSS2DObject child; toggled separately from target.visible so a
-    // collapsed system member can hide its individual label while its
-    // billboard hit sphere stays active for canvas selection.
-    const css = cssLabelChild(target);
+  function updateCanvasStarLabel(
+    target: THREE.Object3D,
+    canvasId: string,
+    camDist: number,
+    margin: number,
+    isHighlighted: boolean,
+    isSystemMemberHighlighted: boolean,
+    sys: SystemGroup | undefined,
+    isTier0: boolean,
+  ) {
+    const star = target.userData as Star;
 
     if (collapsed.has(target)) {
-      // Keep the anchor visible so the tier-0 billboard's hit sphere stays
-      // active — clicking a collapsed member's orb routes to selectSystem
-      // via meshToSystem. Only the individual label child is hidden.
       target.visible = true;
-      if (css) css.visible = false;
+      // Collapsed members want to fade out (the cluster label claims
+      // the visual space). Flag hidden; leave opacityTarget intact so
+      // the visibleFactor animation has something to fade from.
+      updateCanvasLabel(canvasId, { hidden: true, pinned: false });
       return;
     }
-    if (css) css.visible = true;
-
-    // Label margin clears the star's disc (which can grow past the
-    // default 16px when the camera is close).
-    const margin = Math.min(discPx, window.innerHeight) + LABEL_DISC_BUFFER_PX;
-    div.style.marginTop = `${margin}px`;
-
-    const zIndex = String(Math.round(10000 - camDist * 100));
-    const isTier0 = star.tier === 0;
-    const owningGroup = sys ?? clusterOf.get(target);
-    const isSystemMemberHighlighted = owningGroup !== undefined && (owningGroup === hoveredSystem || owningGroup === selectedSystem);
 
     if (isHighlighted) {
-      target.visible = true;
-      setLabelStyle(div, "1", zIndex);
-
-      // Selected target(s) show distance from camera. Hovered others
-      // show distance from the current selection (so the user sees how
-      // far the hovered star is from what they're orbiting).
       const isSelectedTarget = target === selectedMesh
         || (sys !== undefined && sys === selectedSystem);
       let subtitleDist = camDist;
@@ -310,21 +310,20 @@ export function updateLabels(
         if (selectedMesh) subtitleDist = target.position.distanceTo(selectedMesh.position);
         else if (selectedSystem) subtitleDist = target.position.distanceTo(selectedSystem.centroid);
       }
-      div.innerHTML = `<div>${star.name}</div><div class="system-members">${formatAstroDistance(subtitleDist)}</div>`;
-      labelsWithSubtitle.add(div);
-      if (isSystemMemberHighlighted) {
-        div.style.textShadow = starGlowShadow(star.ci);
-      }
-      visibleLabels.add(div);
-      frameLabels.push({ div, rank: 500, opacity: 1, pinned: true });
+      target.visible = true;
+      const glow = starGlowCanvas(star.ci);
+      updateCanvasLabel(canvasId, {
+        opacityTarget: 1,
+        pinned: true,
+        hidden: false,
+        rank: 500,
+        marginTop: margin,
+        subtitles: [formatAstroDistance(subtitleDist)],
+        shadowColor: glow.color,
+        shadowBlur: isSystemMemberHighlighted ? glow.blur + 4 : glow.blur,
+      });
       return;
     }
-
-    if (labelsWithSubtitle.has(div)) {
-      div.textContent = star.name;
-      labelsWithSubtitle.delete(div);
-    }
-    if (div.style.textShadow.includes("rgba")) div.style.textShadow = "";
 
     const favBonus = isFavorite(star.name) ? 5000 : 0;
 
@@ -333,69 +332,53 @@ export function updateLabels(
       const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 0.5, 0, 1);
       if (t >= 1) {
         target.visible = false;
+        updateCanvasLabel(canvasId, { hidden: true, pinned: false });
         return;
       }
       target.visible = true;
       const solDist = target.position.length();
       const solFade = solDistanceFade(solDist, cachedMaxNotableSolDist);
       const finalOpacity = Math.max(0.15, (1 - t) * solFade);
-      setLabelStyle(div, String(finalOpacity), zIndex);
       const magRank = Math.max(0, (10 - appMag) * 10);
       const solBonus = star.name === "Sol" ? 3000 : 0;
-      visibleLabels.add(div);
-      frameLabels.push({ div, rank: 500 + magRank + favBonus + solBonus, opacity: finalOpacity });
-    } else {
-      if (camDist > LABEL_HIDE_DIST) {
-        target.visible = false;
-        return;
-      }
-      target.visible = true;
-      const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
-      const finalOpacity = Math.max(0.2, opacity);
-      setLabelStyle(div, String(finalOpacity), zIndex);
-      visibleLabels.add(div);
-      frameLabels.push({ div, rank: favBonus, opacity: finalOpacity });
+      updateCanvasLabel(canvasId, {
+        opacityTarget: finalOpacity,
+        pinned: false,
+        hidden: false,
+        rank: 500 + magRank + favBonus + solBonus,
+        marginTop: margin,
+        subtitles: [],
+        shadowColor: "#000",
+        shadowBlur: 4,
+      });
+      return;
     }
+
+    if (camDist > LABEL_HIDE_DIST) {
+      target.visible = false;
+      updateCanvasLabel(canvasId, { hidden: true, pinned: false });
+      return;
+    }
+    target.visible = true;
+    const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
+    const finalOpacity = Math.max(0.2, opacity);
+    updateCanvasLabel(canvasId, {
+      opacityTarget: finalOpacity,
+      pinned: false,
+      hidden: false,
+      rank: favBonus,
+      marginTop: margin,
+      subtitles: [],
+      shadowColor: "#000",
+      shadowBlur: 4,
+    });
   }
 
   for (const anchor of notableAnchors) processLabel(anchor);
   for (const mesh of interactiveStars) processLabel(mesh);
 
-  const registeredLabels = collectAllRegisteredLabels();
-  for (const rl of registeredLabels) visibleLabels.add(rl.div);
-  frameLabels.push(...registeredLabels);
-
-  // Stash collision work for flushLabelCollisions to run AFTER
-  // labelRenderer.render has positioned the <div>s. Reading rects here
-  // would pick up last-frame's positions — during rapid orbit that
-  // one-frame lag flips collision decisions per frame and the user
-  // sees labels thrashing.
-  pendingCollision = { frameLabels, divFor };
-
   setLabelsDirty(false);
   prevCamPos.copy(camera.position);
-}
-
-let pendingCollision: { frameLabels: RankedLabel[]; divFor: DivResolver } | null = null;
-
-// Runs the collision resolver after the CSS2DRenderer has positioned
-// labels, so rect reads reflect the current frame. Also sweeps the
-// hover state through isLabelInteractive, which depends on whether
-// collision just hid the label in question.
-export function flushLabelCollisions() {
-  const work = pendingCollision;
-  if (!work) return;
-  pendingCollision = null;
-  resolveCollisions(work.frameLabels);
-
-  const lastHovered = getLastHoveredMesh();
-  const hoverDiv = lastHovered ? work.divFor(lastHovered) : null;
-  const hovSys = getHoveredSystem();
-  const sysDiv = hovSys ? hovSys.label.element as HTMLElement : null;
-  if ((hoverDiv && !isLabelInteractive(hoverDiv))
-    || (sysDiv && hovSys !== getSelectedSystem() && !isLabelInteractive(sysDiv))) {
-    unhoverAll();
-  }
 }
 
 const CAMERA_CHECK_INTERVAL = 300;

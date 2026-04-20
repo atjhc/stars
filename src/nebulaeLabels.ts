@@ -1,16 +1,21 @@
 import * as THREE from "three";
-import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { scene, camera, animateTo, setMinOrbitOverride } from "./scene.ts";
-import { NEBULA_LABEL_CSS, NEBULA_DEFAULT_SHADOW, SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL } from "./constants.ts";
-import { initLabelDragFn } from "./starfield.ts";
+import { SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { isDustVisible } from "./dust.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
-import type { RankedLabel } from "./labelCollision.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
+import {
+  registerCanvasLabel, updateCanvasLabel,
+} from "./labelCanvas.ts";
 
-const NEBULA_GLOW = "0 0 12px rgba(255,160,80,1.0), 0 0 28px rgba(255,130,50,0.5), 0 0 4px rgba(255,200,150,0.9)";
+const NEBULA_CANVAS_FONT = `13px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const NEBULA_CANVAS_COLOR = "rgba(255,180,120,0.85)";
+const NEBULA_CANVAS_SHADOW = { color: "rgba(200,120,60,0.7)", blur: 6 };
+const NEBULA_CANVAS_GLOW = { color: "rgba(255,160,80,1.0)", blur: 12 };
+const NEBULA_SUBTITLE_FONT = `9px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const NEBULA_SUBTITLE_COLOR = "rgba(170,170,170,0.9)";
 
 interface NebulaEntry {
   aliases?: string[];
@@ -26,8 +31,6 @@ interface NebulaLabel {
   name: string;
   entry: NebulaEntry;
   anchor: THREE.Object3D;
-  div: HTMLElement;
-  distDiv: HTMLElement;
 }
 
 // Zoom floor for a selected nebula (~5 pc / 16 ly). Nebulae are
@@ -44,6 +47,17 @@ export function getSelectedNebulaName(): string | null {
   return selectedNebula?.name ?? null;
 }
 
+// Canvas-mode hover driver. The DOM path wires glow via div mouseenter
+// / mouseleave listeners; in canvas mode the div isn't in the DOM, so
+// main.ts drives hover state through this API after pickLabelAt.
+export function setNebulaHoverByName(name: string | null): void {
+  const next = name ? nebulaLabels.find((n) => n.name === name) ?? null : null;
+  if (hoveredNebula === next) return;
+  if (hoveredNebula && selectedNebula !== hoveredNebula) removeGlow(hoveredNebula);
+  hoveredNebula = next;
+  if (next && selectedNebula !== next) applyGlow(next);
+}
+
 function formatDist(pc: number): string {
   const ly = pc * LY_PER_PARSEC;
   return ly < 100 ? `${ly.toFixed(1)} ly` : `${Math.round(ly)} ly`;
@@ -53,8 +67,20 @@ function formatDistFull(pc: number): string {
   return `${(pc * LY_PER_PARSEC).toFixed(1)} ly (${pc.toFixed(2)} pc)`;
 }
 
-function applyGlow(nl: NebulaLabel) { nl.div.style.textShadow = NEBULA_GLOW; }
-function removeGlow(nl: NebulaLabel) { nl.div.style.textShadow = NEBULA_DEFAULT_SHADOW; }
+function canvasIdFor(name: string): string { return `nebula:${name}`; }
+
+function applyGlow(nl: NebulaLabel) {
+  updateCanvasLabel(canvasIdFor(nl.name), {
+    shadowColor: NEBULA_CANVAS_GLOW.color,
+    shadowBlur: NEBULA_CANVAS_GLOW.blur,
+  });
+}
+function removeGlow(nl: NebulaLabel) {
+  updateCanvasLabel(canvasIdFor(nl.name), {
+    shadowColor: NEBULA_CANVAS_SHADOW.color,
+    shadowBlur: NEBULA_CANVAS_SHADOW.blur,
+  });
+}
 
 function buildDetailHtml(nl: NebulaLabel): string {
   const e = nl.entry;
@@ -80,7 +106,18 @@ const nebulaHandler: LabelTypeHandler = {
   type: "nebula",
 
   setVisible(v) {
-    for (const nl of nebulaLabels) nl.anchor.visible = v && isDustVisible();
+    for (const nl of nebulaLabels) {
+      nl.anchor.visible = v && isDustVisible();
+      const isActive = nl === selectedNebula || nl === hoveredNebula;
+      if (nl.anchor.visible) {
+        updateCanvasLabel(canvasIdFor(nl.name), {
+          hidden: false,
+          opacityTarget: isActive ? 1.0 : solDistanceFade(nl.anchor.position.length(), maxSolDist),
+        });
+      } else {
+        updateCanvasLabel(canvasIdFor(nl.name), { hidden: true });
+      }
+    }
   },
 
   update() {
@@ -90,17 +127,23 @@ const nebulaHandler: LabelTypeHandler = {
         if (d > maxSolDist) maxSolDist = d;
       }
     }
-    // Only update distance subtitle — opacity is managed by resolveCollisions
     for (const nl of nebulaLabels) {
       const isActive = nl === selectedNebula || nl === hoveredNebula;
-      if (isActive) {
-        const camDist = nl.anchor.position.distanceTo(camera.position);
-        const distPc = camDist / SCALE;
-        nl.distDiv.textContent = formatDist(distPc);
-        nl.distDiv.style.display = "";
-      } else {
-        nl.distDiv.style.display = "none";
+      if (!nl.anchor.visible) {
+        updateCanvasLabel(canvasIdFor(nl.name), { hidden: true });
+        continue;
       }
+      const camDist = nl.anchor.position.distanceTo(camera.position);
+      const distPc = camDist / SCALE;
+      const subtitles = isActive ? [formatDist(distPc)] : [];
+      const opacity = isActive ? 1.0
+        : solDistanceFade(nl.anchor.position.length(), maxSolDist);
+      updateCanvasLabel(canvasIdFor(nl.name), {
+        hidden: false,
+        opacityTarget: opacity,
+        pinned: isActive,
+        subtitles,
+      });
     }
   },
 
@@ -134,23 +177,6 @@ const nebulaHandler: LabelTypeHandler = {
     return selectedNebula ? buildDetailHtml(selectedNebula) : null;
   },
 
-  collectVisibleLabels() {
-    const result: RankedLabel[] = [];
-    for (const nl of nebulaLabels) {
-      if (!nl.anchor.visible) continue;
-      const isActive = nl === selectedNebula || nl === hoveredNebula;
-      const solDist = nl.anchor.position.length();
-      const opacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
-      const favBonus = isFavorite(nl.name) ? 5000 : 0;
-      result.push({
-        div: nl.div,
-        rank: 2000 + favBonus,
-        pinned: isActive,
-        opacity,
-      });
-    }
-    return result;
-  },
 };
 
 export async function initNebulaeLabels(): Promise<void> {
@@ -159,29 +185,28 @@ export async function initNebulaeLabels(): Promise<void> {
   const data: Record<string, NebulaEntry> = await resp.json();
 
   for (const [name, entry] of Object.entries(data)) {
-    const div = document.createElement("div");
-    div.style.cssText = NEBULA_LABEL_CSS;
-    div.innerHTML = `<div>${name}</div><div class="system-members" style="display:none"></div>`;
-    div.setAttribute("data-label-type", "nebula");
-    div.setAttribute("data-label-name", name);
-    if (initLabelDragFn) initLabelDragFn(div);
-
     const anchor = new THREE.Object3D();
     anchor.position.set(entry.scene_pos[0], entry.scene_pos[1], entry.scene_pos[2]);
-    const label = new CSS2DObject(div);
-    label.center.set(0.5, 0);
-    anchor.add(label);
     scene.add(anchor);
 
-    const distDiv = div.querySelector("div:last-child") as HTMLElement;
-    const nl: NebulaLabel = { name, entry, anchor, div, distDiv };
+    const nl: NebulaLabel = { name, entry, anchor };
     nebulaLabels.push(nl);
 
-    div.addEventListener("mouseenter", () => {
-      if (selectedNebula !== nl) { hoveredNebula = nl; applyGlow(nl); }
-    });
-    div.addEventListener("mouseleave", () => {
-      if (hoveredNebula === nl && selectedNebula !== nl) { hoveredNebula = null; removeGlow(nl); }
+    registerCanvasLabel({
+      id: canvasIdFor(name),
+      kind: "nebula",
+      anchor: anchor.position,
+      text: name,
+      font: NEBULA_CANVAS_FONT,
+      color: NEBULA_CANVAS_COLOR,
+      shadowColor: NEBULA_CANVAS_SHADOW.color,
+      shadowBlur: NEBULA_CANVAS_SHADOW.blur,
+      subtitleFont: NEBULA_SUBTITLE_FONT,
+      subtitleColor: NEBULA_SUBTITLE_COLOR,
+      rank: 2000 + (isFavorite(name) ? 5000 : 0),
+      marginTop: 16,
+      opacityTarget: 0,
+      payload: { name },
     });
   }
 

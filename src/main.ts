@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS } from "./constants.ts";
 import {
-  scene, camera, labelCamera, renderer, labelRenderer, composer,
+  scene, camera, renderer, composer,
   gridHelper, handleResize, bloomPass,
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
@@ -13,11 +13,10 @@ import {
 import {
   initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
 } from "./urlState.ts";
-import { getSelectedNebulaName } from "./nebulaeLabels.ts";
+import { getSelectedNebulaName, setNebulaHoverByName } from "./nebulaeLabels.ts";
 import { computeStarScreenMetrics, setOverlayActive, setOverlayUniforms } from "./stars.ts";
 import { starRadiusScene, bvToColor } from "./color.ts";
 import {
-  registerLabelMap,
   hoverTarget, unhoverAll,
   selectTarget, selectSystem, selectStar,
   showSystemMembers, hideSystemMembers,
@@ -27,27 +26,27 @@ import {
   getSelectedMesh, getSelectedSubset, setLabelsDirty,
 } from "./systemStore.ts";
 import { toggleFavorite } from "./favorites.ts";
-import { isLabelInteractive, resetCollisionFadeState } from "./labelCollision.ts";
 
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
 import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
-import { updateLabels, flushLabelCollisions, checkCameraMoved } from "./labels.ts";
+import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
 import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, isDustVisible, handleDustResize } from "./dust.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
-import { initBlackHoleLabels, getSelectedBlackHoleName } from "./blackholes.ts";
-import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
+import { initBlackHoleLabels, getSelectedBlackHoleName, setBlackHoleHoverByName } from "./blackholes.ts";
+import { setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase } from "./debug.ts";
 import { runBench } from "./bench.ts";
 import {
+  initLabelCanvas, renderLabelCanvas, setHitTargetsOverlay, setCanvasLabelsVisible,
+  pickLabelAt, pickStarAt, getCanvasLabel, isCanvasLabelInteractive,
+} from "./labelCanvas.ts";
+import {
   initStarfield, updateStarfield,
-  notableObjects, notableLabelMap, notableLabelMeshMap,
-  allInteractiveStars, tier1Meshes,
+  notableObjects, tier1Meshes,
   systemGroups, meshToSystem, clusterOf,
-  setInitLabelDrag, onLabelsChanged,
-  tier1LabelMeshFromDiv, tier1LabelDivFromMesh,
-  streamedLabelMap,
+  onLabelsChanged,
   requestTileFocus,
 } from "./starfield.ts";
 import { animateTo } from "./scene.ts";
@@ -77,121 +76,61 @@ let isDragging = false;
 let prevMouse = { x: 0, y: 0 };
 let dragDistance = 0;
 let lastInputWasTouch = false;
-let hoveredViaLabel = false;
 let isAltOrbit = false;
 
-function initLabelDrag(div: HTMLElement) {
-  div.setAttribute("data-star-label", "");
-  div.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    isDragging = true;
-    prevMouse.x = e.clientX;
-    prevMouse.y = e.clientY;
-    dragDistance = 0;
-    hoveredViaLabel = false;
-  });
-}
-setInitLabelDrag(initLabelDrag);
-
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-function setMouseNDC(clientX: number, clientY: number) {
-  mouse.x = (clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-}
-
-function meshFromLabel(el: HTMLElement): THREE.Object3D | undefined {
-  const label = el.closest("[data-star-label]") as HTMLElement | null;
-  if (!label) return undefined;
-  return notableLabelMeshMap.get(label) || tier1LabelMeshFromDiv(label);
-}
-
-function divFor(mesh: THREE.Object3D): HTMLElement | undefined {
-  return notableLabelMap.get(mesh) || tier1LabelDivFromMesh(mesh);
-}
-
 function trySelectAt(clientX: number, clientY: number) {
-  setMouseNDC(clientX, clientY);
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(allInteractiveStars);
-  for (const h of hits) {
-    const t = h.object;
-    const d = divFor(t);
-    if (!d || !isLabelInteractive(d)) continue;
+  // Screen-space star disc pick. Replaces the old 3D raycast against
+  // hit spheres — immune to deep-zoom camera clamping and to binary
+  // members whose hit spheres overlap in 3D but not on screen.
+  const starMesh = pickStarAt(clientX, clientY) as THREE.Object3D | null;
+  if (starMesh) {
     clearAllSelections();
-    selectTarget(t, updateDetailPanel, doUpdateLabelVisibility);
+    selectTarget(starMesh, updateDetailPanel, doUpdateLabelVisibility);
     return;
   }
+  // Missed the disc — try label rects (tier-1 text clicks, systems,
+  // nebulae, BHs).
+  dispatchCanvasLabelClick(clientX, clientY);
+}
+
+function dispatchCanvasLabelClick(x: number, y: number): boolean {
+  const id = pickLabelAt(x, y);
+  if (!id || !isCanvasLabelInteractive(id)) return false;
+  const label = getCanvasLabel(id);
+  if (!label) return false;
+  switch (label.kind) {
+    case "star": {
+      const mesh = label.payload as THREE.Object3D | undefined;
+      if (!mesh) return false;
+      clearAllSelections();
+      selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
+      return true;
+    }
+    case "system": {
+      const group = label.payload as SystemGroup | undefined;
+      if (!group) return false;
+      clearAllSelections();
+      selectSystem(group, updateDetailPanel);
+      return true;
+    }
+    case "nebula":
+    case "blackhole": {
+      const name = (label.payload as { name?: string } | undefined)?.name;
+      if (name) return selectByType(label.kind, name);
+      return false;
+    }
+  }
+  return false;
 }
 
 function doUpdateLabelVisibility() {
-  if (!labelsVisible) {
-    // Hide only the CSS2DObject children — the billboard meshes stay
-    // rendered so the star's disc/glow remains visible. Toggling
-    // anchor.visible or mesh.visible would also hide the billboard's
-    // raycast and its rendering, which isn't what "hide labels" means.
-    for (const anchor of notableObjects) hideCss2dChild(anchor);
-    for (const obj of allInteractiveStars) hideCss2dChild(obj);
-    for (const group of systemGroups) {
-      group.label.visible = false;
-      (group.label.element as HTMLElement).style.opacity = "0";
-    }
-    // Clear collision fade state so labels coming back don't replay a
-    // stale fade-out animation from their pre-hide opacity.
-    resetCollisionFadeState();
-  }
+  setCanvasLabelsVisible(labelsVisible);
   setAllLabelsVisible(labelsVisible);
   setLabelsDirty(true);
 }
 
-function hideCss2dChild(parent: THREE.Object3D) {
-  for (const c of parent.children) {
-    if ((c as THREE.Object3D & { isCSS2DObject?: boolean }).isCSS2DObject) {
-      c.visible = false;
-      const el = (c as unknown as { element?: HTMLElement }).element;
-      if (el) el.style.opacity = "0";
-    }
-  }
-}
-
-// Wire system label divs each time the system list is rebuilt.
-const wiredSystems = new WeakSet<SystemGroup>();
-function wireSystemLabels() {
-  for (const group of systemGroups) {
-    if (wiredSystems.has(group)) continue;
-    wiredSystems.add(group);
-    const labelDiv = group.label.element as HTMLElement;
-    labelDiv.addEventListener("mouseenter", () => {
-      if (isDragging || isAltOrbit) return;
-      if (!isLabelInteractive(labelDiv)) return;
-      if (getSelectedSystem() !== group) {
-        setHoveredSystem(group);
-        showSystemMembers(group);
-      }
-    });
-    labelDiv.addEventListener("mouseleave", () => {
-      if (isDragging || isAltOrbit) return;
-      if (getHoveredSystem() === group && getSelectedSystem() !== group) {
-        hideSystemMembers(group);
-        setHoveredSystem(null);
-      }
-    });
-    labelDiv.addEventListener("mouseup", () => {
-      if (dragDistance >= CLICK_THRESHOLD) return;
-      if (!isLabelInteractive(labelDiv)) return;
-      clearAllSelections();
-      selectSystem(group, updateDetailPanel);
-      scheduleUrlWrite();
-    });
-  }
-}
 onLabelsChanged(() => {
-  wireSystemLabels();
   setLabelsDirty(true);
-  // New labels need one CSS2DRenderer pass before collision rects are valid.
-  // Schedule a second dirty so they get re-evaluated after positioning.
-  requestAnimationFrame(() => setLabelsDirty(true));
   if (pendingSystemSelect && trySelectSystem(pendingSystemSelect.name, pendingSystemSelect.subsetNames)) {
     pendingSystemSelect = null;
     scheduleUrlWrite();
@@ -204,7 +143,6 @@ renderer.domElement.addEventListener("mousedown", (e) => {
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
   dragDistance = 0;
-  hoveredViaLabel = false;
   unhoverAll();
 });
 
@@ -289,76 +227,83 @@ function onWheelWithUrl(e: WheelEvent) {
   scheduleUrlWrite();
 }
 renderer.domElement.addEventListener("wheel", onWheelWithUrl, { passive: false });
-labelRenderer.domElement.addEventListener("wheel", onWheelWithUrl, { passive: false });
 
 window.addEventListener("touchstart", () => { lastInputWasTouch = true; }, { capture: true });
 window.addEventListener("mousemove", () => { lastInputWasTouch = false; }, { capture: true });
 
 renderer.domElement.addEventListener("mousemove", (e) => {
-  if (hoveredViaLabel || lastInputWasTouch || isDragging || e.altKey) return;
-  setMouseNDC(e.clientX, e.clientY);
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(allInteractiveStars);
-  let hoverMesh: THREE.Object3D | undefined;
-  for (const h of intersects) {
-    const t = h.object;
-    // Check the star's own label
-    const d = divFor(t);
-    if (!d || !isLabelInteractive(d)) continue;
-    // If the star belongs to a cluster, check the cluster label too
-    const cluster = clusterOf.get(t);
-    if (cluster && !isLabelInteractive(cluster.label.element as HTMLElement)) continue;
-    hoverMesh = t;
-    break;
+  if (lastInputWasTouch || isDragging || e.altKey) return;
+  // Screen-space star disc pick first (matches the magenta overlay).
+  const starMesh = pickStarAt(e.clientX, e.clientY) as THREE.Object3D | null;
+  if (starMesh) {
+    const cluster = clusterOf.get(starMesh);
+    if (!cluster || isTargetClusterLabelInteractive(cluster)) {
+      hoverTarget(starMesh, meshToSystem, clusterOf);
+      return;
+    }
   }
-  if (hoverMesh) {
-    hoverTarget(hoverMesh, meshToSystem, clusterOf);
-  } else {
-    unhoverAll();
-  }
-});
-
-labelRenderer.domElement.addEventListener("mouseover", (e) => {
-  if (lastInputWasTouch || isDragging || isAltOrbit) return;
-  const label = (e.target as HTMLElement).closest("[data-star-label], [data-system-label], [data-label-type]") as HTMLElement | null;
-  if (label && !isLabelInteractive(label)) return;
-  const mesh = meshFromLabel(e.target as HTMLElement);
-  if (!mesh) return;
-  hoveredViaLabel = true;
-  hoverTarget(mesh, meshToSystem, clusterOf);
-});
-
-labelRenderer.domElement.addEventListener("mousemove", (e) => {
-  if (!hoveredViaLabel || isDragging || isAltOrbit) return;
-  const mesh = meshFromLabel(e.target as HTMLElement);
-  if (!mesh) return;
-  hoverTarget(mesh, meshToSystem, clusterOf);
-});
-
-labelRenderer.domElement.addEventListener("mouseout", (e) => {
-  const label = (e.target as HTMLElement).closest("[data-star-label]") as HTMLElement | null;
-  if (!label) return;
-  const related = (e as MouseEvent).relatedTarget as HTMLElement | null;
-  if (related && label.contains(related)) return;
-  hoveredViaLabel = false;
+  // Missed disc — canvas label hover (text rect pick, plus system /
+  // nebula / BH dispatch).
+  if (dispatchCanvasLabelHover(e.clientX, e.clientY)) return;
   unhoverAll();
 });
 
-labelRenderer.domElement.addEventListener("mouseup", (e) => {
-  if (dragDistance >= CLICK_THRESHOLD) return;
-  // Registry handles nebulae (and any future label types)
-  if (dispatchLabelClick(e.target as HTMLElement)) {
-    updateDetailPanel();
-    scheduleUrlWrite();
-    return;
+function isTargetClusterLabelInteractive(cluster: SystemGroup): boolean {
+  return isCanvasLabelInteractive(`system:${cluster.name}`);
+}
+
+// Canvas-only hover dispatch — star, system, nebula, BH. Returns true
+// when a canvas label was hit and hover state was updated so the
+// caller skips the unhoverAll fallback. Also ensures that leaving one
+// label type and entering another clears the first type's hover glow,
+// since each type owns its own hover state (stars through
+// interaction.ts, nebula/BH through their own modules).
+function dispatchCanvasLabelHover(x: number, y: number): boolean {
+  const id = pickLabelAt(x, y);
+  const label = id && isCanvasLabelInteractive(id) ? getCanvasLabel(id) : null;
+
+  // Clear cross-type hover first — keeps only the matching type active.
+  if (label?.kind !== "nebula") setNebulaHoverByName(null);
+  if (label?.kind !== "blackhole") setBlackHoleHoverByName(null);
+
+  if (!label) {
+    unhoverAll();
+    return false;
   }
-  const mesh = meshFromLabel(e.target as HTMLElement);
-  if (mesh) {
-    clearAllSelections();
-    selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
-    scheduleUrlWrite();
+
+  if (label.kind === "star") {
+    const mesh = label.payload as THREE.Object3D | undefined;
+    if (!mesh) return false;
+    hoverTarget(mesh, meshToSystem, clusterOf);
+    return true;
   }
-});
+  if (label.kind === "system") {
+    const group = label.payload as SystemGroup | undefined;
+    if (!group) return false;
+    unhoverAll();
+    if (getSelectedSystem() !== group && getHoveredSystem() !== group) {
+      const prevHovered = getHoveredSystem();
+      if (prevHovered && prevHovered !== group && prevHovered !== getSelectedSystem()) {
+        hideSystemMembers(prevHovered);
+      }
+      setHoveredSystem(group);
+      showSystemMembers(group);
+    }
+    return true;
+  }
+  if (label.kind === "nebula") {
+    unhoverAll();
+    setNebulaHoverByName((label.payload as { name: string }).name);
+    return true;
+  }
+  if (label.kind === "blackhole") {
+    unhoverAll();
+    setBlackHoleHoverByName((label.payload as { name: string }).name);
+    return true;
+  }
+  return false;
+}
+
 
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLInputElement) return;
@@ -461,11 +406,11 @@ setupSearch(handleSearchSelect, (entry) => {
   lookToward(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
 });
 
+// Canvas label layer (see docs/canvas-labels-plan.md). Sole label path.
+initLabelCanvas();
+
 // Boot the catalog + starfield, then select Sol once notables are loaded.
 await initStarfield();
-registerLabelMap(notableLabelMap);
-registerLabelMap(streamedLabelMap);
-wireSystemLabels();
 await initConstellations();
 await initDust();
 await initNebulaeLabels();
@@ -583,6 +528,9 @@ if (debugEnabled) {
       case "bloom":
         bloomPass.enabled = value;
         break;
+      case "hitTargets":
+        setHitTargetsOverlay(value);
+        break;
     }
   });
 }
@@ -640,27 +588,18 @@ function animate(now: number) {
   statsPhase("updateStarfield", updateStarfield);
   statsPhase("updateDust", updateDust);
   statsPhase("updateAllLabels", updateAllLabels);
-  statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem, divFor));
+  statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem));
 
   // Main scene pass (lensing pass is in the composer, auto-enabled by blackholes.ts)
   statsPhase("sceneRender", () => {
-    if (debugEnabled && debug.directRender) {
-      renderer.render(scene, camera);
-    } else {
-      beginBloomRender();
-      composer.render();
-      endBloomRender();
-    }
+    beginBloomRender();
+    composer.render();
+    endBloomRender();
     renderDustPostBloom(renderer);
   });
 
-  statsPhase("labelRenderer", () => labelRenderer.render(scene, labelCamera));
-  // Collision resolution reads DOM rects — must run AFTER
-  // labelRenderer positions the divs for this frame.
-  statsPhase("flushCollisions", flushLabelCollisions);
+  statsPhase("labelCanvas", renderLabelCanvas);
   if (debugEnabled) tickDebug();
   statsEnd();
 }
-// Position labels in the DOM before the first frame so collision rects are valid
-labelRenderer.render(scene, labelCamera);
 animate(performance.now());

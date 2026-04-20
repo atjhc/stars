@@ -1,30 +1,26 @@
 import * as THREE from "three";
-import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import {
   scene, camera, animateTo, setMinOrbitOverride,
   isDeepZoom, orbitRadius, lensingPass, BLOOM_OVERSCAN,
 } from "./scene.ts";
 import {
-  SCALE, solDistanceFade, TILE_BASE_URL,
-  DEEP_ZOOM_MIN_ORBIT, formatAstroDistance,
+  SCALE, TILE_BASE_URL,
+  DEEP_ZOOM_MIN_ORBIT, formatAstroDistance, solDistanceFade,
 } from "./constants.ts";
-import { initLabelDragFn } from "./starfield.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { registerLabelType, registerScreenOccluder, type LabelTypeHandler } from "./labelRegistry.ts";
-import type { RankedLabel } from "./labelCollision.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
+import {
+  registerCanvasLabel, updateCanvasLabel,
+} from "./labelCanvas.ts";
 
-const BH_LABEL_CSS = `
-  color: rgba(180,140,220,0.85); font-size: 12px;
-  letter-spacing: 0.5px;
-  pointer-events: auto; white-space: nowrap;
-  text-shadow: 0 0 8px rgba(120,80,180,0.6), 0 0 3px #000;
-  -webkit-user-select: none; user-select: none; text-align: center; cursor: pointer;
-`;
-
-const BH_GLOW = "0 0 12px rgba(160,100,220,1.0), 0 0 28px rgba(130,70,200,0.5), 0 0 4px rgba(200,160,255,0.9)";
-const BH_DEFAULT_SHADOW = "0 0 8px rgba(120,80,180,0.6), 0 0 3px #000";
+const BH_CANVAS_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const BH_CANVAS_COLOR = "rgba(180,140,220,0.85)";
+const BH_CANVAS_SHADOW = { color: "rgba(120,80,180,0.7)", blur: 6 };
+const BH_CANVAS_GLOW = { color: "rgba(160,100,220,1.0)", blur: 12 };
+const BH_SUBTITLE_FONT = `9px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const BH_SUBTITLE_COLOR = "rgba(170,170,170,0.9)";
 
 interface BlackHoleEntry {
   aliases?: string[];
@@ -41,8 +37,6 @@ interface BlackHoleLabel {
   name: string;
   entry: BlackHoleEntry;
   anchor: THREE.Object3D;
-  div: HTMLElement;
-  distDiv: HTMLElement;
 }
 
 const blackHoleLabels: BlackHoleLabel[] = [];
@@ -50,13 +44,21 @@ let selectedBH: BlackHoleLabel | null = null;
 let hoveredBH: BlackHoleLabel | null = null;
 let maxSolDist = 0;
 
+function canvasIdFor(name: string): string { return `blackhole:${name}`; }
+
 function applyGlow(bh: BlackHoleLabel) {
-  bh.div.style.textShadow = BH_GLOW;
+  updateCanvasLabel(canvasIdFor(bh.name), {
+    shadowColor: BH_CANVAS_GLOW.color,
+    shadowBlur: BH_CANVAS_GLOW.blur,
+  });
   setLabelsDirty(true);
 }
 
 function removeGlow(bh: BlackHoleLabel) {
-  bh.div.style.textShadow = BH_DEFAULT_SHADOW;
+  updateCanvasLabel(canvasIdFor(bh.name), {
+    shadowColor: BH_CANVAS_SHADOW.color,
+    shadowBlur: BH_CANVAS_SHADOW.blur,
+  });
   setLabelsDirty(true);
 }
 
@@ -119,6 +121,14 @@ export function getSelectedBlackHoleName(): string | null {
   return selectedBH?.name ?? null;
 }
 
+export function setBlackHoleHoverByName(name: string | null): void {
+  const next = name ? blackHoleLabels.find((b) => b.name === name) ?? null : null;
+  if (hoveredBH === next) return;
+  if (hoveredBH && selectedBH !== hoveredBH) removeGlow(hoveredBH);
+  hoveredBH = next;
+  if (next && selectedBH !== next) applyGlow(next);
+}
+
 export function getBHScreenOcclusion(): { cx: number; cy: number; radius: number } | null {
   if (!lensingPass.enabled || !selectedBH) return null;
   const uniforms = lensingPass.uniforms as Record<string, THREE.IUniform>;
@@ -135,7 +145,18 @@ const bhHandler: LabelTypeHandler = {
   type: "blackhole",
 
   setVisible(v) {
-    for (const bh of blackHoleLabels) bh.anchor.visible = v;
+    for (const bh of blackHoleLabels) {
+      bh.anchor.visible = v;
+      const isActive = bh === selectedBH || bh === hoveredBH;
+      if (v) {
+        updateCanvasLabel(canvasIdFor(bh.name), {
+          hidden: false,
+          opacityTarget: isActive ? 1.0 : solDistanceFade(bh.anchor.position.length(), maxSolDist),
+        });
+      } else {
+        updateCanvasLabel(canvasIdFor(bh.name), { hidden: true });
+      }
+    }
   },
 
   update() {
@@ -146,17 +167,19 @@ const bhHandler: LabelTypeHandler = {
       }
     }
     for (const bh of blackHoleLabels) {
-      const isActive = bh === selectedBH || bh === hoveredBH;
-      if (isActive) {
-        // orbitRadius for the selected BH (main camera clamped during deep zoom);
-        // actual distance for a merely-hovered one.
-        const trueDist = bh === selectedBH ? orbitRadius : bh.anchor.position.distanceTo(camera.position);
-        bh.distDiv.textContent = formatAstroDistance(trueDist);
-        bh.distDiv.style.display = "";
-      } else {
-        bh.distDiv.style.display = "none";
+      if (!bh.anchor.visible) {
+        updateCanvasLabel(canvasIdFor(bh.name), { hidden: true });
+        continue;
       }
-      bh.div.style.marginTop = "16px";
+      const isActive = bh === selectedBH || bh === hoveredBH;
+      const trueDist = bh === selectedBH ? orbitRadius : bh.anchor.position.distanceTo(camera.position);
+      const opacity = isActive ? 1.0 : solDistanceFade(bh.anchor.position.length(), maxSolDist);
+      updateCanvasLabel(canvasIdFor(bh.name), {
+        hidden: false,
+        opacityTarget: opacity,
+        pinned: isActive,
+        subtitles: isActive ? [formatAstroDistance(trueDist)] : [],
+      });
     }
 
     if (isDeepZoom() && selectedBH) {
@@ -192,23 +215,6 @@ const bhHandler: LabelTypeHandler = {
     return selectedBH ? buildDetailHtml(selectedBH) : null;
   },
 
-  collectVisibleLabels() {
-    const result: RankedLabel[] = [];
-    for (const bh of blackHoleLabels) {
-      if (!bh.anchor.visible) continue;
-      const isActive = bh === selectedBH || bh === hoveredBH;
-      const solDist = bh.anchor.position.length();
-      const opacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
-      const favBonus = isFavorite(bh.name) ? 5000 : 0;
-      result.push({
-        div: bh.div,
-        rank: 1800 + favBonus,
-        pinned: isActive,
-        opacity,
-      });
-    }
-    return result;
-  },
 };
 
 export async function initBlackHoleLabels(): Promise<void> {
@@ -217,30 +223,28 @@ export async function initBlackHoleLabels(): Promise<void> {
   const data: Record<string, BlackHoleEntry> = await resp.json();
 
   for (const [name, entry] of Object.entries(data)) {
-    const div = document.createElement("div");
-    div.style.cssText = BH_LABEL_CSS;
-    div.innerHTML = `<div>${name}</div><div class="system-members" style="display:none"></div>`;
-    div.setAttribute("data-label-type", "blackhole");
-    div.setAttribute("data-label-name", name);
-    if (initLabelDragFn) initLabelDragFn(div);
-
     const anchor = new THREE.Object3D();
     anchor.position.set(entry.scene_pos[0], entry.scene_pos[1], entry.scene_pos[2]);
-
-    const label = new CSS2DObject(div);
-    label.center.set(0.5, 0);
-    anchor.add(label);
     scene.add(anchor);
 
-    const distDiv = div.querySelector("div:last-child") as HTMLElement;
-    const bh: BlackHoleLabel = { name, entry, anchor, div, distDiv };
+    const bh: BlackHoleLabel = { name, entry, anchor };
     blackHoleLabels.push(bh);
 
-    div.addEventListener("mouseenter", () => {
-      if (selectedBH !== bh) { hoveredBH = bh; applyGlow(bh); }
-    });
-    div.addEventListener("mouseleave", () => {
-      if (hoveredBH === bh) { hoveredBH = null; if (selectedBH !== bh) removeGlow(bh); }
+    registerCanvasLabel({
+      id: canvasIdFor(name),
+      kind: "blackhole",
+      anchor: anchor.position,
+      text: name,
+      font: BH_CANVAS_FONT,
+      color: BH_CANVAS_COLOR,
+      shadowColor: BH_CANVAS_SHADOW.color,
+      shadowBlur: BH_CANVAS_SHADOW.blur,
+      subtitleFont: BH_SUBTITLE_FONT,
+      subtitleColor: BH_SUBTITLE_COLOR,
+      rank: 1800 + (isFavorite(name) ? 5000 : 0),
+      marginTop: 16,
+      opacityTarget: 0,
+      payload: { name },
     });
   }
 

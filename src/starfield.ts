@@ -1,13 +1,15 @@
 import * as THREE from "three";
-import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { Star, SystemGroup, BinarySystem, ClusterGroup } from "./types.ts";
-import { LABEL_CSS, CLUSTER_LABEL_CSS, CLUSTER_DEFAULT_SHADOW, SCALE, TILE_BASE_URL } from "./constants.ts";
+import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { scene, camera } from "./scene.ts";
-import { createStarAnchor, createStarLabel } from "./billboard.ts";
+import { createStarAnchor } from "./billboard.ts";
 import { showSystemMembers } from "./interaction.ts";
 import { setLabelsDirty, relinkAfterRebuild, getPinnedTile } from "./systemStore.ts";
 import { registerMembers } from "./systemDispatch.ts";
-import { untrackLabel } from "./labelCollision.ts";
+import {
+  registerCanvasLabel, unregisterCanvasLabel,
+  linkMeshToCanvasLabel, unlinkMeshFromCanvasLabel,
+} from "./labelCanvas.ts";
 import {
   BYTES_PER_STAR, createTileMesh, decodeTileBinary,
   magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag,
@@ -53,13 +55,24 @@ let tileEntries: [string, TileMeta][] = [];
 
 // Tier-0 (eager from notable.json) + tier-1 (streamed) anchors. Both
 // are lightweight Object3Ds without geometry — all visuals render from
-// the instanced mesh.
+// the instanced mesh; labels are painted on the canvas overlay.
 export const notableObjects: THREE.Object3D[] = [];
-export const notableLabelMap = new WeakMap<THREE.Object3D, HTMLElement>();
-export const notableLabelMeshMap = new WeakMap<HTMLElement, THREE.Object3D>();
 
-export const streamedLabelMap = new WeakMap<THREE.Object3D, HTMLElement>();
-const tier1DivToAnchor = new WeakMap<HTMLElement, THREE.Object3D>();
+// Per-anchor canvas label id, for tier-1 despawn cleanup.
+const tier1CanvasIds = new WeakMap<THREE.Object3D, string>();
+
+// Per-system canvas label id.
+const systemCanvasIds = new WeakMap<SystemGroup, string>();
+export function systemCanvasLabelId(group: SystemGroup): string | undefined {
+  return systemCanvasIds.get(group);
+}
+
+const TIER1_CANVAS_FONT = `10px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const TIER1_CANVAS_COLOR = "rgba(255,255,255,0.7)";
+const SYSTEM_CLUSTER_FONT = `14px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const SYSTEM_SUBTITLE_FONT = `9px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const SYSTEM_CLUSTER_COLOR = "rgba(180,210,255,0.85)";
+const SYSTEM_SUBTITLE_COLOR = "rgba(170,170,170,0.9)";
 
 // Raycast target list for star clicks/hover.
 export const allInteractiveStars: THREE.Object3D[] = [];
@@ -77,25 +90,33 @@ export const systemGroups: SystemGroup[] = [];
 export const meshToSystem = new Map<THREE.Object3D, SystemGroup>();
 export const clusterOf = new Map<THREE.Object3D, SystemGroup>();
 
-export let initLabelDragFn: ((div: HTMLElement) => void) | null = null;
 let labelChangeListeners: Array<() => void> = [];
 export function onLabelsChanged(fn: () => void) { labelChangeListeners.push(fn); }
 function notifyLabelsChanged() { for (const fn of labelChangeListeners) fn(); }
-
-export function setInitLabelDrag(fn: (div: HTMLElement) => void) {
-  initLabelDragFn = fn;
-}
 
 function spawnNotableAnchors() {
   const notable = getNotable();
   for (const n of notable) {
     const [sx, sy, sz] = n.pos;
     const anchor = createStarAnchor(n, sx, sy, sz);
-    const { div } = createStarLabel(n, anchor, initLabelDragFn ?? (() => {}));
+    const id = `tier0:${n.tile}/${n.i}`;
+    registerCanvasLabel({
+      id,
+      kind: "star",
+      anchor: anchor.position,
+      text: n.name,
+      font: TIER1_CANVAS_FONT,
+      color: TIER1_CANVAS_COLOR,
+      shadowColor: "#000",
+      shadowBlur: 4,
+      rank: 500,
+      marginTop: 16,
+      opacityTarget: 0,
+      payload: anchor,
+    });
+    linkMeshToCanvasLabel(anchor, id);
     anchorsGroup.add(anchor);
     notableObjects.push(anchor);
-    notableLabelMap.set(anchor, div);
-    notableLabelMeshMap.set(div, anchor);
     allInteractiveStars.push(anchor);
     anchorByRef.set(refKey(n.tile, n.i), anchor);
   }
@@ -104,10 +125,24 @@ function spawnNotableAnchors() {
 function spawnTier1Anchor(row: LabelRow, path: string, sx: number, sy: number, sz: number): THREE.Object3D {
   const star: Star = { ...row, tile: path };
   const anchor = createStarAnchor(star, sx, sy, sz);
-  const { div } = createStarLabel(star, anchor, initLabelDragFn ?? (() => {}));
   anchorsGroup.add(anchor);
-  streamedLabelMap.set(anchor, div);
-  tier1DivToAnchor.set(div, anchor);
+  const id = `tier1:${path}/${row.i}`;
+  registerCanvasLabel({
+    id,
+    kind: "star",
+    anchor: anchor.position,
+    text: star.name,
+    font: TIER1_CANVAS_FONT,
+    color: TIER1_CANVAS_COLOR,
+    shadowColor: "#000",
+    shadowBlur: 4,
+    rank: 0,
+    marginTop: 16,
+    opacityTarget: 0,
+    payload: anchor,
+  });
+  tier1CanvasIds.set(anchor, id);
+  linkMeshToCanvasLabel(anchor, id);
   return anchor;
 }
 
@@ -154,12 +189,11 @@ function despawnTileLabels(path: string) {
     const idx = allInteractiveStars.indexOf(anchor);
     if (idx >= 0) allInteractiveStars.splice(idx, 1);
 
-    const div = streamedLabelMap.get(anchor);
-    if (div) {
-      untrackLabel(div);
-      div.remove();
-      streamedLabelMap.delete(anchor);
-      tier1DivToAnchor.delete(div);
+    const canvasId = tier1CanvasIds.get(anchor);
+    if (canvasId) {
+      unregisterCanvasLabel(canvasId);
+      unlinkMeshFromCanvasLabel(anchor);
+      tier1CanvasIds.delete(anchor);
     }
     const star = anchor.userData as Star & { tile?: string };
     if (star.tile !== undefined) anchorByRef.delete(refKey(star.tile, star.i));
@@ -173,7 +207,11 @@ function despawnTileLabels(path: string) {
 function rebuildSystems() {
   for (const group of systemGroups) {
     group.anchor.removeFromParent();
-    (group.label.element as HTMLElement).remove();
+    const prevCanvasId = systemCanvasIds.get(group);
+    if (prevCanvasId) {
+      unregisterCanvasLabel(prevCanvasId);
+      systemCanvasIds.delete(group);
+    }
   }
   systemGroups.length = 0;
   meshToSystem.clear();
@@ -189,18 +227,8 @@ function rebuildSystems() {
     }
     if (!isCluster && members.length < 2) continue;
 
-    const labelDiv = document.createElement("div");
-    labelDiv.style.cssText = isCluster ? CLUSTER_LABEL_CSS : LABEL_CSS;
-    labelDiv.innerHTML = `<div>${name}</div>`;
-    labelDiv.setAttribute("data-system-label", "");
-    if (initLabelDragFn) initLabelDragFn(labelDiv);
-
     const anchor = new THREE.Object3D();
     scene.add(anchor);
-    const label = new CSS2DObject(labelDiv);
-    label.center.set(0.5, 0);
-    label.visible = false;
-    anchor.add(label);
 
     const centroid = new THREE.Vector3();
     if (isCluster && data.centroid) {
@@ -215,16 +243,37 @@ function rebuildSystems() {
       ? members.reduce((s, m) => s + ((m.userData as Star).dist ?? 0), 0) / members.length
       : centroid.length() / SCALE;
 
-    const base = { name, meshes: members, label, anchor, centroid, avgDist, wikipedia: data.wikipedia, notes: data.notes };
+    const base = { name, meshes: members, anchor, centroid, avgDist, wikipedia: data.wikipedia, notes: data.notes };
 
     const group: SystemGroup = isCluster
-      ? { ...base, kind: "cluster", defaultShadow: CLUSTER_DEFAULT_SHADOW, aliases: data.aliases } as ClusterGroup
+      ? { ...base, kind: "cluster", aliases: data.aliases } as ClusterGroup
       : { ...base, kind: "binary", collapsedMembers: [],
           screens: members.map(() => ({ x: 0, y: 0 })),
           parents: new Array(members.length) } as BinarySystem;
 
     systemGroups.push(group);
     registerMembers(group, meshToSystem, clusterOf);
+
+    {
+      const id = `system:${name}`;
+      registerCanvasLabel({
+        id,
+        kind: "system",
+        anchor: anchor.position,
+        text: name,
+        font: isCluster ? SYSTEM_CLUSTER_FONT : TIER1_CANVAS_FONT,
+        color: isCluster ? SYSTEM_CLUSTER_COLOR : TIER1_CANVAS_COLOR,
+        shadowColor: "#000",
+        shadowBlur: 4,
+        subtitleFont: SYSTEM_SUBTITLE_FONT,
+        subtitleColor: SYSTEM_SUBTITLE_COLOR,
+        rank: isCluster ? 1500 : 1000,
+        marginTop: 16,
+        opacityTarget: 0,
+        payload: group,
+      });
+      systemCanvasIds.set(group, id);
+    }
   }
 
   relinkAfterRebuild(systemGroups, showSystemMembers);
