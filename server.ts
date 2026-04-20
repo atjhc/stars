@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 
 Bun.serve({
+  port: Number(process.env.PORT ?? 3000),
   routes: {
     "/": index,
     "/tiles/*": async (req) => {

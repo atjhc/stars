@@ -38,7 +38,8 @@ import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, 
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels, getSelectedBlackHoleName } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, dispatchLabelClick, selectByType } from "./labelRegistry.ts";
-import { initDebug, debugEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd } from "./debug.ts";
+import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd } from "./debug.ts";
+import { runBench } from "./bench.ts";
 import {
   initStarfield, updateStarfield,
   notableObjects, notableLabelMap, notableLabelMeshMap,
@@ -573,7 +574,8 @@ initUrlState({
 });
 enableUrlWrites();
 
-// Debug mode: keyboard toggles for visual bug isolation. Gated on ?debug=1.
+// Debug mode: keyboard toggles for visual bug isolation. Gated on ?debug=1
+// or ?bench=1 (bench piggy-backs on the stats panel).
 if (debugEnabled) {
   initDebug();
   onDebugChange((key, value) => {
@@ -584,6 +586,8 @@ if (debugEnabled) {
     }
   });
 }
+
+if (benchEnabled) runBench();
 
 // Per-selection cache: radius and color are constant per star, so only
 // recompute them when the selection changes — not every frame.

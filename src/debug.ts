@@ -47,7 +47,11 @@ const initialState: DebugState = {
   mag_limit: DEFAULT_MAG_LIMIT,
 };
 
-export const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";
+const query = new URLSearchParams(window.location.search);
+export const benchEnabled = query.get("bench") === "1";
+// ?bench=1 implies debug mode — bench needs statsKit (created by
+// initDebug) to collect samples.
+export const debugEnabled = benchEnabled || query.get("debug") === "1";
 export const debug: DebugState = { ...initialState };
 
 const toggleListeners: Array<(key: ToggleKey, value: boolean) => void> = [];
@@ -196,11 +200,24 @@ function createStatsPanel(name: string, fg: string, bg: string): StatsPanel {
   return { dom: canvas, update };
 }
 
+interface SampleSummary {
+  frames: number;
+  seconds: number;
+  fps_avg: number;
+  mean_ms: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  min_ms: number;
+  max_ms: number;
+}
+
 interface StatsKit {
   container: HTMLDivElement;
   begin(): void;
   end(): void;
   toggleSampling(): void;
+  lastSummary(): SampleSummary | null;
 }
 
 function createStatsKit(): StatsKit {
@@ -245,30 +262,34 @@ function createStatsKit(): StatsKit {
   let samples: number[] | null = null;
   let sampleStart = 0;
 
-  function summarize(arr: number[], elapsed: number) {
+  let lastSummary: SampleSummary | null = null;
+
+  function summarize(arr: number[], elapsed: number): SampleSummary {
     const sorted = [...arr].sort((a, b) => a - b);
     const pct = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))] ?? 0;
     const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
     const seconds = elapsed / 1000;
-    const row = {
+    const summary: SampleSummary = {
       frames: arr.length,
-      seconds: seconds.toFixed(1),
-      fps_avg: (arr.length / seconds).toFixed(1),
-      mean_ms: mean.toFixed(2),
-      p50_ms: pct(0.5).toFixed(2),
-      p95_ms: pct(0.95).toFixed(2),
-      p99_ms: pct(0.99).toFixed(2),
-      min_ms: sorted[0]!.toFixed(2),
-      max_ms: sorted[sorted.length - 1]!.toFixed(2),
+      seconds: +seconds.toFixed(2),
+      fps_avg: +(arr.length / seconds).toFixed(2),
+      mean_ms: +mean.toFixed(3),
+      p50_ms: +pct(0.5).toFixed(3),
+      p95_ms: +pct(0.95).toFixed(3),
+      p99_ms: +pct(0.99).toFixed(3),
+      min_ms: +sorted[0]!.toFixed(3),
+      max_ms: +sorted[sorted.length - 1]!.toFixed(3),
     };
     // eslint-disable-next-line no-console
     console.log(
-      `[stats sample] ${row.frames} frames / ${row.seconds}s — `
-      + `fps=${row.fps_avg} mean=${row.mean_ms}ms p50=${row.p50_ms}ms `
-      + `p95=${row.p95_ms}ms p99=${row.p99_ms}ms min=${row.min_ms}ms max=${row.max_ms}ms`,
+      `[stats sample] ${summary.frames} frames / ${summary.seconds}s — `
+      + `fps=${summary.fps_avg} mean=${summary.mean_ms}ms p50=${summary.p50_ms}ms `
+      + `p95=${summary.p95_ms}ms p99=${summary.p99_ms}ms `
+      + `min=${summary.min_ms}ms max=${summary.max_ms}ms`,
     );
     // eslint-disable-next-line no-console
-    console.table(row);
+    console.table(summary);
+    return summary;
   }
 
   return {
@@ -302,9 +323,10 @@ function createStatsKit(): StatsKit {
         const arr = samples;
         samples = null;
         statusEl.textContent = "";
-        if (arr.length > 0) summarize(arr, elapsed);
+        if (arr.length > 0) lastSummary = summarize(arr, elapsed);
       }
     },
+    lastSummary() { return lastSummary; },
   };
 }
 
@@ -383,6 +405,12 @@ function renderCamera() {
 // than just FPS. No-ops when debug mode is off.
 export function statsBegin() { statsKit?.begin(); }
 export function statsEnd() { statsKit?.end(); }
+
+// Programmatic sampling control — used by ?bench=1 for unattended runs.
+// statsKit lazily initializes on initDebug (?debug=1), so these no-op
+// when debug mode is off. Bench mode forces initDebug to run.
+export function statsToggleSampling() { statsKit?.toggleSampling(); }
+export function getLastSampleSummary() { return statsKit?.lastSummary() ?? null; }
 
 // Per-frame refresh — only the live camera block rewrites, not the full panel.
 export function tickDebug() {

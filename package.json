@@ -3,13 +3,16 @@
   "module": "server.ts",
   "scripts": {
     "dev": "bun --hot server.ts",
-    "build": "bun run build.ts"
+    "build": "bun run build.ts",
+    "bench": "bun run scripts/bench.ts",
+    "bench:compare": "bun run scripts/bench.ts --compare"
   },
   "type": "module",
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/three": "^0.183.1"
+    "@types/three": "^0.183.1",
+    "puppeteer-core": "^24.41.0"
   },
   "peerDependencies": {
     "typescript": "^5"
