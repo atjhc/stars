@@ -112,14 +112,24 @@ export function setCanvasLabelsVisible(v: boolean): void {
 }
 
 export function registerCanvasLabel(desc: CanvasLabelDescriptor): void {
+  // If the same id is already registered, preserve its animation state
+  // (visibleFactor, collisionVisible). rebuildSystems in starfield.ts
+  // re-registers every system each time a tile streams in, and clusters
+  // with stable tier-0 members would otherwise fade out → in on every
+  // stream event. Measurements are still invalidated so a text change
+  // is re-measured.
+  const prev = labels.get(desc.id);
   labels.set(desc.id, {
     ...desc,
     pinned: desc.pinned ?? false,
     hidden: desc.hidden ?? false,
-    screenX: 0, screenY: 0, behind: true,
-    width: 0, height: 0,
-    visibleFactor: 0,
-    collisionVisible: false,
+    screenX: prev?.screenX ?? 0,
+    screenY: prev?.screenY ?? 0,
+    behind: prev?.behind ?? true,
+    width: 0,
+    height: 0,
+    visibleFactor: prev?.visibleFactor ?? 0,
+    collisionVisible: prev?.collisionVisible ?? false,
   });
   collisionDirty = true;
 }

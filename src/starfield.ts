@@ -205,17 +205,22 @@ function despawnTileLabels(path: string) {
 }
 
 function rebuildSystems() {
+  // Track ids we had before vs. will have after. Only unregister
+  // labels whose system truly went away — preserves per-label
+  // animation state (visibleFactor) for systems that survive the
+  // rebuild, so tile streaming doesn't make cluster labels fade
+  // out / back in on every stream event.
+  const previousIds = new Set<string>();
   for (const group of systemGroups) {
     group.anchor.removeFromParent();
-    const prevCanvasId = systemCanvasIds.get(group);
-    if (prevCanvasId) {
-      unregisterCanvasLabel(prevCanvasId);
-      systemCanvasIds.delete(group);
-    }
+    const id = systemCanvasIds.get(group);
+    if (id) previousIds.add(id);
+    systemCanvasIds.delete(group);
   }
   systemGroups.length = 0;
   meshToSystem.clear();
   clusterOf.clear();
+  const newIds = new Set<string>();
   const catalog = getSystems();
   for (const [name, data] of Object.entries(catalog)) {
     const isCluster = data.kind === "cluster";
@@ -273,7 +278,16 @@ function rebuildSystems() {
         payload: group,
       });
       systemCanvasIds.set(group, id);
+      newIds.add(id);
     }
+  }
+
+  // Sweep: unregister canvas labels for systems that no longer exist.
+  // Survivors' canvas labels were re-registered in the loop above,
+  // which preserves their animation state via registerCanvasLabel's
+  // prev-lookup.
+  for (const id of previousIds) {
+    if (!newIds.has(id)) unregisterCanvasLabel(id);
   }
 
   relinkAfterRebuild(systemGroups, showSystemMembers);
