@@ -5,7 +5,7 @@ import {
   solDistanceFade, formatAstroDistance,
 } from "./constants.ts";
 import {
-  camera, animation, isDeepZoom, orbitRadius, labelCamera, labelCamOffset,
+  camera, animation, isDeepZoom, orbitRadius, labelCamOffset, projectToLabelScreen,
 } from "./scene.ts";
 import { apparentMag, magLimitUniform, clusterOf, systemCanvasLabelId } from "./starfield.ts";
 import { computeStarScreenMetrics } from "./stars.ts";
@@ -24,16 +24,9 @@ const collapsed = new Set<THREE.Object3D>();
 let cachedMaxNotableSolDist = 0;
 let cachedMaxClusterSolDist = 0;
 
-const projVec = new THREE.Vector3();
 const screenBuf = { x: 0, y: 0, behind: false };
-// Project a world position to screen space using the unclamped
-// labelCamera. camera.position is Float32-clamped at deep zoom, which
-// would mis-project; labelCamera carries the true location.
 function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
-  projVec.copy(pos).project(labelCamera);
-  screenBuf.x = (projVec.x * 0.5 + 0.5) * window.innerWidth;
-  screenBuf.y = (-projVec.y * 0.5 + 0.5) * window.innerHeight;
-  screenBuf.behind = projVec.z > 1;
+  projectToLabelScreen(pos, screenBuf);
   return screenBuf;
 }
 

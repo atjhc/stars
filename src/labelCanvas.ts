@@ -12,7 +12,7 @@
 //   6. Publish hitRegions for pointer pick-scans.
 
 import * as THREE from "three";
-import { labelCamera, camera } from "./scene.ts";
+import { projectToLabelScreen, camera } from "./scene.ts";
 import { collectScreenOccluders, type Occluder } from "./labelRegistry.ts";
 import { COLLISION_PAD_PX, COLLISION_ALPHA_CUTOFF, HIT_PX_PADDING } from "./constants.ts";
 import { computeStarScreenMetrics } from "./stars.ts";
@@ -262,12 +262,8 @@ export function initLabelCanvas(): void {
 
 // --- Projection ---
 
-const projVec = new THREE.Vector3();
 function project(pos: THREE.Vector3, out: { x: number; y: number; behind: boolean }): void {
-  projVec.copy(pos).project(labelCamera);
-  out.x = (projVec.x * 0.5 + 0.5) * window.innerWidth;
-  out.y = (-projVec.y * 0.5 + 0.5) * window.innerHeight;
-  out.behind = projVec.z > 1;
+  projectToLabelScreen(pos, out);
 }
 
 // --- Collision ---

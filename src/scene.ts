@@ -35,6 +35,33 @@ labelCamera.matrixWorldAutoUpdate = false;
 // needs the real camera location.
 export const labelCamOffset = new THREE.Vector3();
 
+// Project a world position to screen pixels via labelCamera. Does the
+// world-position subtraction (pos − camOffset) in Float64 before
+// applying the view rotation + projection — Three.js's Vector3.project
+// folds the subtraction into a Float32 matrix multiply, which wrecks
+// precision at deep zoom (labels for the focused BH jitter badly
+// when orbitRadius drops below ~1e-6 because pos and camOffset are
+// nearly equal Float32 magnitudes ~300).
+export interface ScreenPos { x: number; y: number; behind: boolean; }
+export function projectToLabelScreen(pos: THREE.Vector3, out: ScreenPos): void {
+  const dx = pos.x - labelCamOffset.x;
+  const dy = pos.y - labelCamOffset.y;
+  const dz = pos.z - labelCamOffset.z;
+  const mv = labelCamera.matrixWorldInverse.elements;
+  const rx = mv[0]! * dx + mv[4]! * dy + mv[8]! * dz;
+  const ry = mv[1]! * dx + mv[5]! * dy + mv[9]! * dz;
+  const rz = mv[2]! * dx + mv[6]! * dy + mv[10]! * dz;
+  const p = labelCamera.projectionMatrix.elements;
+  const ppx = p[0]! * rx + p[4]! * ry + p[8]! * rz + p[12]!;
+  const ppy = p[1]! * rx + p[5]! * ry + p[9]! * rz + p[13]!;
+  const ppz = p[2]! * rx + p[6]! * ry + p[10]! * rz + p[14]!;
+  const ppw = p[3]! * rx + p[7]! * ry + p[11]! * rz + p[15]!;
+  const invW = 1 / ppw;
+  out.x = ((ppx * invW) * 0.5 + 0.5) * window.innerWidth;
+  out.y = (-(ppy * invW) * 0.5 + 0.5) * window.innerHeight;
+  out.behind = ppz * invW > 1;
+}
+
 const viewport = document.getElementById("viewport")!;
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
