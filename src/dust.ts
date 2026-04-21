@@ -191,12 +191,19 @@ export async function initDust(): Promise<void> {
   const hh = Math.round(window.innerHeight * window.devicePixelRatio / 2);
   halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
 
-  // Fullscreen blit quad to upscale the half-res result
+  // Fullscreen blit quad to upscale the half-res result. The RT was
+  // filled with NormalBlending, so its RGB is already premultiplied by
+  // accumulated alpha — tell the blend pipeline to treat it as such so
+  // AdditiveBlending maps to (ONE, ONE) and we don't re-multiply by
+  // alpha. Matches what the lensing shader does when it samples tDust
+  // directly, so crossing the deep-zoom boundary doesn't change dust
+  // brightness.
   blitMaterial = new THREE.ShaderMaterial({
     uniforms: { tDiffuse: { value: halfResRT.texture } },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv); }`,
     blending: THREE.AdditiveBlending,
+    premultipliedAlpha: true,
     depthWrite: false,
     depthTest: false,
   });
