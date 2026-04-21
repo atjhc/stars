@@ -15,51 +15,68 @@ export const camera = new THREE.PerspectiveCamera(
   55, window.innerWidth / window.innerHeight, 0.01, 20000,
 );
 
-// Shadow camera used for canvas-label projection. Matches the main
-// camera's rotation and projection, but its `matrixWorld` carries the
-// UNCLAMPED camera position (main camera's position is clamped for
-// Float32 safety in the scene render). Canvas label projection happens
-// in JS-land Float64 — using an unclamped-position matrix here keeps
-// labels precisely aligned with their stars during deep zoom, the same
-// problem the instanced shader solves via target-relative coords.
-export const labelCamera = new THREE.PerspectiveCamera(
-  55, window.innerWidth / window.innerHeight, 0.01, 20000,
-);
-// Manually-composed matrixWorld (unclamped position) — disable auto
-// matrix updates so it survives the render pass.
-labelCamera.matrixAutoUpdate = false;
-labelCamera.matrixWorldAutoUpdate = false;
-// Unclamped camera world position. camera.position is clamped to
-// MIN_ORBIT_RADIUS during deep zoom for Float32 safety in the GPU
-// render, but per-star angular-size math (disc px, label margin)
-// needs the real camera location.
-export const labelCamOffset = new THREE.Vector3();
+// Float64 view-rotation matrix (row-major, world → view). Built directly
+// from the orbit angles in updateCamera so it has full Float64 precision.
+// Layout: viewRotation[row * 3 + col] — row 0 is the view-space X axis,
+// row 1 is Y, row 2 is Z (away from view direction).
+const viewRotation = new Float64Array(9);
 
-// Project a world position to screen pixels via labelCamera. Does the
-// world-position subtraction (pos − camOffset) in Float64 before
-// applying the view rotation + projection — Three.js's Vector3.project
-// folds the subtraction into a Float32 matrix multiply, which wrecks
-// precision at deep zoom (labels for the focused BH jitter badly
-// when orbitRadius drops below ~1e-6 because pos and camOffset are
-// nearly equal Float32 magnitudes ~300).
-export interface ScreenPos { x: number; y: number; behind: boolean; }
-export function projectToLabelScreen(pos: THREE.Vector3, out: ScreenPos): void {
-  const dx = pos.x - labelCamOffset.x;
-  const dy = pos.y - labelCamOffset.y;
-  const dz = pos.z - labelCamOffset.z;
-  const mv = labelCamera.matrixWorldInverse.elements;
-  const rx = mv[0]! * dx + mv[4]! * dy + mv[8]! * dz;
-  const ry = mv[1]! * dx + mv[5]! * dy + mv[9]! * dz;
-  const rz = mv[2]! * dx + mv[6]! * dy + mv[10]! * dz;
-  const p = labelCamera.projectionMatrix.elements;
+// Camera-to-target offset in world coordinates. Aliased to
+// starCameraOffsetUniform.value so the star shader, label projection,
+// and any other consumer all pull from the same source of truth.
+export const cameraOffset = starCameraOffsetUniform.value;
+
+// Project a world position to clip-space UV (0..1).
+//
+// The naive approach — `pos - camera.position` — suffers catastrophic
+// cancellation at deep zoom: camera.position is stored as target +
+// orbitOffset, but in Float64 at ~100pc magnitudes the orbitOffset is
+// rounded away once it drops below ulp(target) (~3.5e-14). Instead, we
+// compute the delta in the target-relative frame: (pos - target) is
+// stable at scene magnitudes, cameraOffset is stable at orbit
+// magnitudes, and neither subtraction catastrophically cancels. This is
+// the same trick the star shader uses for per-instance precision.
+//
+// The parenthesization is load-bearing — swapping to
+// `pos.x - (target.x + cameraOffset.x)` reintroduces the cancellation.
+export interface ScreenUV { u: number; v: number; behind: boolean; }
+export function projectToScreenUV(pos: THREE.Vector3, out: ScreenUV): void {
+  const dx = (pos.x - target.x) - cameraOffset.x;
+  const dy = (pos.y - target.y) - cameraOffset.y;
+  const dz = (pos.z - target.z) - cameraOffset.z;
+  const v = viewRotation;
+  const rx = v[0]! * dx + v[1]! * dy + v[2]! * dz;
+  const ry = v[3]! * dx + v[4]! * dy + v[5]! * dz;
+  const rz = v[6]! * dx + v[7]! * dy + v[8]! * dz;
+  const p = camera.projectionMatrix.elements;
   const ppx = p[0]! * rx + p[4]! * ry + p[8]! * rz + p[12]!;
   const ppy = p[1]! * rx + p[5]! * ry + p[9]! * rz + p[13]!;
   const ppz = p[2]! * rx + p[6]! * ry + p[10]! * rz + p[14]!;
   const ppw = p[3]! * rx + p[7]! * ry + p[11]! * rz + p[15]!;
   const invW = 1 / ppw;
-  out.x = ((ppx * invW) * 0.5 + 0.5) * window.innerWidth;
-  out.y = (-(ppy * invW) * 0.5 + 0.5) * window.innerHeight;
+  out.u = (ppx * invW) * 0.5 + 0.5;
+  out.v = (ppy * invW) * 0.5 + 0.5;
   out.behind = ppz * invW > 1;
+}
+
+// Pixel-space wrapper around projectToScreenUV for canvas label layout.
+export interface ScreenPos { x: number; y: number; behind: boolean; }
+const _uvScratch: ScreenUV = { u: 0, v: 0, behind: false };
+export function projectToLabelScreen(pos: THREE.Vector3, out: ScreenPos): void {
+  projectToScreenUV(pos, _uvScratch);
+  out.x = _uvScratch.u * window.innerWidth;
+  out.y = (1 - _uvScratch.v) * window.innerHeight;
+  out.behind = _uvScratch.behind;
+}
+
+// Precision-safe camera-to-position distance. Uses the same target-
+// relative decomposition as the projection path so deep-zoom distances
+// (where the focus target is at the camera origin) stay accurate.
+export function distanceFromCamera(pos: THREE.Vector3): number {
+  const dx = (pos.x - target.x) - cameraOffset.x;
+  const dy = (pos.y - target.y) - cameraOffset.y;
+  const dz = (pos.z - target.z) - cameraOffset.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
 const viewport = document.getElementById("viewport")!;
@@ -136,45 +153,48 @@ export function updateCamera() {
   const cosPhi = Math.cos(orbitPhi);
   const sinTheta = Math.sin(orbitTheta);
   const cosTheta = Math.cos(orbitTheta);
-  // Clamp radius for Float32 precision — lensing post-process handles the visual
-  const effectiveRadius = deepZoomActive ? Math.max(orbitRadius, 0.001) : orbitRadius;
+
   camera.position
     .copy(target)
-    .addScaledVector(galX, effectiveRadius * sinPhi * cosTheta)
-    .addScaledVector(galZ, effectiveRadius * sinPhi * sinTheta)
-    .addScaledVector(galUp, effectiveRadius * cosPhi);
+    .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
+    .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
+    .addScaledVector(galUp, orbitRadius * cosPhi);
   camera.lookAt(target);
-  camera.near = Math.max(1e-6, effectiveRadius * 0.001);
-  camera.far = Math.max(20000, effectiveRadius * 100000);
+  // Near plane floor: nothing renders inside 1e-4 of the camera — the
+  // selected target is at the camera origin (no self-clipping), and BH
+  // visuals come from a screen-space lensing pass rather than world-
+  // space geometry. Keeps depth-buffer precision sane at any zoom.
+  camera.near = Math.max(1e-4, orbitRadius * 0.001);
+  camera.far = Math.max(20000, orbitRadius * 100000);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
 
-  // Publish a target-relative frame for the star shader. The offset is
-  // computed from the UNCLAMPED orbit radius — the shader uses this to
-  // recompose camera-space without going through the clamped
-  // camera.position, preserving Float32 precision during deep zoom.
+  // Float64 view rotation from orbit angles: z = orbit unit vector,
+  // x = normalize(galUp × z), y = z × x. Rows are the view basis axes.
+  const zx = galX.x * sinPhi * cosTheta + galZ.x * sinPhi * sinTheta + galUp.x * cosPhi;
+  const zy = galX.y * sinPhi * cosTheta + galZ.y * sinPhi * sinTheta + galUp.y * cosPhi;
+  const zz = galX.z * sinPhi * cosTheta + galZ.z * sinPhi * sinTheta + galUp.z * cosPhi;
+  const xRawX = galUp.y * zz - galUp.z * zy;
+  const xRawY = galUp.z * zx - galUp.x * zz;
+  const xRawZ = galUp.x * zy - galUp.y * zx;
+  const invXLen = 1 / Math.sqrt(xRawX * xRawX + xRawY * xRawY + xRawZ * xRawZ);
+  const xx = xRawX * invXLen;
+  const xy = xRawY * invXLen;
+  const xz = xRawZ * invXLen;
+  const yx = zy * xz - zz * xy;
+  const yy = zz * xx - zx * xz;
+  const yz = zx * xy - zy * xx;
+  viewRotation[0] = xx; viewRotation[1] = xy; viewRotation[2] = xz;
+  viewRotation[3] = yx; viewRotation[4] = yy; viewRotation[5] = yz;
+  viewRotation[6] = zx; viewRotation[7] = zy; viewRotation[8] = zz;
+
   starTargetUniform.value.copy(target);
   starCameraOffsetUniform.value
     .set(0, 0, 0)
     .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
     .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
     .addScaledVector(galUp, orbitRadius * cosPhi);
-  starViewRotationUniform.value.setFromMatrix4(camera.matrixWorldInverse);
-
-  // Keep the label-projection camera in lockstep — same rotation, same
-  // projection, but positioned at the unclamped orbit radius. Anchors
-  // near the target project correctly for the user's real zoom level,
-  // so their labels don't drift away from the disc they represent.
-  labelCamera.projectionMatrix.copy(camera.projectionMatrix);
-  labelCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
-  labelCamera.matrixWorld.copy(camera.matrixWorld);
-  labelCamOffset
-    .copy(target)
-    .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
-    .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
-    .addScaledVector(galUp, orbitRadius * cosPhi);
-  labelCamera.matrixWorld.setPosition(labelCamOffset);
-  labelCamera.matrixWorldInverse.copy(labelCamera.matrixWorld).invert();
+  starViewRotationUniform.value.set(xx, xy, xz, yx, yy, yz, zx, zy, zz);
 }
 updateCamera();
 
@@ -192,10 +212,9 @@ export let animation: {
   start: number;
 } | null = null;
 
-// Camera-to-star distance for angular-size math. Mid-animation, `orbitRadius`
-// is unrelated to the selected star (target is interpolating), so use the
-// actual distance. Otherwise `orbitRadius` is the right "conceptual" distance
-// (unclamped, unlike the Float32-clamped camera.position during deep zoom).
+// Camera-to-star distance for angular-size math. Mid-animation,
+// `orbitRadius` is unrelated to the selected star (target is
+// interpolating), so fall back to the true world distance.
 export function effectiveCamDist(starPos: THREE.Vector3): number {
   if (animation !== null) return camera.position.distanceTo(starPos);
   return orbitRadius;
@@ -499,7 +518,6 @@ let lastDPR = window.devicePixelRatio;
 export function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  labelCamera.aspect = camera.aspect;
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   halfViewportPxUniform.value = window.innerHeight / 2;

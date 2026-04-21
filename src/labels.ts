@@ -5,7 +5,8 @@ import {
   solDistanceFade, formatAstroDistance,
 } from "./constants.ts";
 import {
-  camera, animation, isDeepZoom, orbitRadius, labelCamOffset, projectToLabelScreen,
+  camera, animation, isDeepZoom, orbitRadius, projectToLabelScreen,
+  distanceFromCamera,
 } from "./scene.ts";
 import { apparentMag, magLimitUniform, clusterOf, systemCanvasLabelId } from "./starfield.ts";
 import { computeStarScreenMetrics } from "./stars.ts";
@@ -95,7 +96,7 @@ export function updateLabels(
       const solDist = group.anchor.position.length();
       const baseOpacity = solDistanceFade(solDist, maxClusterSolDist);
       const opacity = isHighlighted ? 1.0 : baseOpacity;
-      const dist = group.anchor.position.distanceTo(camera.position);
+      const dist = distanceFromCamera(group.anchor.position);
       const clampedOpacity = Math.max(0.2, opacity);
       const favBonus = isFavorite(group.name) ? 5000 : 0;
       const canvasId = systemCanvasLabelId(group);
@@ -191,7 +192,7 @@ export function updateLabels(
 
       for (const m of members) collapsed.add(m);
 
-      const dist = group.anchor.position.distanceTo(camera.position);
+      const dist = distanceFromCamera(group.anchor.position);
       const isSystemHighlighted = hoveredSystem === group || selectedSystem === group;
       const visible = dist <= LABEL_HIDE_DIST || isSystemHighlighted;
       const favBonus = isFavorite(group.name) ? 5000 : 0;
@@ -240,10 +241,7 @@ export function updateLabels(
   // every rendered disc so labels behind bright stars hide; routes
   // opacity / subtitle / highlight through the canvas updater.
   function processLabel(target: THREE.Object3D) {
-    // Unclamped camera position: camera.position is clamped to 0.001
-    // during deep zoom (Float32 safety), which would vastly over-estimate
-    // camDist for stars near the target and shrink their disc-size math.
-    const camDist = target.position.distanceTo(labelCamOffset);
+    const camDist = distanceFromCamera(target.position);
     const star = target.userData as Star;
     const radius = starRadiusScene(star.lum, star.ci);
     const discPx = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20)).discPx;

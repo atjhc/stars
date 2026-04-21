@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { scene, camera, animateTo, setMinOrbitOverride } from "./scene.ts";
+import { scene, animateTo, setMinOrbitOverride, distanceFromCamera } from "./scene.ts";
 import { SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { isDustVisible } from "./dust.ts";
@@ -84,7 +84,7 @@ function removeGlow(nl: NebulaLabel) {
 
 function buildDetailHtml(nl: NebulaLabel): string {
   const e = nl.entry;
-  const distPc = nl.anchor.position.distanceTo(camera.position) / SCALE;
+  const distPc = distanceFromCamera(nl.anchor.position) / SCALE;
   const aliasLine = e.aliases && e.aliases.length > 0
     ? `<div class="star-aliases">${e.aliases.join(" · ")}</div>` : "";
   const wikiLink = e.wikipedia
@@ -133,7 +133,7 @@ const nebulaHandler: LabelTypeHandler = {
         updateCanvasLabel(canvasIdFor(nl.name), { hidden: true });
         continue;
       }
-      const camDist = nl.anchor.position.distanceTo(camera.position);
+      const camDist = distanceFromCamera(nl.anchor.position);
       const distPc = camDist / SCALE;
       const subtitles = isActive ? [formatDist(distPc)] : [];
       const opacity = isActive ? 1.0

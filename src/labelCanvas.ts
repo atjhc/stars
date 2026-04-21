@@ -2,8 +2,8 @@
 // <div> label path — see docs/canvas-labels-plan.md.
 //
 // Frame pipeline:
-//   1. Project each active label via labelCamera (unclamped camera
-//      position — matches the star shader's target-relative frame).
+//   1. Project each active label via projectToLabelScreen (Float64
+//      from the camera origin — matches the star shader's precision).
 //   2. Measure text via OffscreenCanvas (cache by font|text).
 //   3. Fade: interpolate opacityCurrent toward opacityTarget over ~400ms.
 //   4. Collision: sort by pinned desc, rank desc; spatial-grid overlap.
@@ -12,7 +12,7 @@
 //   6. Publish hitRegions for pointer pick-scans.
 
 import * as THREE from "three";
-import { projectToLabelScreen, camera } from "./scene.ts";
+import { projectToLabelScreen, distanceFromCamera } from "./scene.ts";
 import { collectScreenOccluders, type Occluder } from "./labelRegistry.ts";
 import { COLLISION_PAD_PX, COLLISION_ALPHA_CUTOFF, HIT_PX_PADDING } from "./constants.ts";
 import { computeStarScreenMetrics } from "./stars.ts";
@@ -448,7 +448,7 @@ export function renderLabelCanvas(): void {
         const anchor = label.payload as { userData?: Star; position: THREE.Vector3 } | undefined;
         const star = anchor?.userData;
         if (star) {
-          const camDist = anchor!.position.distanceTo(camera.position);
+          const camDist = distanceFromCamera(anchor!.position);
           const radius = starRadiusScene(star.lum, star.ci);
           const { halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
           const rPx = halfBillPx + HIT_PX_PADDING;
@@ -501,7 +501,7 @@ function paintHitTargetOverlay(
     if (alpha < COLLISION_ALPHA_CUTOFF) continue;
     const anchor = label.payload as { userData?: Star; position: THREE.Vector3 } | undefined;
     if (!anchor || !anchor.userData) continue;
-    const camDist = anchor.position.distanceTo(camera.position);
+    const camDist = distanceFromCamera(anchor.position);
     const star = anchor.userData;
     const radius = starRadiusScene(star.lum, star.ci);
     const { halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
@@ -620,6 +620,12 @@ function stepVisibleFactor(label: CanvasLabel, target: number, step: number): vo
 }
 
 function paintLabel(ctx: CanvasRenderingContext2D, label: CanvasLabel, alpha: number): void {
+  // Paint at fractional pixel positions — canvas sub-pixel text AA
+  // gives smooth motion during camera orbit, matching the starfield
+  // shader's antialiased discs. (Earlier versions rounded to integers
+  // to stabilize a deep-zoom BH label whose projection had Float32
+  // noise. The projection is now Float64-precise and target-relative,
+  // so stationary labels are already rock-steady without rounding.)
   const nameX = label.screenX;
   const nameY = label.screenY + label.marginTop + TEXT_BASELINE_OFFSET;
 

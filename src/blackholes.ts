@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import {
   scene, camera, animateTo, setMinOrbitOverride,
-  isDeepZoom, orbitRadius, lensingPass, BLOOM_OVERSCAN,
+  isDeepZoom, orbitRadius, lensingPass, BLOOM_OVERSCAN, projectToScreenUV,
+  distanceFromCamera,
 } from "./scene.ts";
 import {
   SCALE, TILE_BASE_URL,
@@ -64,7 +65,7 @@ function removeGlow(bh: BlackHoleLabel) {
 
 function buildDetailHtml(bh: BlackHoleLabel): string {
   const e = bh.entry;
-  const dist = bh === selectedBH ? orbitRadius : bh.anchor.position.distanceTo(camera.position);
+  const dist = bh === selectedBH ? orbitRadius : distanceFromCamera(bh.anchor.position);
   const aliasLine = e.aliases && e.aliases.length > 0
     ? `<div class="star-aliases">${e.aliases.join(" · ")}</div>` : "";
   const wikiLink = e.wikipedia
@@ -86,17 +87,18 @@ function buildDetailHtml(bh: BlackHoleLabel): string {
     </div>`;
 }
 
-// Black hole visual: billboard quad sized to subtend a consistent angle
-// that grows slowly at close range (sqrt falloff instead of 1/dist)
-// Screen-space lensing pass control
-const projVecBH = new THREE.Vector3();
+// Screen-space lensing pass control.
+const bhUV = { u: 0, v: 0, behind: false };
 
 function updateLensingPass(bh: BlackHoleLabel) {
   const uniforms = lensingPass.uniforms as Record<string, THREE.IUniform>;
 
-  // BH is always at the orbit target — screen center. No need to project
-  // (projection would suffer Float32 cancellation at deep zoom distances).
-  uniforms.uBHScreen.value.set(0.5, 0.5);
+  // Project the BH's world position through the Float64 pipeline (see
+  // scene.ts::projectToScreenUV). Works at any zoom and for any camera
+  // framing — when the BH is the orbit target this yields (0.5, 0.5)
+  // exactly; for future off-center camera animations the UV tracks it.
+  projectToScreenUV(bh.anchor.position, bhUV);
+  uniforms.uBHScreen.value.set(bhUV.u, bhUV.v);
   uniforms.uAspect.value = camera.aspect;
 
   // Schwarzschild radius → screen-space shadow fraction in overscan RT
@@ -172,7 +174,7 @@ const bhHandler: LabelTypeHandler = {
         continue;
       }
       const isActive = bh === selectedBH || bh === hoveredBH;
-      const trueDist = bh === selectedBH ? orbitRadius : bh.anchor.position.distanceTo(camera.position);
+      const trueDist = bh === selectedBH ? orbitRadius : distanceFromCamera(bh.anchor.position);
       const opacity = isActive ? 1.0 : solDistanceFade(bh.anchor.position.length(), maxSolDist);
       updateCanvasLabel(canvasIdFor(bh.name), {
         hidden: false,

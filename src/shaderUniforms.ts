@@ -15,17 +15,17 @@ export const halfViewportPxUniform: THREE.IUniform<number> = {
 };
 
 // Target-relative coordinate frame for the star shader. Rather than
-// using modelViewMatrix (which loses precision near the clamped camera
-// position during deep zoom), the shader recomposes camera-space from
-// three pieces computed CPU-side in a precision-safe way:
+// using modelViewMatrix (where the view matrix's large translation
+// component catastrophically cancels against large instance positions
+// in Float32), the shader recomposes camera-space from three pieces
+// computed CPU-side in a precision-safe way:
 //
 //   cameraSpace = uViewRotation · ((instancePos − uTarget) − uCameraOffset)
 //
 // All the Float32-risky subtractions now happen near zero. uTarget is
 // the orbit focus (selected star's world position). uCameraOffset is
-// the camera-to-target vector in world space, computed from the
-// unclamped orbit parameters (NOT camera.position, which is clamped).
-// uViewRotation is the pure rotation portion of the view matrix.
+// the camera-to-target vector in world space. uViewRotation is the pure
+// rotation portion of the view matrix.
 export const starTargetUniform: THREE.IUniform<THREE.Vector3> = {
   value: new THREE.Vector3(0, 0, 0),
 };
