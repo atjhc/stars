@@ -455,6 +455,15 @@ export function tickDebug() {
   renderCamera();
 }
 
+// External re-render trigger — used when a tuned value (currently just
+// mag_limit) is owned outside debug.ts and mutated on debug.*, so the
+// panel body can be rebuilt without round-tripping through the local
+// keyboard handler. No-op when the panel isn't live.
+export function refreshDebugPanel() {
+  if (!staticEl) return;
+  renderStatic();
+}
+
 export function initDebug() {
   if (!debugEnabled) return;
 
@@ -537,6 +546,10 @@ export function initDebug() {
     }
 
     for (const b of tuneBindings) {
+      // mag_limit is owned by main.ts so the -/= keys work even without
+      // ?debug=1 and the value round-trips through the URL. The binding
+      // stays in this table purely for its panel-display formatting.
+      if (b.prop === "mag_limit") continue;
       if (e.key === b.downKey || e.key === b.upKey) {
         const dir = e.key === b.upKey ? 1 : -1;
         debug[b.prop] = Math.min(b.max, Math.max(b.min, debug[b.prop] + dir * b.step));

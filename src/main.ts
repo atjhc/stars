@@ -39,7 +39,7 @@ import {
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels, getSelectedBlackHoleName, setBlackHoleHoverByName } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType } from "./labelRegistry.ts";
-import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase } from "./debug.ts";
+import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase, refreshDebugPanel } from "./debug.ts";
 import { runBench } from "./bench.ts";
 import {
   initLabelCanvas, renderLabelCanvas, setHitTargetsOverlay, setCanvasLabelsVisible,
@@ -51,6 +51,7 @@ import {
   systemGroups, meshToSystem, clusterOf,
   onLabelsChanged,
   requestTileFocus,
+  magLimitUniform, setMagLimit,
 } from "./starfield.ts";
 import { animateTo } from "./scene.ts";
 
@@ -308,6 +309,17 @@ function dispatchCanvasLabelHover(x: number, y: number): boolean {
 }
 
 
+const MAG_STEP = 0.25;
+const MAG_MIN = 2;
+const MAG_MAX = 10;
+function adjustMagLimit(dir: 1 | -1) {
+  const next = Math.min(MAG_MAX, Math.max(MAG_MIN, magLimitUniform.value + dir * MAG_STEP));
+  setMagLimit(next);
+  debug.mag_limit = next;
+  refreshDebugPanel();
+  scheduleUrlWrite();
+}
+
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLInputElement) return;
   if (e.key === "l") {
@@ -331,6 +343,10 @@ window.addEventListener("keydown", (e) => {
       setLabelsDirty(true);
       updateDetailPanel();
     }
+  } else if ((e.key === "-" || e.key === "=") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    // Cmd/Ctrl +/- are reserved for browser zoom — leave those alone.
+    adjustMagLimit(e.key === "=" ? 1 : -1);
+    e.preventDefault();
   }
 });
 
@@ -421,11 +437,16 @@ await initBlackHoleLabels();
 
 // Restore toggle state from URL (defaults: labels on, grid off, constellations on, nebulae on)
 {
-  const urlToggles = parseUrlState(window.location.search).toggles;
+  const parsed = parseUrlState(window.location.search);
+  const urlToggles = parsed.toggles;
   if (urlToggles?.labels !== undefined) labelsVisible = urlToggles.labels;
   if (urlToggles?.grid !== undefined) gridHelper.visible = urlToggles.grid;
   if (urlToggles?.constellations !== undefined) setConstellationsVisible(urlToggles.constellations);
   if (urlToggles?.nebulae !== undefined) setDustVisible(urlToggles.nebulae);
+  if (parsed.mag !== undefined) {
+    setMagLimit(parsed.mag);
+    debug.mag_limit = parsed.mag;
+  }
 }
 doUpdateLabelVisibility();
 
@@ -518,6 +539,7 @@ initUrlState({
       constellations: constellationsVisible(),
       nebulae: isDustVisible(),
     },
+    mag: magLimitUniform.value,
   }),
 });
 enableUrlWrites();
