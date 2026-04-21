@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS } from "./constants.ts";
 import {
-  scene, camera, renderer, composer,
+  scene, camera, renderer, composer, lensingPass,
   gridHelper, handleResize, bloomPass,
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
@@ -32,7 +32,10 @@ import { updateDetailPanel } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
-import { initDust, updateDust, renderDustPostBloom, toggleDust, setDustVisible, isDustVisible, handleDustResize } from "./dust.ts";
+import {
+  initDust, updateDust, renderDustToRT, compositeDustToScreen, getDustTexture,
+  toggleDust, setDustVisible, isDustVisible, handleDustResize,
+} from "./dust.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels, getSelectedBlackHoleName, setBlackHoleHoverByName } from "./blackholes.ts";
 import { setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType } from "./labelRegistry.ts";
@@ -590,12 +593,22 @@ function animate(now: number) {
   statsPhase("updateAllLabels", updateAllLabels);
   statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem));
 
-  // Main scene pass (lensing pass is in the composer, auto-enabled by blackholes.ts)
+  // Main scene pass (lensing pass is in the composer, auto-enabled by blackholes.ts).
+  // Dust is ray-marched into its half-res RT first. When lensing is
+  // active (BH selected), the lensing shader samples tDust at the bent
+  // UV so the nebula warps with the scene. Otherwise it's blitted onto
+  // the screen additively after the composer.
   statsPhase("sceneRender", () => {
+    renderDustToRT(renderer);
+    if (lensingPass.enabled) {
+      const dustTex = getDustTexture();
+      lensingPass.uniforms.tDust!.value = dustTex;
+      lensingPass.uniforms.uDustActive!.value = dustTex ? 1 : 0;
+    }
     beginBloomRender();
     composer.render();
     endBloomRender();
-    renderDustPostBloom(renderer);
+    if (!lensingPass.enabled) compositeDustToScreen(renderer);
   });
 
   statsPhase("labelCanvas", renderLabelCanvas);

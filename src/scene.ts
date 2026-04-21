@@ -360,10 +360,19 @@ const cropPass = new ShaderPass({
     }
   `,
 });
-// Screen-space gravitational lensing pass (enabled during deep zoom)
+// Screen-space gravitational lensing pass (enabled during deep zoom).
+// Samples dust at the bent UV too so background nebulae warp with the
+// scene. The tDust texture is window-sized (not the composer's
+// oversized RT), so we scale the lookup UV by BLOOM_OVERSCAN — within
+// the visible crop region this maps bentUV ∈ [MARGIN, 1-MARGIN] to
+// dustUv ∈ [0, 1]; outside that range dustUv falls outside [0,1] and
+// the step() mask zeros the sample.
 const lensingPass = new ShaderPass({
   uniforms: {
     tDiffuse: { value: null },
+    tDust: { value: null },
+    uDustActive: { value: 0 },
+    uDustScale: { value: BLOOM_OVERSCAN },
     uBHScreen: { value: new THREE.Vector2(0.5, 0.5) },
     uShadowRadius: { value: 0.0 },
     uSchwarzRadius: { value: 0.0 },
@@ -379,6 +388,9 @@ const lensingPass = new ShaderPass({
   `,
   fragmentShader: `
     uniform sampler2D tDiffuse;
+    uniform sampler2D tDust;
+    uniform float uDustActive;
+    uniform float uDustScale;
     uniform vec2 uBHScreen;
     uniform float uShadowRadius;
     uniform float uSchwarzRadius;
@@ -386,11 +398,18 @@ const lensingPass = new ShaderPass({
     uniform float uScreenScale;
     varying vec2 vUv;
 
+    vec3 sampleDust(vec2 uv) {
+      if (uDustActive < 0.5) return vec3(0.0);
+      vec2 dustUv = (uv - 0.5) * uDustScale + 0.5;
+      vec2 m = step(vec2(0.0), dustUv) * step(dustUv, vec2(1.0));
+      return texture2D(tDust, dustUv).rgb * (m.x * m.y);
+    }
+
     void main() {
       vec2 uv = vUv;
 
       if (uShadowRadius <= 0.0) {
-        gl_FragColor = texture2D(tDiffuse, uv);
+        gl_FragColor = vec4(texture2D(tDiffuse, uv).rgb + sampleDust(uv), 1.0);
         return;
       }
 
@@ -415,7 +434,7 @@ const lensingPass = new ShaderPass({
       vec2 uvDeflect = vec2(deflectDir.x / uAspect, deflectDir.y) * deflection;
       vec2 bentUV = clamp(uv - uvDeflect, 0.0, 1.0);
 
-      vec3 color = texture2D(tDiffuse, bentUV).rgb;
+      vec3 color = texture2D(tDiffuse, bentUV).rgb + sampleDust(bentUV);
 
       float shadow = smoothstep(0.95, 1.05, b);
       color *= shadow;

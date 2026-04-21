@@ -211,22 +211,34 @@ export function updateDust(): void {
   (emissionMesh.material as THREE.ShaderMaterial).uniforms.uCameraPos.value.copy(camera.position);
 }
 
-export function renderDustPostBloom(renderer: THREE.WebGLRenderer): void {
-  if (!emissionMesh || !wantVisible || !halfResRT || !blitMaterial) return;
-
-  // Pass 1: ray march at half resolution into offscreen target
+// Ray march to the half-res RT. Run each frame so the RT is fresh
+// whether we composite it via compositeDustToScreen (no BH active)
+// or sample it inside the lensing shader (BH active — so dust gets
+// gravitationally warped alongside the scene).
+export function renderDustToRT(renderer: THREE.WebGLRenderer): void {
+  if (!emissionMesh || !wantVisible || !halfResRT) return;
+  const prevTarget = renderer.getRenderTarget();
   renderer.setRenderTarget(halfResRT);
   renderer.setClearColor(0x000000, 0);
   renderer.clear(true, false, false);
   renderer.render(emissionScene, camera);
+  renderer.setRenderTarget(prevTarget);
+}
 
-  // Pass 2: upscale to screen with additive blending
+// Additive blit of halfResRT onto the screen. Used when lensing isn't
+// active — when it is, the lensing pass samples tDust itself.
+export function compositeDustToScreen(renderer: THREE.WebGLRenderer): void {
+  if (!emissionMesh || !wantVisible || !halfResRT || !blitMaterial) return;
   blitMaterial.uniforms.tDiffuse.value = halfResRT.texture;
   renderer.setRenderTarget(null);
   const prev = renderer.autoClear;
   renderer.autoClear = false;
   renderer.render(blitScene, blitCamera);
   renderer.autoClear = prev;
+}
+
+export function getDustTexture(): THREE.Texture | null {
+  return (emissionMesh && wantVisible && halfResRT) ? halfResRT.texture : null;
 }
 
 export function handleDustResize(): void {
