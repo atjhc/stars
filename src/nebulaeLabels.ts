@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { scene, animateTo, setMinOrbitOverride, distanceFromCamera } from "./scene.ts";
-import { SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL } from "./constants.ts";
+import { SCALE, LY_PER_PARSEC, solDistanceFade, TILE_BASE_URL, formatAstroDistance } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { isDustVisible } from "./dust.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
@@ -58,11 +58,8 @@ export function setNebulaHoverByName(name: string | null): void {
   if (next && selectedNebula !== next) applyGlow(next);
 }
 
-function formatDist(pc: number): string {
-  const ly = pc * LY_PER_PARSEC;
-  return ly < 100 ? `${ly.toFixed(1)} ly` : `${Math.round(ly)} ly`;
-}
-
+// Detail-panel distance formatter — intentionally surfaces both ly and pc.
+// Subtitles use formatAstroDistance (km → AU → ly cascade).
 function formatDistFull(pc: number): string {
   return `${(pc * LY_PER_PARSEC).toFixed(1)} ly (${pc.toFixed(2)} pc)`;
 }
@@ -134,8 +131,7 @@ const nebulaHandler: LabelTypeHandler = {
         continue;
       }
       const camDist = distanceFromCamera(nl.anchor.position);
-      const distPc = camDist / SCALE;
-      const subtitles = isActive ? [formatDist(distPc)] : [];
+      const subtitles = isActive ? [formatAstroDistance(camDist)] : [];
       const opacity = isActive ? 1.0
         : solDistanceFade(nl.anchor.position.length(), maxSolDist);
       updateCanvasLabel(canvasIdFor(nl.name), {

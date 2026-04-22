@@ -32,9 +32,14 @@ export const KM_PER_AU = 1.496e8;
 // the target's physical extent.
 export const DEEP_ZOOM_MIN_ORBIT = 1e-20;
 
-// Shared label-subtitle / detail-panel distance formatter. Takes scene units
-// and cascades km → AU → ly with commas on large values. Used by label
-// subtitles, black-hole and star detail panels.
+// THE canonical distance formatter for on-screen label subtitles. Takes
+// scene units (what distanceFromCamera / orbitRadius return) and
+// cascades km → AU → ly with thousands-separator commas on large values.
+//
+// Any new label type that surfaces a distance in a subtitle MUST call
+// this — do not add a local variant. Detail panels have their own
+// formatter (formatDist in detail.ts) since they intentionally surface
+// both ly and pc.
 export function formatAstroDistance(sceneUnits: number): string {
   const ly = (sceneUnits / SCALE) * LY_PER_PARSEC;
   const au = ly * AU_PER_LY;
