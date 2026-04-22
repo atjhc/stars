@@ -244,7 +244,8 @@ export async function initBlackHoleLabels(): Promise<void> {
       subtitleFont: BH_SUBTITLE_FONT,
       subtitleColor: BH_SUBTITLE_COLOR,
       rank: 1800 + (isFavorite(name) ? 5000 : 0),
-      marginTop: 16,
+      marginTop: 0,
+      centered: true,
       opacityTarget: 0,
       payload: { name },
     });

@@ -274,7 +274,11 @@ function rebuildSystems() {
         subtitleFont: SYSTEM_SUBTITLE_FONT,
         subtitleColor: SYSTEM_SUBTITLE_COLOR,
         rank: isCluster ? 1500 : 1000,
-        marginTop: 16,
+        // Clusters have no visible object at the centroid — center the
+        // label on it. Binary/trinary systems sit above their member
+        // stars, which are visible.
+        marginTop: isCluster ? 0 : 16,
+        centered: isCluster,
         opacityTarget: 0,
         payload: group,
       });

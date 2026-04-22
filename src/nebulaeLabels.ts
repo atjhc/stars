@@ -204,7 +204,8 @@ export async function initNebulaeLabels(): Promise<void> {
       subtitleFont: NEBULA_SUBTITLE_FONT,
       subtitleColor: NEBULA_SUBTITLE_COLOR,
       rank: 2000 + (isFavorite(name) ? 5000 : 0),
-      marginTop: 16,
+      marginTop: 0,
+      centered: true,
       opacityTarget: 0,
       payload: { name },
     });

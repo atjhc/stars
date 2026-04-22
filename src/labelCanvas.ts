@@ -53,7 +53,13 @@ export interface CanvasLabelDescriptor {
   subtitleColor?: string;
   rank: number;
   pinned?: boolean;
+  // Vertical offset from the anchor to the top of the painted text. A
+  // star's disc sits at the anchor, so its label sits below. For
+  // anchors with no visible object (clusters, nebulae, black holes)
+  // set `centered: true` instead — the label then paints vertically
+  // centered on the anchor and marginTop is ignored.
   marginTop: number;
+  centered?: boolean;
   opacityTarget: number;
   // Caller-requested "force hidden". Distinct from the collision pass'
   // decisions (occlusion, overlap) — used when something outside the
@@ -545,10 +551,16 @@ function compareLabels(a: CanvasLabel, b: CanvasLabel): number {
 function labelRect(label: CanvasLabel): CanvasRect {
   return {
     x: label.screenX - label.width / 2,
-    y: label.screenY + label.marginTop,
+    y: labelTopY(label),
     w: label.width,
     h: label.height,
   };
+}
+
+function labelTopY(label: CanvasLabel): number {
+  return label.centered
+    ? label.screenY - label.height / 2
+    : label.screenY + label.marginTop;
 }
 
 // Visual offset mirroring what DOM line-height centering gives a
@@ -558,7 +570,7 @@ function labelRect(label: CanvasLabel): CanvasRect {
 const TEXT_BASELINE_OFFSET = 1;
 
 // Pointer hit rect — uniform padding on all edges. Aligns to the
-// *painted* text top (marginTop + TEXT_BASELINE_OFFSET), not the
+// *painted* text top (labelTopY + TEXT_BASELINE_OFFSET), not the
 // anchor-relative marginTop, so padding is symmetric above and below
 // the glyphs. Earlier version missed the baseline offset and the rect
 // sat 1 px too high — descenders poked past the bottom edge.
@@ -566,7 +578,7 @@ const HIT_PAD = 2;
 function hitRect(label: CanvasLabel): CanvasRect {
   return {
     x: label.screenX - label.width / 2 - HIT_PAD,
-    y: label.screenY + label.marginTop + TEXT_BASELINE_OFFSET - HIT_PAD,
+    y: labelTopY(label) + TEXT_BASELINE_OFFSET - HIT_PAD,
     w: label.width + 2 * HIT_PAD,
     h: label.height + 2 * HIT_PAD,
   };
@@ -636,7 +648,7 @@ function paintLabel(ctx: CanvasRenderingContext2D, label: CanvasLabel, alpha: nu
   // noise. The projection is now Float64-precise and target-relative,
   // so stationary labels are already rock-steady without rounding.)
   const nameX = label.screenX;
-  const nameY = label.screenY + label.marginTop + TEXT_BASELINE_OFFSET;
+  const nameY = labelTopY(label) + TEXT_BASELINE_OFFSET;
 
   ctx.save();
   ctx.textAlign = "center";
