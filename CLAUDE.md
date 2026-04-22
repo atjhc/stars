@@ -128,6 +128,7 @@ or the term "cluster".
 ### Source modules
 
 - `src/main.ts` — Entry point: input wiring, render loop, system label hooks
+- `src/renderLoop.ts` — Wake-on-demand rAF scheduler: idle when nothing is changing, wake on input / animation / label fade / tile streaming
 - `src/catalog.ts` — Eager catalog loader (meta + notable + systems) and lazy per-tile label fetch
 - `src/starfield.ts` — Octree streaming for geometry + label tiles, billboard spawning, dynamic SystemGroups
 - `src/billboard.ts` — Billboard mesh + label factories

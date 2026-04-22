@@ -9,6 +9,7 @@ import {
   halfViewportPxUniform,
   starTargetUniform, starCameraOffsetUniform, starViewRotationUniform,
 } from "./shaderUniforms.ts";
+import { kick, registerKeepFrame } from "./renderLoop.ts";
 
 export const scene = new THREE.Scene();
 export const camera = new THREE.PerspectiveCamera(
@@ -235,6 +236,7 @@ export function animateTo(pos: THREE.Vector3, toRadius?: number) {
     toRadius: targetRadius,
     start: performance.now(),
   };
+  kick();
 }
 
 // Jump directly to a target position, cancelling any in-flight target
@@ -278,7 +280,13 @@ export function lookToward(worldPos: THREE.Vector3) {
   else if (dTheta < -Math.PI) toTheta += 2 * Math.PI;
 
   orbitAnim = { fromTheta: orbitTheta, fromPhi: orbitPhi, toTheta, toPhi, start: performance.now() };
+  kick();
 }
+
+export function hasActiveCameraAnim(): boolean {
+  return animation !== null || orbitAnim !== null;
+}
+registerKeepFrame(hasActiveCameraAnim);
 
 function tickOrbitAnim(now: number) {
   if (!orbitAnim) return;

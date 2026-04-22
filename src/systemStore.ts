@@ -1,5 +1,6 @@
 import type * as THREE from "three";
 import type { SystemGroup } from "./types.ts";
+import { kick, registerKeepFrame } from "./renderLoop.ts";
 
 let _selected: SystemGroup | null = null;
 let _selectedSubset: THREE.Object3D[] | null = null;
@@ -41,7 +42,11 @@ export function getLastHoveredMesh() { return _lastHoveredMesh; }
 export function setLastHoveredMesh(m: THREE.Object3D | null) { _lastHoveredMesh = m; }
 
 export function isLabelsDirty() { return _labelsDirty; }
-export function setLabelsDirty(v: boolean) { _labelsDirty = v; }
+export function setLabelsDirty(v: boolean) {
+  _labelsDirty = v;
+  if (v) kick();
+}
+registerKeepFrame(() => _labelsDirty);
 
 export function isInSelectedGroup(target: THREE.Object3D): boolean {
   return _selectedMembers.has(target);

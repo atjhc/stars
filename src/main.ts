@@ -54,6 +54,7 @@ import {
   magLimitUniform, setMagLimit,
 } from "./starfield.ts";
 import { animateTo } from "./scene.ts";
+import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
 
 // Wait for DOM
 await new Promise<void>((resolve) => {
@@ -148,6 +149,7 @@ renderer.domElement.addEventListener("mousedown", (e) => {
   prevMouse.y = e.clientY;
   dragDistance = 0;
   unhoverAll();
+  bumpInput();
 });
 
 window.addEventListener("mousemove", (e) => {
@@ -155,6 +157,7 @@ window.addEventListener("mousemove", (e) => {
   const dy = e.clientY - prevMouse.y;
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
+  bumpInput();
   if (e.altKey && !isDragging) {
     isAltOrbit = true;
     applyOrbitDrag(dx, dy);
@@ -172,6 +175,7 @@ window.addEventListener("mouseup", (e) => {
   isDragging = false;
   if (wasClick) trySelectAt(e.clientX, e.clientY);
   if (wasDrag || wasClick) scheduleUrlWrite();
+  bumpInput();
 });
 
 // Touch controls
@@ -180,6 +184,7 @@ let touchStartRadius = 0;
 
 renderer.domElement.addEventListener("touchstart", (e) => {
   e.preventDefault();
+  bumpInput();
   if (e.touches.length === 1) {
     isDragging = true;
     prevMouse.x = e.touches[0].clientX;
@@ -196,6 +201,7 @@ renderer.domElement.addEventListener("touchstart", (e) => {
 
 renderer.domElement.addEventListener("touchmove", (e) => {
   e.preventDefault();
+  bumpInput();
   if (e.touches.length === 1 && isDragging) {
     const dx = e.touches[0].clientX - prevMouse.x;
     const dy = e.touches[0].clientY - prevMouse.y;
@@ -224,11 +230,13 @@ renderer.domElement.addEventListener("touchend", (e) => {
     trySelectAt(touch.clientX, touch.clientY);
   }
   scheduleUrlWrite();
+  bumpInput();
 }, { passive: false });
 
 function onWheelWithUrl(e: WheelEvent) {
   onWheel(e);
   scheduleUrlWrite();
+  bumpInput();
 }
 renderer.domElement.addEventListener("wheel", onWheelWithUrl, { passive: false });
 
@@ -322,6 +330,7 @@ function adjustMagLimit(dir: 1 | -1) {
 
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLInputElement) return;
+  bumpInput();
   if (e.key === "l") {
     labelsVisible = !labelsVisible;
     doUpdateLabelVisibility();
@@ -354,6 +363,7 @@ window.addEventListener("resize", () => {
   handleResize();
   handleDustResize();
   setLabelsDirty(true);
+  bumpInput();
 });
 
 // Search is driven by the global names.json index (every tier-0/tier-1
@@ -602,9 +612,11 @@ function updateStarDeepZoom() {
   setOverlayActive(true);
 }
 
+// Bench + debug need continuous frames for sampling / live stats graphs.
+if (benchEnabled || debugEnabled) setAlwaysOn(true);
+
 // Render loop
 function animate(now: number) {
-  requestAnimationFrame(animate);
   statsBegin();
   tickAnimation(now);
   updateDeepZoom();
@@ -637,4 +649,4 @@ function animate(now: number) {
   if (debugEnabled) tickDebug();
   statsEnd();
 }
-animate(performance.now());
+startRenderLoop(animate);

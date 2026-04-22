@@ -18,6 +18,7 @@ import { COLLISION_PAD_PX, COLLISION_ALPHA_CUTOFF, HIT_PX_PADDING } from "./cons
 import { computeStarScreenMetrics } from "./stars.ts";
 import { starRadiusScene } from "./color.ts";
 import type { Star } from "./types.ts";
+import { registerKeepFrame } from "./renderLoop.ts";
 
 // Hit-target debug overlay (Shift+5 via debug.ts) — kept local so the
 // labelCanvas → debug import doesn't cycle through starfield. main.ts
@@ -344,16 +345,22 @@ let lastFrameTime = 0;
 const scratchProj = { x: 0, y: 0, behind: false };
 const frameBuf: CanvasLabel[] = [];
 
+let fadesInFlight = 0;
+export function hasActiveLabelFades(): boolean {
+  return fadesInFlight > 0;
+}
+registerKeepFrame(hasActiveLabelFades);
+
 export function renderLabelCanvas(): void {
   if (!canvas || !ctx) ensureCanvas();
   if (!ctx) return;
   syncCanvasSize();
 
   const now = performance.now();
-  // Normalize per-frame fade delta. Clamp to avoid large jumps when the
-  // tab was backgrounded and rAF catches up.
-  const rawDt = lastFrameTime > 0 ? (now - lastFrameTime) : 16;
-  const fadeStep = Math.min(1, rawDt / FADE_MS);
+  // Cap dt at ~2 frames so a fade that starts on the wake-from-idle
+  // frame still plays out over FADE_MS instead of snapping.
+  const rawDt = lastFrameTime > 0 ? Math.min(32, now - lastFrameTime) : 16;
+  const fadeStep = rawDt / FADE_MS;
   lastFrameTime = now;
 
   ctx.clearRect(0, 0, canvasWidthCss, canvasHeightCss);
@@ -425,9 +432,11 @@ export function renderLabelCanvas(): void {
   // ONLY axis that fades over FADE_MS — opacityTarget is applied
   // directly in phase 4 so distance-based fading tracks the camera
   // every frame instead of lagging behind the collision animation.
+  fadesInFlight = 0;
   for (const label of frameBuf) {
     const target = label.collisionVisible ? 1 : 0;
     stepVisibleFactor(label, target, fadeStep);
+    if (label.visibleFactor !== target) fadesInFlight++;
   }
 
   // Phase 4: paint + publish hit regions + star picks. Painted alpha

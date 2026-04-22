@@ -21,6 +21,7 @@ import {
   onTileLabelsLoaded, onTileLabelsEvicted,
   type LabelRow, type TileMeta,
 } from "./catalog.ts";
+import { kick, registerKeepFrame } from "./renderLoop.ts";
 
 export { magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag };
 
@@ -376,12 +377,26 @@ async function loadTile(path: string, tile: TileMeta) {
 
     const cached = getTileLabels(path);
     if (cached) spawnTileLabels(path, cached);
+    kick();
   } catch (e) {
     console.warn(`Failed to load tile ${tile.bin}:`, e);
   } finally {
     loadingTiles.delete(path);
   }
 }
+
+// Distance-based opacity fades don't need their own predicate — they
+// only advance while the camera moves, which the input grace window
+// already covers.
+export function hasActiveTileFades(): boolean {
+  if (fadingOutTiles.size > 0) return true;
+  const cutoff = performance.now() - TILE_FADE_MS;
+  for (const tile of loadedTiles.values()) {
+    if (tile.fadeStart > cutoff) return true;
+  }
+  return false;
+}
+registerKeepFrame(hasActiveTileFades);
 
 function evictGeometryTile(path: string) {
   const tile = loadedTiles.get(path);
