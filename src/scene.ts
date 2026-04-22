@@ -229,6 +229,12 @@ export function effectiveCamDist(starPos: THREE.Vector3): number {
 // this to pick up the new floor.
 export function animateTo(pos: THREE.Vector3, toRadius?: number) {
   const targetRadius = toRadius ?? Math.max(orbitRadius, getEffectiveMinOrbit());
+  // Skip no-op animations. Re-selecting the star the camera is already
+  // framed on otherwise triggers 600 ms of "animating" with from == to,
+  // during which updateStarDeepZoom hands rendering from the overlay
+  // to the instanced mesh and back — producing a visible blip on the
+  // zoomed-in disc.
+  if (target.equals(pos) && orbitRadius === targetRadius) return;
   animation = {
     from: target.clone(),
     to: pos.clone(),
