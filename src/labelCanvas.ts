@@ -294,6 +294,26 @@ function rectIntersectsOccluder(r: CanvasRect, occ: Occluder): boolean {
   return dx * dx + dy * dy < occ.radius * occ.radius;
 }
 
+// True when this star's hit circle intersects a strictly larger
+// foreground disc. Every visible star pushes its own disc as an
+// occluder, so "strictly larger than discPx" excludes self and
+// equal-size companions (binary members shouldn't occlude each
+// other). Intersection is `dist(centers) < rPx + o.radius` — any
+// overlap of the click target with the occluder counts, not just the
+// center.
+function starOccludedByForegroundDisc(
+  x: number, y: number, discPx: number, rPx: number, occluders: Occluder[],
+): boolean {
+  for (const o of occluders) {
+    if (o.radius <= discPx) continue;
+    const dx = x - o.cx;
+    const dy = y - o.cy;
+    const reach = rPx + o.radius;
+    if (dx * dx + dy * dy < reach * reach) return true;
+  }
+  return false;
+}
+
 // --- Pointer hit regions ---
 
 interface HitRegion { id: string; rect: CanvasRect; }
@@ -396,6 +416,12 @@ export function renderLabelCanvas(): void {
     frameBuf.push(label);
   }
 
+  // Screen-space occluders for the frame — used both by the (batched)
+  // label collision pass below and by phase 4 to gate star-pick
+  // publishing. Collected every frame so star-pick occlusion updates
+  // with the camera even when the label collision pass is skipped.
+  const occluders = collectScreenOccluders();
+
   // Phase 2: collision — only on dirty. All overlap / occlusion /
   // visibility decisions flip together in the same frame, so the
   // subsequent fade reads as a single batched transition instead of
@@ -403,7 +429,6 @@ export function renderLabelCanvas(): void {
   // transient overlaps come and go.
   if (collisionDirty) {
     frameBuf.sort(compareLabels);
-    const occluders = collectScreenOccluders();
     const grid = new Map<number, CanvasRect[]>();
     for (const label of frameBuf) {
       const textRect = labelRect(label);
@@ -465,8 +490,12 @@ export function renderLabelCanvas(): void {
         if (star) {
           const camDist = distanceFromCamera(anchor!.position);
           const radius = starRadiusScene(star.lum, star.ci);
-          const { halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
+          const { discPx, halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
           const rPx = halfBillPx + HIT_PX_PADDING;
+          // Skip if a strictly larger foreground disc intersects this
+          // hit circle — matches what we do for labels, so the click-
+          // target tracks what's visually reachable.
+          if (starOccludedByForegroundDisc(label.screenX, label.screenY, discPx, rPx, occluders)) continue;
           starPicks.push({ mesh: anchor, x: label.screenX, y: label.screenY, rSq: rPx * rPx });
         }
       }
@@ -477,7 +506,7 @@ export function renderLabelCanvas(): void {
   // rects pickLabelAt scans against and the disc occluders that drive
   // label hiding so the shapes can be eyeballed against what feels
   // clickable.
-  if (hitTargetsOverlay) paintHitTargetOverlay(ctx, frameBuf, collectScreenOccluders());
+  if (hitTargetsOverlay) paintHitTargetOverlay(ctx, frameBuf, occluders);
 }
 
 function paintHitTargetOverlay(
@@ -502,9 +531,10 @@ function paintHitTargetOverlay(
   // Star anchor hit spheres — magenta. Mirrors the pickStarAt math
   // (halfBillPx + HIT_PX_PADDING) and filters to labels whose pick
   // would produce a meaningful selection: collisionVisible, alpha ≥
-  // cutoff, and not pinned. Pinned covers the currently selected /
-  // hovered star — hovering / clicking it doesn't change state so
-  // drawing its hit overlay is just visual noise on top of the glow.
+  // cutoff, not pinned, and not occluded by a strictly larger
+  // foreground disc. Pinned covers the currently selected / hovered
+  // star — hovering / clicking it doesn't change state so drawing its
+  // hit overlay is just visual noise on top of the glow.
   ctx.fillStyle = "rgba(255,80,200,0.18)";
   ctx.strokeStyle = "rgba(255,80,200,0.9)";
   for (const label of labels) {
@@ -519,9 +549,11 @@ function paintHitTargetOverlay(
     const camDist = distanceFromCamera(anchor.position);
     const star = anchor.userData;
     const radius = starRadiusScene(star.lum, star.ci);
-    const { halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
+    const { discPx, halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
+    const rPx = halfBillPx + HIT_PX_PADDING;
+    if (starOccludedByForegroundDisc(label.screenX, label.screenY, discPx, rPx, occluders)) continue;
     ctx.beginPath();
-    ctx.arc(label.screenX, label.screenY, halfBillPx + HIT_PX_PADDING, 0, Math.PI * 2);
+    ctx.arc(label.screenX, label.screenY, rPx, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
