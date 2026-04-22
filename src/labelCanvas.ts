@@ -450,6 +450,8 @@ export function renderLabelCanvas(): void {
         visible = false;
       } else if (overlapsPlaced(textRect, grid)) {
         visible = false;
+      } else if (starHitCircleCoveredByPlaced(label, grid)) {
+        visible = false;
       } else {
         visible = true;
       }
@@ -640,6 +642,47 @@ function overlapsPlaced(r: CanvasRect, grid: Map<number, CanvasRect[]>): boolean
           && r.y + r.h + pad > p.y - pad) {
           return true;
         }
+      }
+    }
+  }
+  return false;
+}
+
+// True when this label's star hit circle intersects any already-placed
+// label rect. Star labels have a click target at the anchor (separate
+// from the text rect, which sits below the star) — if a higher-rank
+// label has been placed over that anchor, the click target is visually
+// covered and the whole label (text + pick) should be suppressed.
+// Non-star labels have no separate hit circle; their text rect
+// participates in overlapsPlaced directly, so this is a no-op for them.
+function starHitCircleCoveredByPlaced(label: CanvasLabel, grid: Map<number, CanvasRect[]>): boolean {
+  if (label.kind !== "star" || !label.payload) return false;
+  const anchor = label.payload as { userData?: Star; position: THREE.Vector3 } | undefined;
+  const star = anchor?.userData;
+  if (!star) return false;
+  const camDist = distanceFromCamera(anchor!.position);
+  const radius = starRadiusScene(star.lum, star.ci);
+  const { halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
+  const rPx = halfBillPx + HIT_PX_PADDING;
+  return circleIntersectsAnyRect(label.screenX, label.screenY, rPx, grid);
+}
+
+function circleIntersectsAnyRect(cx: number, cy: number, r: number, grid: Map<number, CanvasRect[]>): boolean {
+  const x0 = Math.floor((cx - r) / CELL_SIZE);
+  const x1 = Math.floor((cx + r) / CELL_SIZE);
+  const y0 = Math.floor((cy - r) / CELL_SIZE);
+  const y1 = Math.floor((cy + r) / CELL_SIZE);
+  const r2 = r * r;
+  for (let gx = x0; gx <= x1; gx++) {
+    for (let gy = y0; gy <= y1; gy++) {
+      const cell = grid.get(cellKey(gx, gy));
+      if (!cell) continue;
+      for (const rect of cell) {
+        const closestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
+        const closestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
+        const dx = closestX - cx;
+        const dy = closestY - cy;
+        if (dx * dx + dy * dy < r2) return true;
       }
     }
   }
