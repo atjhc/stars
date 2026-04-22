@@ -14,7 +14,11 @@ const tabButtons = searchEl.querySelectorAll<HTMLButtonElement>(".search-tab");
 type Category = "all" | "favorites" | "recent";
 
 let searchOpen = false;
-let selectedIndex = 0;
+// -1 means "nothing highlighted yet" — stays that way until the user
+// presses an arrow key. Typing a query doesn't implicitly pre-select
+// the first row; the user has to confirm with ArrowDown (or ArrowUp,
+// which jumps to the last result).
+let selectedIndex = -1;
 let filteredEntries: SearchEntry[] = [];
 let activeTab: Category = "all";
 
@@ -89,7 +93,7 @@ function updateSearchResults(query: string) {
       filteredEntries = recentEntries.slice(0, 20);
     }
   }
-  selectedIndex = 0;
+  selectedIndex = -1;
 }
 
 function findMatchSource(entry: SearchEntry, q: string): string | null {
@@ -142,7 +146,7 @@ let selectResult = (_index: number) => {};
 let previewResult = (_entry: SearchEntry) => {};
 
 function notifyPreview() {
-  if (filteredEntries.length > 0 && selectedIndex < filteredEntries.length) {
+  if (selectedIndex >= 0 && selectedIndex < filteredEntries.length) {
     previewResult(filteredEntries[selectedIndex]);
   }
 }
@@ -205,13 +209,17 @@ export function setupSearch(onSelect: (entry: SearchEntry) => void, onPreview?: 
       if (i < tabs.length - 1) setActiveTab(tabs[i + 1]);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      selectedIndex = Math.min(selectedIndex + 1, filteredEntries.length - 1);
+      selectedIndex = selectedIndex < 0
+        ? 0
+        : Math.min(selectedIndex + 1, filteredEntries.length - 1);
       renderSearchResults();
       scrollToSelected();
       notifyPreview();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      selectedIndex = Math.max(selectedIndex - 1, 0);
+      selectedIndex = selectedIndex < 0
+        ? filteredEntries.length - 1
+        : Math.max(selectedIndex - 1, 0);
       renderSearchResults();
       scrollToSelected();
       notifyPreview();

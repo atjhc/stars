@@ -272,6 +272,12 @@ const ORBIT_ANIM_MS = 500;
 let orbitAnim: { fromTheta: number; fromPhi: number; toTheta: number; toPhi: number; start: number } | null = null;
 
 export function lookToward(worldPos: THREE.Vector3) {
+  // Skip when the target already is worldPos — subVectors would give a
+  // zero-length direction that normalizes to (0,0,0) and produces a
+  // bogus (theta, phi) default pose. This path is hit when the search
+  // preview lands on the currently-focused star, so a no-op here keeps
+  // the camera still instead of spinning to an arbitrary rotation.
+  if (target.equals(worldPos)) return;
   const dir = new THREE.Vector3().subVectors(target, worldPos).normalize();
   const x = dir.dot(galX);
   const z = dir.dot(galZ);
