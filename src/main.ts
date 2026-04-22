@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
-import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS } from "./constants.ts";
+import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ANIM_DURATION } from "./constants.ts";
 import {
   scene, camera, renderer, composer, lensingPass,
   gridHelper, handleResize, bloomPass,
@@ -511,8 +511,8 @@ doUpdateLabelVisibility();
     updateCamera();
   }
   setLabelsDirty(true);
-  // Ensure collision runs after any startup animation clears (ANIM_DURATION = 600ms)
-  setTimeout(() => setLabelsDirty(true), 700);
+  // Ensure collision runs after any startup animation clears.
+  setTimeout(() => setLabelsDirty(true), ANIM_DURATION + 100);
 }
 
 function currentFocusName(): string | undefined {

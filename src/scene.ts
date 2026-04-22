@@ -256,11 +256,26 @@ export function setTargetImmediate(pos: THREE.Vector3) {
   updateCamera();
 }
 
+// Asymmetric exponential ease. The midpoint (where 50% of the
+// distance is covered) sits at t=0.45 instead of 0.5, so the last
+// 55% of the animation is deceleration — the camera settles into the
+// destination with a noticeable glide-to-rest rather than a symmetric
+// stop. The characteristic flat tails of easeInOutExpo remain: both
+// origin and destination linger on screen long enough to read.
+function easeInOutExpoRest(t: number): number {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const MID = 0.45;
+  return t < MID
+    ? 0.5 * Math.pow(2, 10 * (t / MID - 1))
+    : 0.5 + 0.5 * (1 - Math.pow(2, -10 * (t - MID) / (1 - MID)));
+}
+
 export function tickAnimation(now: number) {
   tickOrbitAnim(now);
   if (!animation) return;
   const t = Math.min(1, (now - animation.start) / ANIM_DURATION);
-  const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const ease = easeInOutExpoRest(t);
   target.lerpVectors(animation.from, animation.to, ease);
   orbitRadius = animation.fromRadius + (animation.toRadius - animation.fromRadius) * ease;
   updateGridCenter();

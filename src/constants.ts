@@ -1,5 +1,5 @@
 export const SCALE = 3;
-export const ANIM_DURATION = 600;
+export const ANIM_DURATION = 1400;
 export const MIN_ORBIT_RADIUS = 0.5;
 export const MAX_ORBIT_RADIUS = 1000; // ~330 pc — enough to see cloud structure
 export const CLICK_THRESHOLD = 5;
