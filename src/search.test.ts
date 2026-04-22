@@ -64,10 +64,11 @@ describe("filterSearch", () => {
     expect(results[0]).toBe(alcyone);
   });
 
-  it("searching 'Sirius' dedupes system members to one result", () => {
+  it("searching 'Sirius' returns every member of the binary", () => {
     const results = filterSearch("Sirius", index);
-    expect(results.length).toBe(1);
-    expect(results[0]).toBe(siriusA);
+    expect(results.length).toBe(2);
+    const names = results.map((r) => r.n).sort();
+    expect(names).toEqual(["Sirius A", "Sirius B"]);
   });
 
   it("searching 'Vega' returns Vega (no system dedup)", () => {
@@ -125,14 +126,21 @@ describe("filterSearch", () => {
     expect(results[1].n).toBe("Solitaire");
   });
 
-  it("cluster entries don't appear when query doesn't match them, system dedup still applies", () => {
+  it("cluster dedupe only fires when the cluster entry itself matches", () => {
     const results = filterSearch("Tau", index);
     const names = results.map((r) => r.n);
-    // 97 Tau is the first Hyades member matching "Tau"; 76 Tau is deduped
-    // by seenSystems (same sy:"Hyades"). Cluster entry doesn't match "Tau".
+    // Cluster entry doesn't match "Tau" so it doesn't block Hyades
+    // members — both 97 Tau and 76 Tau should show through.
     expect(names).toContain("97 Tau");
+    expect(names).toContain("76 Tau");
     expect(names).not.toContain("Hyades");
-    // Only one Hyades member in results
-    expect(results.filter((r) => r.sy === "Hyades").length).toBe(1);
+  });
+
+  it("cluster entry dedupes its star members when both match", () => {
+    // "Hyades" matches the cluster entry (Pass 1) and all three members
+    // via their sy (Pass 2). Only the cluster entry should come back.
+    const results = filterSearch("Hyades", index);
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe(hyadesCluster);
   });
 });

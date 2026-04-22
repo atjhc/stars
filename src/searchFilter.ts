@@ -12,7 +12,12 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
   function add(entry: SearchEntry): boolean {
     if (seen.has(entry)) return false;
     if (entry.sy && seenSystems.has(entry.sy)) return false;
-    if (entry.sy) seenSystems.add(entry.sy);
+    // Only cluster / nebula / black-hole entries aggregate their
+    // members into one search row — so only they dedupe later star
+    // members sharing their sy. Multi-star systems (binary/trinary)
+    // have no such aggregate entry, so every member stays visible and
+    // renders as "System · Member" in the result list.
+    if (entry.sy && entry.k) seenSystems.add(entry.sy);
     seen.add(entry);
     results.push(entry);
     return results.length >= MAX_SEARCH_RESULTS;
