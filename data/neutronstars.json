@@ -1,0 +1,134 @@
+{
+  "RX J1856.5-3754": {
+    "aliases": ["Nearest Neutron Star"],
+    "kind": "ins",
+    "ra": 284.1462,
+    "dec": -37.9057,
+    "dist_pc": 123,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/RX_J1856.5%E2%88%923754",
+    "notes": "The closest known neutron star to Sol and the brightest member of the Magnificent Seven — a group of isolated, radio-quiet neutron stars discovered in X-rays. Surface temperature ~700,000 K. Its unusual smoothness has made it a candidate for exotic interior physics like a quark star."
+  },
+  "RX J0720.4-3125": {
+    "aliases": [],
+    "kind": "ins",
+    "ra": 110.1038,
+    "dec": -31.4306,
+    "dist_pc": 280,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/RX_J0720.4%E2%88%923125",
+    "notes": "Magnificent Seven isolated neutron star. Shows long-term variability in its X-ray spectrum and pulse profile, attributed to precession of a misaligned rotation and magnetic axis."
+  },
+  "RX J0806.4-4123": {
+    "aliases": [],
+    "kind": "ins",
+    "ra": 121.6025,
+    "dec": -41.3750,
+    "dist_pc": 240,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/RX_J0806.4%E2%88%924123",
+    "notes": "Magnificent Seven isolated neutron star. Slow rotator with an 11.37-second spin period."
+  },
+  "RX J0420.0-5022": {
+    "aliases": [],
+    "kind": "ins",
+    "ra": 65.0079,
+    "dec": -50.3800,
+    "dist_pc": 345,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/RX_J0420.0%E2%88%925022",
+    "notes": "Magnificent Seven isolated neutron star. Faintest of the seven in the X-ray band."
+  },
+  "RX J1605.3+3249": {
+    "aliases": [],
+    "kind": "ins",
+    "ra": 241.3271,
+    "dec": 32.8233,
+    "dist_pc": 390,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/RX_J1605.3%2B3249",
+    "notes": "Magnificent Seven isolated neutron star. No confirmed pulsation period, suggesting an axisymmetric magnetic field or near-alignment of the spin and magnetic axes."
+  },
+  "RX J2143.0+0654": {
+    "aliases": ["RBS 1774"],
+    "kind": "ins",
+    "ra": 325.7642,
+    "dec": 6.9047,
+    "dist_pc": 430,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/RX_J2143.0%2B0654",
+    "notes": "Magnificent Seven isolated neutron star. Shows a broad X-ray absorption feature often interpreted as a proton cyclotron line from a ~10^14 G magnetic field."
+  },
+  "RX J1308.6+2127": {
+    "aliases": ["RBS 1223"],
+    "kind": "ins",
+    "ra": 197.2013,
+    "dec": 21.4517,
+    "dist_pc": 540,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/RX_J1308.6%2B2127",
+    "notes": "Magnificent Seven isolated neutron star. Second-strongest magnetic field of the group; 10.31-second spin period."
+  },
+  "PSR J0437-4715": {
+    "aliases": ["Closest Millisecond Pulsar"],
+    "kind": "pulsar",
+    "ra": 69.3163,
+    "dec": -47.2525,
+    "dist_pc": 157,
+    "mass_msun": 1.44,
+    "radius_km": 13.6,
+    "wikipedia": "https://en.wikipedia.org/wiki/PSR_J0437%E2%88%924715",
+    "notes": "The closest and brightest millisecond pulsar — spins 173.7 times per second. Orbits a white dwarf companion every 5.74 days. NICER measurements have constrained its mass and radius to unprecedented precision."
+  },
+  "Geminga": {
+    "aliases": ["PSR J0633+1746"],
+    "kind": "pulsar",
+    "ra": 98.4758,
+    "dec": 17.7703,
+    "dist_pc": 250,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/Geminga",
+    "notes": "The second-brightest persistent gamma-ray source in the sky, yet invisible at radio wavelengths. A ~340,000-year-old pulsar moving at 211 km/s with a visible X-ray bow shock, likely the remnant of a nearby supernova that helped excavate the Local Bubble."
+  },
+  "PSR J0108-1431": {
+    "aliases": [],
+    "kind": "pulsar",
+    "ra": 17.0346,
+    "dec": -14.5306,
+    "dist_pc": 238,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/PSR_J0108%E2%88%921431",
+    "notes": "Among the oldest, faintest and closest known radio pulsars. Age ~166 million years; just past the pulsar 'death line' where radio emission is expected to shut off."
+  },
+  "PSR B0950+08": {
+    "aliases": ["PSR J0953+0755"],
+    "kind": "pulsar",
+    "ra": 148.2888,
+    "dec": 7.9267,
+    "dist_pc": 262,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/PSR_B0950%2B08",
+    "notes": "One of the earliest discovered pulsars (1968), with a 253 ms period. Exceptionally wide interpulse emission — the beam appears to cover most of the sky."
+  },
+  "Vela Pulsar": {
+    "aliases": ["PSR B0833-45", "PSR J0835-4510"],
+    "kind": "pulsar",
+    "ra": 128.8362,
+    "dec": -45.1765,
+    "dist_pc": 287,
+    "mass_msun": 1.4,
+    "radius_km": 12,
+    "wikipedia": "https://en.wikipedia.org/wiki/Vela_Pulsar",
+    "notes": "The brightest persistent pulsar in gamma-rays, embedded in the Vela supernova remnant. Rotates ~11 times per second. Its occasional 'glitches' — sudden spin-ups — are a key probe of the superfluid interior of neutron stars."
+  }
+}

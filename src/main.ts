@@ -9,6 +9,7 @@ import {
   orbitRadius, orbitPhi, orbitTheta, target,
   setOrbitRadius, setOrbitPhi, setOrbitTheta, getEffectiveMinOrbit,
   setTargetImmediate, updateDeepZoom, effectiveCamDist, animation,
+  finalizeLensingFrame, getLensingOccluder,
 } from "./scene.ts";
 import {
   initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
@@ -38,7 +39,8 @@ import {
 } from "./dust.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels, getSelectedBlackHoleName, setBlackHoleHoverByName } from "./blackholes.ts";
-import { setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType } from "./labelRegistry.ts";
+import { initNeutronStarLabels, getSelectedNeutronStarName, setNeutronStarHoverByName, renderNeutronStars } from "./neutronstars.ts";
+import { setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType, registerScreenOccluder, onSelectionChanged } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase, refreshDebugPanel } from "./debug.ts";
 import { runBench } from "./bench.ts";
 import {
@@ -119,7 +121,8 @@ function dispatchCanvasLabelClick(x: number, y: number): boolean {
       return true;
     }
     case "nebula":
-    case "blackhole": {
+    case "blackhole":
+    case "neutronstar": {
       const name = (label.payload as { name?: string } | undefined)?.name;
       if (name) return selectByType(label.kind, name);
       return false;
@@ -277,6 +280,7 @@ function dispatchCanvasLabelHover(x: number, y: number): boolean {
   // Clear cross-type hover first — keeps only the matching type active.
   if (label?.kind !== "nebula") setNebulaHoverByName(null);
   if (label?.kind !== "blackhole") setBlackHoleHoverByName(null);
+  if (label?.kind !== "neutronstar") setNeutronStarHoverByName(null);
 
   if (!label) {
     unhoverAll();
@@ -311,6 +315,11 @@ function dispatchCanvasLabelHover(x: number, y: number): boolean {
   if (label.kind === "blackhole") {
     unhoverAll();
     setBlackHoleHoverByName((label.payload as { name: string }).name);
+    return true;
+  }
+  if (label.kind === "neutronstar") {
+    unhoverAll();
+    setNeutronStarHoverByName((label.payload as { name: string }).name);
     return true;
   }
   return false;
@@ -397,14 +406,16 @@ function handleSearchSelect(entry: SearchEntry) {
   animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
   if (entry.k === "n") {
     selectByType("nebula", entry.n);
-    updateDetailPanel();
     scheduleUrlWrite();
     return;
   }
   if (entry.k === "b") {
-    clearAllSelections();
     selectByType("blackhole", entry.n);
-    updateDetailPanel();
+    scheduleUrlWrite();
+    return;
+  }
+  if (entry.k === "ns") {
+    selectByType("neutronstar", entry.n);
     scheduleUrlWrite();
     return;
   }
@@ -444,6 +455,9 @@ await initConstellations();
 await initDust();
 await initNebulaeLabels();
 await initBlackHoleLabels();
+await initNeutronStarLabels();
+registerScreenOccluder(getLensingOccluder);
+onSelectionChanged(updateDetailPanel);
 
 // Restore toggle state from URL (defaults: labels on, grid off, constellations on, nebulae on)
 {
@@ -536,7 +550,9 @@ function currentFocusName(): string | undefined {
   const nebula = getSelectedNebulaName();
   if (nebula) return nebula;
   const bh = getSelectedBlackHoleName();
-  return bh ?? undefined;
+  if (bh) return bh;
+  const ns = getSelectedNeutronStarName();
+  return ns ?? undefined;
 }
 
 initUrlState({
@@ -625,6 +641,7 @@ function animate(now: number) {
   statsPhase("updateStarfield", updateStarfield);
   statsPhase("updateDust", updateDust);
   statsPhase("updateAllLabels", updateAllLabels);
+  finalizeLensingFrame();
   statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem));
 
   // Main scene pass (lensing pass is in the composer, auto-enabled by blackholes.ts).
@@ -643,6 +660,10 @@ function animate(now: number) {
     composer.render();
     endBloomRender();
     if (!lensingPass.enabled) compositeDustToScreen(renderer);
+    // Render NS markers after the composer so the lensing pass
+    // never sees the body in tDiffuse and can't bend it into an
+    // Einstein ring around itself.
+    renderNeutronStars(renderer);
   });
 
   statsPhase("labelCanvas", renderLabelCanvas);

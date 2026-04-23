@@ -1,15 +1,15 @@
 import * as THREE from "three";
 import {
   scene, camera, animateTo, setMinOrbitOverride,
-  isDeepZoom, orbitRadius, lensingPass, BLOOM_OVERSCAN, projectToScreenUV,
+  isDeepZoom, orbitRadius, requestLensing,
   distanceFromCamera,
 } from "./scene.ts";
 import {
-  SCALE, TILE_BASE_URL,
+  TILE_BASE_URL, RS_KM_PER_MSUN, KM_PER_PC, SCALE,
   DEEP_ZOOM_MIN_ORBIT, formatAstroDistance, solDistanceFade,
 } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
-import { registerLabelType, registerScreenOccluder, type LabelTypeHandler } from "./labelRegistry.ts";
+import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
 import {
@@ -87,37 +87,10 @@ function buildDetailHtml(bh: BlackHoleLabel): string {
     </div>`;
 }
 
-// Screen-space lensing pass control.
-const bhUV = { u: 0, v: 0, behind: false };
-
-function updateLensingPass(bh: BlackHoleLabel) {
-  const uniforms = lensingPass.uniforms as Record<string, THREE.IUniform>;
-
-  // Project the BH's world position through the Float64 pipeline (see
-  // scene.ts::projectToScreenUV). Works at any zoom and for any camera
-  // framing — when the BH is the orbit target this yields (0.5, 0.5)
-  // exactly; for future off-center camera animations the UV tracks it.
-  projectToScreenUV(bh.anchor.position, bhUV);
-  uniforms.uBHScreen.value.set(bhUV.u, bhUV.v);
-  uniforms.uAspect.value = camera.aspect;
-
-  // Schwarzschild radius → screen-space shadow fraction in overscan RT
-  const rsKm = 2.953 * bh.entry.mass_msun;
-  const rsPc = rsKm / 3.086e13;
-  const rsScene = rsPc * SCALE;
-  const fov = camera.fov * Math.PI / 180;
-  const halfTan = Math.tan(fov / 2) * BLOOM_OVERSCAN;
-  const shadowFrac = (2.6 * rsScene / orbitRadius) / (2 * halfTan);
-  uniforms.uShadowRadius.value = shadowFrac;
-  uniforms.uSchwarzRadius.value = (rsScene / orbitRadius) / (2 * halfTan);
-  uniforms.uScreenScale.value = shadowFrac * window.innerHeight * BLOOM_OVERSCAN;
-
-  lensingPass.enabled = true;
-}
-
-function disableLensingPass() {
-  lensingPass.enabled = false;
-}
+// Photon-ring factor: the BH "shadow" seen by a distant observer is
+// ~2.6 rs, not 1 rs (gravitational lensing of the event-horizon edge
+// through the photon sphere).
+const BH_SHADOW_TO_RS = 2.6;
 
 export function getSelectedBlackHoleName(): string | null {
   return selectedBH?.name ?? null;
@@ -129,18 +102,6 @@ export function setBlackHoleHoverByName(name: string | null): void {
   if (hoveredBH && selectedBH !== hoveredBH) removeGlow(hoveredBH);
   hoveredBH = next;
   if (next && selectedBH !== next) applyGlow(next);
-}
-
-export function getBHScreenOcclusion(): { cx: number; cy: number; radius: number } | null {
-  if (!lensingPass.enabled || !selectedBH) return null;
-  const uniforms = lensingPass.uniforms as Record<string, THREE.IUniform>;
-  const bhScreen = uniforms.uBHScreen.value as THREE.Vector2;
-  const shadowFrac = uniforms.uShadowRadius.value as number;
-  return {
-    cx: bhScreen.x * window.innerWidth,
-    cy: (1 - bhScreen.y) * window.innerHeight,
-    radius: shadowFrac * window.innerHeight * 4,
-  };
 }
 
 const bhHandler: LabelTypeHandler = {
@@ -185,9 +146,13 @@ const bhHandler: LabelTypeHandler = {
     }
 
     if (isDeepZoom() && selectedBH) {
-      updateLensingPass(selectedBH);
-    } else {
-      disableLensingPass();
+      const rsScene = ((RS_KM_PER_MSUN * selectedBH.entry.mass_msun) / KM_PER_PC) * SCALE;
+      requestLensing({
+        pos: selectedBH.anchor.position,
+        shadowRadiusScene: BH_SHADOW_TO_RS * rsScene,
+        massMsun: selectedBH.entry.mass_msun,
+        mode: "shadow",
+      });
     }
   },
 
@@ -204,7 +169,11 @@ const bhHandler: LabelTypeHandler = {
   },
 
   clearSelection() {
-    if (selectedBH) { removeGlow(selectedBH); selectedBH = null; setMinOrbitOverride(null); disableLensingPass(); }
+    if (selectedBH) {
+      removeGlow(selectedBH);
+      selectedBH = null;
+      setMinOrbitOverride(null);
+    }
     if (hoveredBH) { removeGlow(hoveredBH); hoveredBH = null; }
   },
 
@@ -252,5 +221,4 @@ export async function initBlackHoleLabels(): Promise<void> {
   }
 
   registerLabelType(bhHandler);
-  registerScreenOccluder(getBHScreenOcclusion);
 }

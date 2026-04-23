@@ -145,6 +145,7 @@ or the term "cluster".
 - `src/labelCanvas.ts` — 2D canvas label overlay; sole label renderer (replaced CSS2DRenderer)
 - `src/nebulaeLabels.ts` — Nebula label registrations + selection handler
 - `src/blackholes.ts` — Black hole labels + point rendering, registered via labelRegistry
+- `src/neutronstars.ts` — Neutron star / pulsar labels + marker-disc rendering + GR lensing on close zoom
 - `src/dust.ts` — 3D dust volume ray marcher (Lallement/Vergely data + hot-star illumination)
 - `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
 - `src/systemDispatch.ts` — Polymorphic dispatch functions for SystemGroup variants
@@ -167,6 +168,7 @@ or the term "cluster".
 - `data/constellations.json` — Constellation line definitions for the 37 rendered constellations
 - `data/nebulae.json` — Molecular cloud definitions: positions (galactic Cartesian), metadata, wikipedia
 - `data/blackholes.json` — Stellar-mass black holes: RA/Dec, distance, mass, metadata
+- `data/neutronstars.json` — Nearby neutron stars (Magnificent Seven + notable pulsars within 1 kpc): RA/Dec, distance, mass, radius, kind (`ins`/`pulsar`), metadata
 - `data/cache/` — Downloaded source data (gitignored): FITS cubes, etc.
 - `dist/tiles/dust_volume_rgba.bin` — Baked RGBA 3D texture (density + hot-star illumination)
 - `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata

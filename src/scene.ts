@@ -4,7 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
-import { GRID_SIZE, GRID_DIVISIONS, GRID_FADE_RADIUS, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD } from "./constants.ts";
+import { GRID_SIZE, GRID_DIVISIONS, GRID_FADE_RADIUS, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD, KM_PER_PC, RS_KM_PER_MSUN, SCALE } from "./constants.ts";
 import {
   halfViewportPxUniform,
   starTargetUniform, starCameraOffsetUniform, starViewRotationUniform,
@@ -459,6 +459,11 @@ const lensingPass = new ShaderPass({
     uSchwarzRadius: { value: 0.0 },
     uAspect: { value: 1.0 },
     uScreenScale: { value: 100.0 },
+    // Interior mode: 0 = BH event horizon (shader draws black),
+    // >0 = NS (interior is already drawn into tDiffuse by the
+    // billboard so the shader just passes it through). The NS and
+    // BH handlers set this when they drive the pass.
+    uBodyEmissive: { value: 0.0 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -477,6 +482,7 @@ const lensingPass = new ShaderPass({
     uniform float uSchwarzRadius;
     uniform float uAspect;
     uniform float uScreenScale;
+    uniform float uBodyEmissive;
     varying vec2 vUv;
 
     vec3 sampleDust(vec2 uv) {
@@ -501,36 +507,106 @@ const lensingPass = new ShaderPass({
 
       float b = dist / uShadowRadius;
 
-      // Shadow: black inside capture radius
-      if (b < 0.95) {
-        float ringWidth = max(uScreenScale * 2.0, 50.0);
-        float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 0.0;
-        gl_FragColor = vec4(vec3(1.0, 0.97, 0.95) * ring, 1.0);
-        return;
-      }
-
-      // Deflection in aspect-corrected space, then convert back to UV space
+      // Bend every pixel's sight line around the body.
       float deflection = uSchwarzRadius / max(dist, uShadowRadius * 0.5);
       vec2 deflectDir = normalize(corrected);
       vec2 uvDeflect = vec2(deflectDir.x / uAspect, deflectDir.y) * deflection;
       vec2 bentUV = clamp(uv - uvDeflect, 0.0, 1.0);
+      vec3 bent = texture2D(tDiffuse, bentUV).rgb + sampleDust(bentUV);
 
-      vec3 color = texture2D(tDiffuse, bentUV).rgb + sampleDust(bentUV);
-
-      float shadow = smoothstep(0.95, 1.05, b);
-      color *= shadow;
-
-      float ringWidth = max(uScreenScale * 2.0, 50.0);
-      float ring = exp(-pow((b - 1.0) * ringWidth, 2.0)) * 0.0;
-      color += vec3(1.0, 0.97, 0.95) * ring;
-
-      gl_FragColor = vec4(color, 1.0);
+      // Black holes: the interior is the event horizon (shadow).
+      // The shadow mask goes from 0 at b < 0.95 (pure black) to 1
+      // at b > 1.05 (full lensed background), with a smooth edge
+      // between.
+      //
+      // Neutron stars: the body is rendered by its billboard in a
+      // separate pass after this composer, so there's nothing to
+      // draw for the body here — just pass the bent background
+      // through and the billboard will cover the body region.
+      if (uBodyEmissive < 0.5) {
+        float shadow = smoothstep(0.95, 1.05, b);
+        gl_FragColor = vec4(bent * shadow, 1.0);
+      } else {
+        gl_FragColor = vec4(bent, 1.0);
+      }
     }
   `,
 });
 lensingPass.enabled = false;
 composer.addPass(lensingPass);
 export { lensingPass };
+
+// ─── Lensing arbiter ────────────────────────────────────────────────
+//
+// `lensingPass` is shared between black-hole and neutron-star handlers.
+// Before this arbiter existed, each handler's update() directly toggled
+// `lensingPass.enabled` and wrote uniforms. Because both update() fns
+// run every frame in registration order, whichever ran last stomped
+// whatever the other had set — selecting a BH with the NS handler
+// registered later caused the BH lensing to be disabled every frame.
+//
+// Now each handler calls `requestLensing({...})` during its update().
+// `finalizeLensingFrame()` is called once per frame from the render
+// loop after updateAllLabels(): if no one requested lensing, it
+// disables the pass. Single writer, no ordering fragility.
+export type LensingMode = "shadow" | "bodyElsewhere";
+export interface LensingParams {
+  pos: THREE.Vector3;
+  shadowRadiusScene: number;   // where the event-horizon shadow ends
+  massMsun: number;             // for Schwarzschild deflection magnitude
+  mode: LensingMode;
+}
+let lensingRequestedThisFrame = false;
+
+export function requestLensing(p: LensingParams): void {
+  const uniforms = lensingPass.uniforms as Record<string, THREE.IUniform>;
+  // When the lensed body IS the orbit target (the common case),
+  // the screen UV is (0.5, 0.5) by construction. Shortcut it —
+  // projectToScreenUV runs a projection-matrix dot product using
+  // Float32 matrix elements, so it carries ~1e-7 of drift per frame
+  // as orbit rotation changes. That drift propagates into
+  // `uvDeflect = uv - uBHScreen` and gets amplified by the strong
+  // near-center deflection (max ≈ 0.82 for an NS), enough to move
+  // the bent-UV sample between neighboring dust pixels. BHs hide
+  // the entire region under a black shadow disc; NSes don't, so
+  // the jitter shows up as nebula shimmer.
+  if (p.pos.equals(target)) {
+    uniforms.uBHScreen!.value.set(0.5, 0.5);
+  } else {
+    projectToScreenUV(p.pos, _uvScratch);
+    uniforms.uBHScreen!.value.set(_uvScratch.u, _uvScratch.v);
+  }
+  uniforms.uAspect!.value = camera.aspect;
+
+  const rsScene = ((RS_KM_PER_MSUN * p.massMsun) / KM_PER_PC) * SCALE;
+  const fov = camera.fov * Math.PI / 180;
+  const halfTan = Math.tan(fov / 2) * BLOOM_OVERSCAN;
+  const shadowFrac = (p.shadowRadiusScene / orbitRadius) / (2 * halfTan);
+  uniforms.uShadowRadius!.value = shadowFrac;
+  uniforms.uSchwarzRadius!.value = (rsScene / orbitRadius) / (2 * halfTan);
+  uniforms.uScreenScale!.value = shadowFrac * window.innerHeight * BLOOM_OVERSCAN;
+  uniforms.uBodyEmissive!.value = p.mode === "bodyElsewhere" ? 1 : 0;
+
+  lensingPass.enabled = true;
+  lensingRequestedThisFrame = true;
+}
+
+export function finalizeLensingFrame(): void {
+  if (!lensingRequestedThisFrame) lensingPass.enabled = false;
+  lensingRequestedThisFrame = false;
+}
+
+export function getLensingOccluder(): { cx: number; cy: number; radius: number } | null {
+  if (!lensingPass.enabled) return null;
+  const uniforms = lensingPass.uniforms as Record<string, THREE.IUniform>;
+  const screen = uniforms.uBHScreen!.value as THREE.Vector2;
+  const shadowFrac = uniforms.uShadowRadius!.value as number;
+  return {
+    cx: screen.x * window.innerWidth,
+    cy: (1 - screen.y) * window.innerHeight,
+    radius: shadowFrac * window.innerHeight * 4,
+  };
+}
 
 composer.addPass(cropPass);
 

@@ -24,6 +24,9 @@ export const HIT_PX_PADDING = 6;
 export const LY_PER_PARSEC = 3.26156;
 export const AU_PER_LY = 63241;
 export const KM_PER_AU = 1.496e8;
+export const KM_PER_PC = 3.086e13;
+// Schwarzschild radius in km for a 1 M☉ body.
+export const RS_KM_PER_MSUN = 2.953;
 
 // Minimum orbit radius for black-hole selection. BH rendering is pure
 // screen-space, so precision holds down to the Float32 floor and the

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { camera } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
+import { starTargetUniform, starCameraOffsetUniform } from "./shaderUniforms.ts";
 
 // Galactic Cartesian → Drake scene. Derived in build-catalog.py from
 // IAU galactic pole (RA=192.86°, Dec=27.13°) + equatorial→scene swap.
@@ -43,7 +44,8 @@ const EMISSION_FRAGMENT = `
   uniform sampler3D uDustVolume;
   uniform vec3 uVolumeSize;
   uniform mat3 uSceneToGal;
-  uniform vec3 uCameraPos;
+  uniform vec3 uStarTarget;
+  uniform vec3 uStarCameraOffset;
   uniform float uOpacity;
   uniform float uMagLimit;
   varying vec3 vWorldPos;
@@ -54,9 +56,20 @@ const EMISSION_FRAGMENT = `
   }
 
   void main() {
-    vec3 rayDir = normalize(vWorldPos - uCameraPos);
-    vec3 pos = uCameraPos;
-    float maxDist = length(vWorldPos - uCameraPos);
+    // Target-relative ray math. The naive (vWorldPos - uCameraPos)
+    // subtraction loses precision at deep zoom: uCameraPos has Float32
+    // resolution ~1e-4 at target magnitudes of several hundred scene
+    // units, so orbit offsets below that round away and uCameraPos
+    // snaps between quantized states as the camera rotates, producing
+    // visible shimmer in the nebula. Rewriting as
+    //   (vWorldPos - uStarTarget) - uStarCameraOffset
+    // keeps the offset subtraction in the small-magnitude regime where
+    // Float32 has plenty of headroom; the large subtraction is stable
+    // frame-to-frame because both operands are fixed per frame.
+    vec3 camRel = (vWorldPos - uStarTarget) - uStarCameraOffset;
+    vec3 rayDir = normalize(camRel);
+    vec3 pos = uStarTarget + uStarCameraOffset;
+    float maxDist = length(camRel);
 
     float accumDensity = 0.0;
     float accumHII = 0.0;
@@ -114,7 +127,8 @@ function createEmissionMaterial(
       uDustVolume: { value: texture },
       uVolumeSize: { value: volSize },
       uSceneToGal: { value: new THREE.Matrix3().copy(GAL_TO_SCENE).invert() },
-      uCameraPos: { value: new THREE.Vector3() },
+      uStarTarget: starTargetUniform,
+      uStarCameraOffset: starCameraOffsetUniform,
       // Calibrated against the physical star rendering in stars.ts —
       // stars past the naked-eye magnitude limit now fade to zero, so
       // the old 0.12 made nebulae pop against an unnaturally dark
@@ -213,15 +227,15 @@ export async function initDust(): Promise<void> {
   console.log(`Dust volume: ${xSize}×${ySize}×${zSize}, bbox ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}`);
 }
 
-export function updateDust(): void {
-  if (!emissionMesh || !wantVisible) return;
-  (emissionMesh.material as THREE.ShaderMaterial).uniforms.uCameraPos.value.copy(camera.position);
-}
+// Camera state for the dust shader now comes from the shared
+// starTarget / starCameraOffset uniforms, which scene.ts keeps fresh
+// every frame. Nothing per-frame needed here — kept as an exported
+// no-op so main.ts's animate loop doesn't need to change.
+export function updateDust(): void {}
 
-// Ray march to the half-res RT. Run each frame so the RT is fresh
-// whether we composite it via compositeDustToScreen (no BH active)
-// or sample it inside the lensing shader (BH active — so dust gets
-// gravitationally warped alongside the scene).
+// Ray march to the half-res RT. Run every frame — the target-relative
+// math in the fragment shader keeps the output stable across frames
+// at deep zoom without any skip heuristic.
 export function renderDustToRT(renderer: THREE.WebGLRenderer): void {
   if (!emissionMesh || !wantVisible || !halfResRT) return;
   const prevTarget = renderer.getRenderTarget();

@@ -48,7 +48,10 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
   const bhMatch = (e: SearchEntry) =>
     "black hole".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
 
-  // Pass 1: cluster, nebula, and black hole entries.
+  const nsMatch = (e: SearchEntry) =>
+    "neutron star".startsWith(q) || "pulsar".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
+
+  // Pass 1: cluster, nebula, black hole, and neutron-star entries.
   for (const entry of index) {
     if (excludeKinds?.has(entry.k ?? "")) continue;
     if (entry.k === "c") {
@@ -57,6 +60,8 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
       if (!nebulaMatch(entry)) continue;
     } else if (entry.k === "b") {
       if (!bhMatch(entry)) continue;
+    } else if (entry.k === "ns") {
+      if (!nsMatch(entry)) continue;
     } else {
       continue;
     }
@@ -65,14 +70,14 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
 
   // Pass 2: star primary name / system match.
   for (const entry of index) {
-    if (entry.k === "c" || entry.k === "n") continue;
+    if (entry.k === "c" || entry.k === "n" || entry.k === "b" || entry.k === "ns") continue;
     if (!nameOrSysMatch(entry)) continue;
     if (add(entry)) break;
   }
 
   // Pass 3: star alias match.
   for (const entry of index) {
-    if (entry.k === "c" || entry.k === "n") continue;
+    if (entry.k === "c" || entry.k === "n" || entry.k === "b" || entry.k === "ns") continue;
     if (seen.has(entry)) continue;
     if (!aliasMatch(entry)) continue;
     if (add(entry)) break;

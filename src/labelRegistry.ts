@@ -44,6 +44,17 @@ export function registerLabelType(handler: LabelTypeHandler): void {
   handlers.push(handler);
 }
 
+// main.ts subscribes updateDetailPanel here so any new label type wired
+// through selectByType / clearAllSelections gets info-panel updates for
+// free, instead of having to remember at each call site.
+const selectionChangeListeners: Array<() => void> = [];
+export function onSelectionChanged(fn: () => void): void {
+  selectionChangeListeners.push(fn);
+}
+function notifySelectionChanged(): void {
+  for (const fn of selectionChangeListeners) fn();
+}
+
 export function setAllLabelsVisible(visible: boolean): void {
   for (const h of handlers) h.setVisible(visible);
 }
@@ -57,13 +68,19 @@ export function clearAllSelections(except?: string): void {
   for (const h of handlers) {
     if (h.type !== except) h.clearSelection();
   }
+  // selectByType also calls us then selects — it fires the notifier
+  // itself on success to avoid a double-fire here. Pure-clear callers
+  // (e.g. empty-space click) rely on this fire for panel refresh.
+  if (except === undefined) notifySelectionChanged();
 }
 
 export function selectByType(type: string, name: string): boolean {
   const handler = handlers.find((h) => h.type === type);
   if (!handler) return false;
   clearAllSelections(type);
-  return handler.selectByName(name);
+  const ok = handler.selectByName(name);
+  if (ok) notifySelectionChanged();
+  return ok;
 }
 
 export function getActiveDetailHtml(): string | null {

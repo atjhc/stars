@@ -888,6 +888,38 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             json.dump(bh_out, f)
         print(f"Black holes: {bh_count} in search index")
 
+    # Neutron stars: same RA/Dec → scene transform. Tagged as k="ns"
+    # in the search index so the runtime can dispatch to the dedicated
+    # neutron-star handler (labels + lensing). Either "ins" (isolated
+    # neutron star, Magnificent Seven style) or "pulsar" in data.
+    ns_path = os.path.join(data_dir, "data", "neutronstars.json")
+    ns_count = 0
+    if os.path.exists(ns_path):
+        with open(ns_path) as f:
+            ns_raw = json.load(f)
+        ns_out = {}
+        for nsname, nsdef in ns_raw.items():
+            ra_rad = math.radians(nsdef["ra"])
+            dec_rad = math.radians(nsdef["dec"])
+            dist = nsdef["dist_pc"]
+            x = dist * math.cos(dec_rad) * math.cos(ra_rad)
+            y = dist * math.cos(dec_rad) * math.sin(ra_rad)
+            z = dist * math.sin(dec_rad)
+            sx, sy, sz = x * SCALE, z * SCALE, -y * SCALE
+            scene_pos = [round(sx, 2), round(sy, 2), round(sz, 2)]
+            search_index.append({
+                "n": nsname, "k": "ns",
+                "p": scene_pos,
+                "mg": 0, "M": 0,
+                "d": round(dist, 1),
+                "a": nsdef.get("aliases", []),
+            })
+            ns_out[nsname] = {**nsdef, "scene_pos": scene_pos}
+            ns_count += 1
+        with open(os.path.join(out_dir, "neutronstars.json"), "w") as f:
+            json.dump(ns_out, f)
+        print(f"Neutron stars: {ns_count} in search index")
+
     with open(os.path.join(out_dir, "meta.json"), "w") as f:
         json.dump(meta, f)
     with open(os.path.join(out_dir, "notable.json"), "w") as f:
