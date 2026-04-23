@@ -10,6 +10,7 @@ import {
   setOrbitRadius, setOrbitPhi, setOrbitTheta, getEffectiveMinOrbit,
   setTargetImmediate, updateDeepZoom, effectiveCamDist, animation,
   finalizeLensingFrame, getLensingOccluder,
+  toggleAutoOrbit, stopAutoOrbit, isAutoOrbit,
 } from "./scene.ts";
 import {
   initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
@@ -152,6 +153,7 @@ renderer.domElement.addEventListener("mousedown", (e) => {
   prevMouse.y = e.clientY;
   dragDistance = 0;
   unhoverAll();
+  stopAutoOrbit();
   bumpInput();
 });
 
@@ -163,6 +165,7 @@ window.addEventListener("mousemove", (e) => {
   bumpInput();
   if (e.altKey && !isDragging) {
     isAltOrbit = true;
+    stopAutoOrbit();
     applyOrbitDrag(dx, dy);
     return;
   }
@@ -193,6 +196,7 @@ renderer.domElement.addEventListener("touchstart", (e) => {
     prevMouse.x = e.touches[0].clientX;
     prevMouse.y = e.touches[0].clientY;
     dragDistance = 0;
+    stopAutoOrbit();
   } else if (e.touches.length === 2) {
     isDragging = false;
     const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -361,6 +365,8 @@ window.addEventListener("keydown", (e) => {
       setLabelsDirty(true);
       updateDetailPanel();
     }
+  } else if (e.key === "o") {
+    toggleAutoOrbit();
   } else if ((e.key === "-" || e.key === "=") && !e.metaKey && !e.ctrlKey && !e.altKey) {
     // Cmd/Ctrl +/- are reserved for browser zoom — leave those alone.
     adjustMagLimit(e.key === "=" ? 1 : -1);
