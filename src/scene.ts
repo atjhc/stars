@@ -272,6 +272,7 @@ function easeInOutExpoRest(t: number): number {
 }
 
 export function tickAnimation(now: number) {
+  tickAutoOrbit(now);
   tickOrbitAnim(now);
   if (!animation) return;
   const t = Math.min(1, (now - animation.start) / ANIM_DURATION);
@@ -310,8 +311,31 @@ export function lookToward(worldPos: THREE.Vector3) {
   kick();
 }
 
+// Auto-orbit: steady rotation around the focus target.
+let autoOrbitActive = false;
+const AUTO_ORBIT_RAD_PER_SEC = 0.15;
+
+export function isAutoOrbit(): boolean { return autoOrbitActive; }
+
+export function toggleAutoOrbit(): void {
+  autoOrbitActive = !autoOrbitActive;
+  if (autoOrbitActive) kick();
+}
+
+export function stopAutoOrbit(): void { autoOrbitActive = false; }
+
+let lastAutoOrbitTime = 0;
+function tickAutoOrbit(now: number): void {
+  if (!autoOrbitActive) { lastAutoOrbitTime = 0; return; }
+  if (lastAutoOrbitTime === 0) { lastAutoOrbitTime = now; return; }
+  const dt = (now - lastAutoOrbitTime) / 1000;
+  lastAutoOrbitTime = now;
+  orbitTheta += AUTO_ORBIT_RAD_PER_SEC * dt;
+  updateCamera();
+}
+
 export function hasActiveCameraAnim(): boolean {
-  return animation !== null || orbitAnim !== null;
+  return animation !== null || orbitAnim !== null || autoOrbitActive;
 }
 registerKeepFrame(hasActiveCameraAnim);
 
