@@ -3,13 +3,21 @@
 // visibility toggling, selection clearing, click dispatch, detail panel.
 
 import { clearStarSystemSelection } from "./interaction.ts";
+import { registerSearchKindKeywords } from "./searchFilter.ts";
 
 export interface LabelTypeHandler {
   readonly type: string;
+  // Search-entry kind code (e.g. "b", "ns", "n") — the `k` field on
+  // SearchEntry. If set, registerLabelType auto-wires search keywords.
+  readonly searchKind?: string;
+  readonly searchKeywords?: string[];
+  readonly searchLabel?: string;
   setVisible(visible: boolean): void;
   update(): void;
   selectByName(name: string): boolean;
   clearSelection(): void;
+  getSelectedName(): string | null;
+  setHoverByName(name: string | null): void;
   handleClick(div: HTMLElement): boolean;
   detailHtml(): string | null;
 }
@@ -39,9 +47,19 @@ export function collectScreenOccluders(): Occluder[] {
 }
 
 const handlers: LabelTypeHandler[] = [];
+const kindToType = new Map<string, string>();
 
 export function registerLabelType(handler: LabelTypeHandler): void {
   handlers.push(handler);
+  if (handler.searchKind && handler.searchKeywords) {
+    registerSearchKindKeywords(handler.searchKind, handler.searchKeywords, handler.searchLabel);
+    kindToType.set(handler.searchKind, handler.type);
+  }
+}
+
+// Map a search-entry kind code ("b", "ns", "n") to a handler type name.
+export function handlerTypeForSearchKind(kind: string): string | undefined {
+  return kindToType.get(kind);
 }
 
 // main.ts subscribes updateDetailPanel here so any new label type wired
@@ -89,4 +107,26 @@ export function getActiveDetailHtml(): string | null {
     if (html) return html;
   }
   return null;
+}
+
+// Clear hover on every handler except the given type. Ensures that
+// entering one label type's hover automatically exits the previous.
+export function clearHoverExcept(exceptType: string | null): void {
+  for (const h of handlers) {
+    if (h.type !== exceptType) h.setHoverByName(null);
+  }
+}
+
+// Return the name of whichever handler has an active selection, or null.
+export function getHandlerSelectedName(): string | null {
+  for (const h of handlers) {
+    const name = h.getSelectedName();
+    if (name) return name;
+  }
+  return null;
+}
+
+// Look up a handler by type.
+export function getHandlerByType(type: string): LabelTypeHandler | undefined {
+  return handlers.find((h) => h.type === type);
 }

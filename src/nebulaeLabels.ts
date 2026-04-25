@@ -43,20 +43,6 @@ let selectedNebula: NebulaLabel | null = null;
 let hoveredNebula: NebulaLabel | null = null;
 let maxSolDist = 0;
 
-export function getSelectedNebulaName(): string | null {
-  return selectedNebula?.name ?? null;
-}
-
-// Canvas-mode hover driver. The DOM path wires glow via div mouseenter
-// / mouseleave listeners; in canvas mode the div isn't in the DOM, so
-// main.ts drives hover state through this API after pickLabelAt.
-export function setNebulaHoverByName(name: string | null): void {
-  const next = name ? nebulaLabels.find((n) => n.name === name) ?? null : null;
-  if (hoveredNebula === next) return;
-  if (hoveredNebula && selectedNebula !== hoveredNebula) removeGlow(hoveredNebula);
-  hoveredNebula = next;
-  if (next && selectedNebula !== next) applyGlow(next);
-}
 
 // Detail-panel distance formatter — intentionally surfaces both ly and pc.
 // Subtitles use formatAstroDistance (km → AU → ly cascade).
@@ -101,6 +87,9 @@ function buildDetailHtml(nl: NebulaLabel): string {
 
 const nebulaHandler: LabelTypeHandler = {
   type: "nebula",
+  searchKind: "n",
+  searchKeywords: ["nebula", "molecular cloud", "dark nebula"],
+  searchLabel: "Nebula",
 
   setVisible(v) {
     for (const nl of nebulaLabels) {
@@ -162,6 +151,18 @@ const nebulaHandler: LabelTypeHandler = {
   clearSelection() {
     if (selectedNebula) { removeGlow(selectedNebula); selectedNebula = null; setMinOrbitOverride(null); }
     if (hoveredNebula) { removeGlow(hoveredNebula); hoveredNebula = null; }
+  },
+
+  getSelectedName() {
+    return selectedNebula?.name ?? null;
+  },
+
+  setHoverByName(name) {
+    const next = name ? nebulaLabels.find((n) => n.name === name) ?? null : null;
+    if (hoveredNebula === next) return;
+    if (hoveredNebula && selectedNebula !== hoveredNebula) removeGlow(hoveredNebula);
+    hoveredNebula = next;
+    if (next && selectedNebula !== next) applyGlow(next);
   },
 
   handleClick(div) {

@@ -15,7 +15,6 @@ import {
 import {
   initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
 } from "./urlState.ts";
-import { getSelectedNebulaName, setNebulaHoverByName } from "./nebulaeLabels.ts";
 import { starRadiusScene } from "./color.ts";
 import {
   hoverTarget, unhoverAll,
@@ -38,9 +37,13 @@ import {
   toggleDust, setDustVisible, isDustVisible, handleDustResize,
 } from "./dust.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
-import { initBlackHoleLabels, getSelectedBlackHoleName, setBlackHoleHoverByName } from "./blackholes.ts";
-import { initNeutronStarLabels, getSelectedNeutronStarName, setNeutronStarHoverByName, renderNeutronStars } from "./neutronstars.ts";
-import { setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType, registerScreenOccluder, onSelectionChanged } from "./labelRegistry.ts";
+import { initBlackHoleLabels } from "./blackholes.ts";
+import { initNeutronStarLabels, renderNeutronStars } from "./neutronstars.ts";
+import {
+  setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType,
+  registerScreenOccluder, onSelectionChanged, clearHoverExcept, getHandlerSelectedName,
+  getHandlerByType, handlerTypeForSearchKind,
+} from "./labelRegistry.ts";
 import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase, refreshDebugPanel } from "./debug.ts";
 import { runBench } from "./bench.ts";
 import {
@@ -113,30 +116,25 @@ function dispatchCanvasLabelClick(x: number, y: number): boolean {
   if (!id || !isCanvasLabelInteractive(id)) return false;
   const label = getCanvasLabel(id);
   if (!label) return false;
-  switch (label.kind) {
-    case "star": {
-      const mesh = label.payload as THREE.Object3D | undefined;
-      if (!mesh) return false;
-      clearAllSelections();
-      selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
-      rebaseForStar(mesh);
-      return true;
-    }
-    case "system": {
-      const group = label.payload as SystemGroup | undefined;
-      if (!group) return false;
-      clearAllSelections();
-      selectSystem(group, updateDetailPanel);
-      return true;
-    }
-    case "nebula":
-    case "blackhole":
-    case "neutronstar": {
-      const name = (label.payload as { name?: string } | undefined)?.name;
-      if (name) return selectByType(label.kind, name);
-      return false;
-    }
+
+  if (label.kind === "star") {
+    const mesh = label.payload as THREE.Object3D | undefined;
+    if (!mesh) return false;
+    clearAllSelections();
+    selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
+    rebaseForStar(mesh);
+    return true;
   }
+  if (label.kind === "system") {
+    const group = label.payload as SystemGroup | undefined;
+    if (!group) return false;
+    clearAllSelections();
+    selectSystem(group, updateDetailPanel);
+    return true;
+  }
+  // Registry-managed types (nebula, BH, NS, and any future type)
+  const name = (label.payload as { name?: string } | undefined)?.name;
+  if (name) return selectByType(label.kind, name);
   return false;
 }
 
@@ -279,20 +277,16 @@ function isTargetClusterLabelInteractive(cluster: SystemGroup): boolean {
   return isCanvasLabelInteractive(`system:${cluster.name}`);
 }
 
-// Canvas-only hover dispatch — star, system, nebula, BH. Returns true
-// when a canvas label was hit and hover state was updated so the
-// caller skips the unhoverAll fallback. Also ensures that leaving one
-// label type and entering another clears the first type's hover glow,
-// since each type owns its own hover state (stars through
-// interaction.ts, nebula/BH through their own modules).
+// Canvas-only hover dispatch. Returns true when a canvas label was hit
+// and hover state was updated so the caller skips the unhoverAll
+// fallback. Uses the label registry to clear cross-type hover state
+// automatically.
 function dispatchCanvasLabelHover(x: number, y: number): boolean {
   const id = pickLabelAt(x, y);
   const label = id && isCanvasLabelInteractive(id) ? getCanvasLabel(id) : null;
 
-  // Clear cross-type hover first — keeps only the matching type active.
-  if (label?.kind !== "nebula") setNebulaHoverByName(null);
-  if (label?.kind !== "blackhole") setBlackHoleHoverByName(null);
-  if (label?.kind !== "neutronstar") setNeutronStarHoverByName(null);
+  // Clear handler-managed hover for any type we're not entering.
+  clearHoverExcept(label?.kind ?? null);
 
   if (!label) {
     unhoverAll();
@@ -319,19 +313,13 @@ function dispatchCanvasLabelHover(x: number, y: number): boolean {
     }
     return true;
   }
-  if (label.kind === "nebula") {
+  // Registry-managed types (nebula, BH, NS, and any future type):
+  // clearHoverExcept already cleared other types; now set hover on this one.
+  const name = (label.payload as { name?: string } | undefined)?.name;
+  if (name) {
     unhoverAll();
-    setNebulaHoverByName((label.payload as { name: string }).name);
-    return true;
-  }
-  if (label.kind === "blackhole") {
-    unhoverAll();
-    setBlackHoleHoverByName((label.payload as { name: string }).name);
-    return true;
-  }
-  if (label.kind === "neutronstar") {
-    unhoverAll();
-    setNeutronStarHoverByName((label.payload as { name: string }).name);
+    const handler = getHandlerByType(label.kind);
+    if (handler) handler.setHoverByName(name);
     return true;
   }
   return false;
@@ -418,18 +406,10 @@ function trySelectSystem(name: string, subsetNames?: string[]): boolean {
 function handleSearchSelect(entry: SearchEntry) {
   pendingSystemSelect = null;
   animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
-  if (entry.k === "n") {
-    selectByType("nebula", entry.n);
-    scheduleUrlWrite();
-    return;
-  }
-  if (entry.k === "b") {
-    selectByType("blackhole", entry.n);
-    scheduleUrlWrite();
-    return;
-  }
-  if (entry.k === "ns") {
-    selectByType("neutronstar", entry.n);
+  // Registry-managed types: nebula, BH, NS (and any future kind)
+  const handlerType = entry.k ? handlerTypeForSearchKind(entry.k) : undefined;
+  if (handlerType) {
+    selectByType(handlerType, entry.n);
     scheduleUrlWrite();
     return;
   }
@@ -546,12 +526,10 @@ doUpdateLabelVisibility();
 }
 
 function currentFocusName(): string | undefined {
+  // Star systems and individual stars are managed outside the handler
+  // registry (through interaction.ts / systemStore.ts), so check first.
   const sys = getSelectedSystem();
   if (sys) {
-    // When the user has refined down to a sub-group (e.g. Rigil+Toliman
-    // within Alpha Centauri), serialize the member names comma-joined
-    // so reload lands back on that specific subset instead of a
-    // single lookup-winner member.
     const subset = getSelectedSubset();
     if (subset && subset.length < sys.meshes.length) {
       return subset.map((m) => (m.userData as Star).name).join(",");
@@ -563,12 +541,8 @@ function currentFocusName(): string | undefined {
     const name = (mesh.userData as Star).name;
     if (name) return name;
   }
-  const nebula = getSelectedNebulaName();
-  if (nebula) return nebula;
-  const bh = getSelectedBlackHoleName();
-  if (bh) return bh;
-  const ns = getSelectedNeutronStarName();
-  return ns ?? undefined;
+  // Registry-managed types (nebula, BH, NS, etc.)
+  return getHandlerSelectedName() ?? undefined;
 }
 
 initUrlState({

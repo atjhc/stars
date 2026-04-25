@@ -5,6 +5,7 @@ import {
   starCameraOffsetUniform,
   starViewRotationUniform,
 } from "./shaderUniforms.ts";
+import { F_HALF_TAN_INV, F_HALF_TAN_INV_GLSL, VIEW_UNIFORMS_GLSL, TARGET_VIEW_GLSL } from "./shaderLib.ts";
 
 // Hover affordance — matched instance gets its intensity multiplied so
 // the user sees a subtle brightness bump (no size change, since the
@@ -39,7 +40,6 @@ export function computeStarMinOrbit(radius: number, maxFraction = 0.15): number 
 //   appMag = absMag + 5·log10(camDist / 10pc)
 
 export const DISC_SCALE = 8.0;
-const F_HALF_TAN_INV = 1 / Math.tan((55 * Math.PI) / 360);
 
 // Tile binary format: 20 bytes per star. Matches scripts/build-catalog.py.
 export const BYTES_PER_STAR = 20;
@@ -93,13 +93,11 @@ export function computeStarScreenMetrics(
 
 const vertexShader = `
   uniform float uMagLimit;
-  uniform float uHalfViewportPx;
   uniform vec3 uLocalTarget;       // target - tileOrigin (per-tile, Float64 on CPU)
-  uniform vec3 uStarCameraOffset;  // camera offset from target (orbit vector)
-  uniform mat3 uStarViewRotation;  // pure rotation of the view matrix
   uniform vec3 uLocalHoveredPos;   // hoveredPos - tileOrigin (per-tile)
   uniform float uHoveredActive;   // 1.0 when a star is hovered
   uniform float uHoverBoost;      // brightness multiplier when matched
+  ${VIEW_UNIFORMS_GLSL}
 
   attribute vec3 instancePos;
   attribute vec3 instanceColor;
@@ -112,9 +110,10 @@ const vertexShader = `
   varying float vHalfBillboardPx;
   varying vec2 vUv;
 
-  const float F_HALF_TAN_INV = ${F_HALF_TAN_INV.toFixed(7)};
+  ${F_HALF_TAN_INV_GLSL}
   const float DISC_SCALE = ${DISC_SCALE.toFixed(2)};
   const float HALO_FLOOR_PX = ${HALO_FLOOR_PX.toFixed(1)};
+  ${TARGET_VIEW_GLSL}
 
   void main() {
     vUv = uv;
@@ -123,8 +122,7 @@ const vertexShader = `
     // Floating-origin subtraction. uLocalTarget = target - tileOrigin,
     // computed in Float64 on the CPU. For rebased tiles both instancePos
     // and uLocalTarget are small, so the subtraction is precise.
-    vec3 camRelPos = (instancePos - uLocalTarget) - uStarCameraOffset;
-    vec3 viewPos = uStarViewRotation * camRelPos;
+    vec3 viewPos = targetToView(instancePos - uLocalTarget);
     float camDist = max(-viewPos.z, 1e-20);
 
     // Physical angular size on screen.

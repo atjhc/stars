@@ -1,6 +1,26 @@
 import type { SearchEntry } from "./catalog.ts";
 import { MAX_SEARCH_RESULTS } from "./constants.ts";
 
+// Per-kind keyword and display label lists. Kinds not registered here
+// fall through to name/alias matching only. Registered via
+// registerSearchKindKeywords from modules that own each kind.
+const kindKeywords = new Map<string, string[]>();
+const kindLabels = new Map<string, string>();
+
+export function registerSearchKindKeywords(kind: string, keywords: string[], label?: string): void {
+  kindKeywords.set(kind, keywords);
+  if (label) kindLabels.set(kind, label);
+}
+
+export function getSearchKindLabel(kind: string): string | undefined {
+  return kindLabels.get(kind);
+}
+
+// Cluster keywords are built-in since clusters are managed by the star
+// system infrastructure, not the label registry.
+kindKeywords.set("c", ["star cluster", "cluster"]);
+kindLabels.set("c", "Star Cluster");
+
 export function filterSearch(query: string, index: SearchEntry[], excludeKinds?: Set<string>): SearchEntry[] {
   const q = query.toLowerCase().trim();
   if (q.length === 0) return [];
@@ -29,8 +49,17 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
   const aliasMatch = (e: SearchEntry) =>
     e.a?.some((a) => a.toLowerCase().includes(q)) ?? false;
 
-  const clusterMatch = (e: SearchEntry) =>
-    "star cluster".startsWith(q) || "cluster".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
+  // Pre-compute which kinds match the query via keywords, so the
+  // per-entry loop only checks set membership.
+  const kindKeywordHit = new Set<string>();
+  for (const [k, kw] of kindKeywords) {
+    if (kw.some((w) => w.startsWith(q))) kindKeywordHit.add(k);
+  }
+
+  function kindMatch(e: SearchEntry): boolean {
+    if (kindKeywordHit.has(e.k!)) return true;
+    return nameOrSysMatch(e) || aliasMatch(e);
+  }
 
   // Rank: 0 = exact name, 1 = name prefix, 2 = name/sys substring, 3 = alias
   function rank(e: SearchEntry): number {
@@ -41,43 +70,24 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
     return 3;
   }
 
-  const nebulaMatch = (e: SearchEntry) =>
-    "nebula".startsWith(q) || "molecular cloud".startsWith(q) ||
-    "dark nebula".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
-
-  const bhMatch = (e: SearchEntry) =>
-    "black hole".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
-
-  const nsMatch = (e: SearchEntry) =>
-    "neutron star".startsWith(q) || "pulsar".startsWith(q) || nameOrSysMatch(e) || aliasMatch(e);
-
   // Pass 1: cluster, nebula, black hole, and neutron-star entries.
   for (const entry of index) {
-    if (excludeKinds?.has(entry.k ?? "")) continue;
-    if (entry.k === "c") {
-      if (!clusterMatch(entry)) continue;
-    } else if (entry.k === "n") {
-      if (!nebulaMatch(entry)) continue;
-    } else if (entry.k === "b") {
-      if (!bhMatch(entry)) continue;
-    } else if (entry.k === "ns") {
-      if (!nsMatch(entry)) continue;
-    } else {
-      continue;
-    }
+    if (!entry.k) continue;
+    if (excludeKinds?.has(entry.k)) continue;
+    if (!kindMatch(entry)) continue;
     if (add(entry)) break;
   }
 
   // Pass 2: star primary name / system match.
   for (const entry of index) {
-    if (entry.k === "c" || entry.k === "n" || entry.k === "b" || entry.k === "ns") continue;
+    if (entry.k) continue;
     if (!nameOrSysMatch(entry)) continue;
     if (add(entry)) break;
   }
 
   // Pass 3: star alias match.
   for (const entry of index) {
-    if (entry.k === "c" || entry.k === "n" || entry.k === "b" || entry.k === "ns") continue;
+    if (entry.k) continue;
     if (seen.has(entry)) continue;
     if (!aliasMatch(entry)) continue;
     if (add(entry)) break;

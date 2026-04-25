@@ -172,7 +172,6 @@ or the term "cluster".
 - `docs/data-corrections.md` — Corrections applied on top of AT-HYG source data
 - `docs/data-sources.md` — External data sources, what we extract, known issues, coordinate transforms
 - `docs/profiling.md` — Perf measurement infrastructure and optimization log
-- `docs/neutron-star-post-mortem.md` — Post-mortem: architectural lessons from adding neutron stars as a new celestial type
 - `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap.
 - `vendor/athyg/` — AT-HYG v3.3 star catalog (git submodule, LFS for CSV data)
 

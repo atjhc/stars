@@ -80,9 +80,7 @@ bends their light like any other background object.
 
 The *focused* NS is moved into a separate `nsMarkerScene`, rendered
 *after* the main composer. This prevents the lensing pass from bending
-the NS's own body into an Einstein ring of itself — a problem that
-caused multiple rounds of debugging (documented in
-`docs/neutron-star-post-mortem.md`).
+the NS's own body into an Einstein ring of itself.
 
 ### Bloom pipeline
 
@@ -145,5 +143,3 @@ the viewport. A 12 km radius NS at 123 pc has a scene radius of
 - `dist/tiles/neutronstars.json` — runtime data with baked scene coordinates
 - `src/neutronstars.ts` — billboard mesh, bloom pipeline, labels, selection
 - `src/scene.ts` — shared `lensingPass` and `requestLensing()` API
-- `docs/neutron-star-post-mortem.md` — development post-mortem documenting
-  the architectural lessons learned

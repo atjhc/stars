@@ -98,20 +98,12 @@ function buildDetailHtml(bh: BlackHoleLabel): string {
 // through the photon sphere).
 const BH_SHADOW_TO_RS = 2.6;
 
-export function getSelectedBlackHoleName(): string | null {
-  return selectedBH?.name ?? null;
-}
-
-export function setBlackHoleHoverByName(name: string | null): void {
-  const next = name ? blackHoleLabels.find((b) => b.name === name) ?? null : null;
-  if (hoveredBH === next) return;
-  if (hoveredBH && selectedBH !== hoveredBH) removeGlow(hoveredBH);
-  hoveredBH = next;
-  if (next && selectedBH !== next) applyGlow(next);
-}
 
 const bhHandler: LabelTypeHandler = {
   type: "blackhole",
+  searchKind: "b",
+  searchKeywords: ["black hole"],
+  searchLabel: "Black Hole",
 
   setVisible(v) {
     for (const bh of blackHoleLabels) {
@@ -208,6 +200,18 @@ const bhHandler: LabelTypeHandler = {
       setMinOrbitOverride(null);
     }
     if (hoveredBH) { removeGlow(hoveredBH); hoveredBH = null; }
+  },
+
+  getSelectedName() {
+    return selectedBH?.name ?? null;
+  },
+
+  setHoverByName(name) {
+    const next = name ? blackHoleLabels.find((b) => b.name === name) ?? null : null;
+    if (hoveredBH === next) return;
+    if (hoveredBH && selectedBH !== hoveredBH) removeGlow(hoveredBH);
+    hoveredBH = next;
+    if (next && selectedBH !== next) applyGlow(next);
   },
 
   handleClick(div) {

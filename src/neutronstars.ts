@@ -15,6 +15,7 @@ import {
   halfViewportPxUniform,
   starCameraOffsetUniform, starViewRotationUniform,
 } from "./shaderUniforms.ts";
+import { F_HALF_TAN_INV_GLSL, VIEW_UNIFORMS_GLSL, TARGET_VIEW_GLSL } from "./shaderLib.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 import { favoriteIcon } from "./detail.ts";
@@ -208,23 +209,21 @@ function buildDetailHtml(ns: NeutronStarLabel): string {
 // Uses camera-relative view math (matches stars.ts) so NSes near the
 // camera get full Float32 precision automatically.
 const markerVertex = `
-  uniform float uHalfViewportPx;
   uniform float uSceneRadius;
   uniform float uDiscFloorPx;
   uniform vec3 uNSLocalTarget;    // nsWorldPos - target (Float64 on CPU)
-  uniform vec3 uStarCameraOffset; // camera offset from target
-  uniform mat3 uStarViewRotation;
+  ${VIEW_UNIFORMS_GLSL}
 
   varying vec2 vUv;
   varying float vDiscPx;
   varying float vHalfBillPx;
 
-  const float F_HALF_TAN_INV = ${(1 / Math.tan((55 * Math.PI) / 360)).toFixed(7)};
+  ${F_HALF_TAN_INV_GLSL}
+  ${TARGET_VIEW_GLSL}
 
   void main() {
     vUv = uv;
-    vec3 camRelPos = uNSLocalTarget - uStarCameraOffset;
-    vec3 viewPos = uStarViewRotation * camRelPos;
+    vec3 viewPos = targetToView(uNSLocalTarget);
     float camDist = max(-viewPos.z, 1e-20);
 
     // Physical angular radius in screen pixels, floored so far-away
@@ -319,20 +318,12 @@ function createMarkerMesh(ns: NeutronStarEntry, worldPos: THREE.Vector3, sceneRa
   return mesh;
 }
 
-export function getSelectedNeutronStarName(): string | null {
-  return selectedNS?.name ?? null;
-}
-
-export function setNeutronStarHoverByName(name: string | null): void {
-  const next = name ? neutronStars.find((n) => n.name === name) ?? null : null;
-  if (hoveredNS === next) return;
-  if (hoveredNS && selectedNS !== hoveredNS) removeGlow(hoveredNS);
-  hoveredNS = next;
-  if (next && selectedNS !== next) applyGlow(next);
-}
 
 const nsHandler: LabelTypeHandler = {
   type: "neutronstar",
+  searchKind: "ns",
+  searchKeywords: ["neutron star", "pulsar"],
+  searchLabel: "Neutron Star",
 
   setVisible(v) {
     // The marker mesh is the star's visual body — leave it on even
@@ -447,6 +438,18 @@ const nsHandler: LabelTypeHandler = {
       setMinOrbitOverride(null);
     }
     if (hoveredNS) { removeGlow(hoveredNS); hoveredNS = null; }
+  },
+
+  getSelectedName() {
+    return selectedNS?.name ?? null;
+  },
+
+  setHoverByName(name) {
+    const next = name ? neutronStars.find((n) => n.name === name) ?? null : null;
+    if (hoveredNS === next) return;
+    if (hoveredNS && selectedNS !== hoveredNS) removeGlow(hoveredNS);
+    hoveredNS = next;
+    if (next && selectedNS !== next) applyGlow(next);
   },
 
   handleClick(div) {

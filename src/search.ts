@@ -1,6 +1,6 @@
 import type { SearchEntry } from "./catalog.ts";
 import { getSearchIndex } from "./catalog.ts";
-import { filterSearch } from "./searchFilter.ts";
+import { filterSearch, getSearchKindLabel } from "./searchFilter.ts";
 import { isDustVisible } from "./dust.ts";
 import { isFavorite } from "./favorites.ts";
 import { addRecent, getRecents } from "./recents.ts";
@@ -112,14 +112,9 @@ function renderSearchResults() {
     const bookmarkName = entry.sy ?? entry.n;
     const bmSuffix = activeTab !== "favorites" && isFavorite(bookmarkName) ? " ★" : "";
 
-    if (entry.k === "c") {
-      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Star Cluster</span>`;
-    } else if (entry.k === "n") {
-      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Nebula</span>`;
-    } else if (entry.k === "b") {
-      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Black Hole</span>`;
-    } else if (entry.k === "ns") {
-      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">Neutron Star</span>`;
+    const kindLabel = entry.k ? getSearchKindLabel(entry.k) : undefined;
+    if (kindLabel) {
+      li.innerHTML = `${entry.n}${bmSuffix} <span class="search-secondary">${kindLabel}</span>`;
     } else {
       const primaryName = entry.sy ?? entry.n;
       const matchSource = findMatchSource(entry, q);
