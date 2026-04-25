@@ -24,6 +24,7 @@ import {
   registerCanvasLabel, updateCanvasLabel,
 } from "./labelCanvas.ts";
 import { computeStarMinOrbit } from "./stars.ts";
+import { starLabelMargin } from "./labels.ts";
 
 // Canvas label styling — a saturated cyan-teal that reads as cool
 // thermal glow but stays clearly distinct from the pale powder-blue
@@ -375,7 +376,7 @@ const nsHandler: LabelTypeHandler = {
       const discPx = (ns.sceneRadius / Math.max(camDist, 1e-30)) * halfHeight / halfTan;
       const halfBillPx = Math.max(discPx, DISC_FLOOR_PX) + BLOOM_SPREAD_PX;
       updateCanvasLabel(canvasIdFor(ns.name), {
-        marginTop: Math.min(halfBillPx + 8, window.innerHeight),
+        marginTop: starLabelMargin(discPx, halfBillPx),
       });
     }
 

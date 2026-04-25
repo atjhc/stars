@@ -22,6 +22,16 @@ import {
 } from "./systemStore.ts";
 import { isFavorite } from "./favorites.ts";
 
+// When far away the star is just a corona glow, so the label sits
+// close. As the disc grows the gap widens to the full buffer.
+const LABEL_GAP_NEAR_PX = 4;
+const LABEL_GAP_FULL_DISC_PX = 20;
+export function starLabelMargin(discPx: number, halfBillPx: number): number {
+  const t = Math.min(discPx / LABEL_GAP_FULL_DISC_PX, 1);
+  const gap = THREE.MathUtils.lerp(LABEL_GAP_NEAR_PX, LABEL_DISC_BUFFER_PX, t);
+  return Math.min(halfBillPx + gap, window.innerHeight);
+}
+
 const collapsed = new Set<THREE.Object3D>();
 let cachedMaxNotableSolDist = 0;
 let cachedMaxClusterSolDist = 0;
@@ -56,10 +66,9 @@ export function updateLabels(
         const star = selectedMesh.userData as Star;
         const radius = starRadiusScene(star.lum, star.ci);
         const camDist = distanceFromCamera(selectedMesh.position);
-        const discPx = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20)).discPx;
-        const margin = Math.min(discPx, window.innerHeight) + LABEL_DISC_BUFFER_PX;
+        const metrics = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
         updateCanvasLabel(canvasId, {
-          marginTop: margin,
+          marginTop: starLabelMargin(metrics.discPx, metrics.halfBillPx),
           subtitles: [formatAstroDistance(camDist)],
           pinned: true,
           opacityTarget: 1,
@@ -272,16 +281,12 @@ export function updateLabels(
     const camDist = distanceFromCamera(target.position);
     const star = target.userData as Star;
     const radius = starRadiusScene(star.lum, star.ci);
-    const discPx = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20)).discPx;
+    const metrics = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
 
-    // Every rendered star's disc occludes labels behind it. Register
-    // the occluder before any early-return so a collapsed-system
-    // member (whose individual label is hidden) still hides labels
-    // that project inside its visible disc.
-    if (discPx > 2) {
+    if (metrics.discPx > 2) {
       const s = projectToScreen(target.position);
       if (!s.behind) {
-        pushFrameOccluder({ cx: s.x, cy: s.y, radius: discPx });
+        pushFrameOccluder({ cx: s.x, cy: s.y, radius: metrics.discPx });
       }
     }
 
@@ -293,7 +298,7 @@ export function updateLabels(
     const owningGroup = sys ?? clusterOf.get(target);
     const isSystemMemberHighlighted = owningGroup !== undefined
       && (owningGroup === hoveredSystem || owningGroup === selectedSystem);
-    const margin = Math.min(discPx, window.innerHeight) + LABEL_DISC_BUFFER_PX;
+    const margin = starLabelMargin(metrics.discPx, metrics.halfBillPx);
     updateCanvasStarLabel(
       target, canvasId, camDist, margin,
       isHighlighted, isSystemMemberHighlighted, sys, star.tier === 0,
