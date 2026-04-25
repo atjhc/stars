@@ -7,10 +7,8 @@ drawn by one shader. The same formula covers sub-pixel points, resolved
 discs with limb darkening, and glowing coronas. No point cloud, no
 per-star billboard mesh, no post-bloom overlay.
 
-The one exception is the *selected* star, which gets rendered a second
-time by a screen-space overlay (clip-space, BH-lensing-pass style) so
-its position is precision-exact at any zoom level — see the
-[Selected-star overlay](#selected-star-overlay) section below.
+Precision at deep zoom is handled by **per-tile floating-origin rebasing**
+— see [docs/camera.md](camera.md) for the full precision architecture.
 
 Related files:
 

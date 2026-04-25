@@ -716,12 +716,6 @@ function stepVisibleFactor(label: CanvasLabel, target: number, step: number): vo
 }
 
 function paintLabel(ctx: CanvasRenderingContext2D, label: CanvasLabel, alpha: number): void {
-  // Paint at fractional pixel positions — canvas sub-pixel text AA
-  // gives smooth motion during camera orbit, matching the starfield
-  // shader's antialiased discs. (Earlier versions rounded to integers
-  // to stabilize a deep-zoom BH label whose projection had Float32
-  // noise. The projection is now Float64-precise and target-relative,
-  // so stationary labels are already rock-steady without rounding.)
   const nameX = label.screenX;
   const nameY = labelTopY(label) + TEXT_BASELINE_OFFSET;
 

@@ -7,7 +7,7 @@ import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { GRID_SIZE, GRID_DIVISIONS, GRID_FADE_RADIUS, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD, KM_PER_PC, RS_KM_PER_MSUN, SCALE } from "./constants.ts";
 import {
   halfViewportPxUniform,
-  starTargetUniform, starCameraOffsetUniform, starViewRotationUniform,
+  starCameraOffsetUniform, starViewRotationUniform,
 } from "./shaderUniforms.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
 
@@ -22,29 +22,23 @@ export const camera = new THREE.PerspectiveCamera(
 // row 1 is Y, row 2 is Z (away from view direction).
 const viewRotation = new Float64Array(9);
 
-// Camera-to-target offset in world coordinates. Aliased to
-// starCameraOffsetUniform.value so the star shader, label projection,
-// and any other consumer all pull from the same source of truth.
-export const cameraOffset = starCameraOffsetUniform.value;
+// Scratch Vector3 for projection math.
+const _projScratch = new THREE.Vector3();
 
-// Project a world position to clip-space UV (0..1).
-//
-// The naive approach — `pos - camera.position` — suffers catastrophic
-// cancellation at deep zoom: camera.position is stored as target +
-// orbitOffset, but in Float64 at ~100pc magnitudes the orbitOffset is
-// rounded away once it drops below ulp(target) (~3.5e-14). Instead, we
-// compute the delta in the target-relative frame: (pos - target) is
-// stable at scene magnitudes, cameraOffset is stable at orbit
-// magnitudes, and neither subtraction catastrophically cancels. This is
-// the same trick the star shader uses for per-instance precision.
-//
-// The parenthesization is load-bearing — swapping to
-// `pos.x - (target.x + cameraOffset.x)` reintroduces the cancellation.
+// Float64 orbit offset, kept separate from the Float32 shader uniform.
+// Used by projectToScreenUV for sub-ULP label precision.
+const cameraOffset = new Float64Array(3);
+
+// Project a world position to clip-space UV (0..1). Uses two-part
+// decomposition (pos - target) - orbitOffset so both subtractions stay
+// in their precision regime. Direct pos - camera.position would lose
+// ~1 ULP(300) ≈ 7e-14 in the addition target+offset, causing ~1px
+// label jitter at deep zoom.
 export interface ScreenUV { u: number; v: number; behind: boolean; }
 export function projectToScreenUV(pos: THREE.Vector3, out: ScreenUV): void {
-  const dx = (pos.x - target.x) - cameraOffset.x;
-  const dy = (pos.y - target.y) - cameraOffset.y;
-  const dz = (pos.z - target.z) - cameraOffset.z;
+  const dx = (pos.x - target.x) - cameraOffset[0]!;
+  const dy = (pos.y - target.y) - cameraOffset[1]!;
+  const dz = (pos.z - target.z) - cameraOffset[2]!;
   const v = viewRotation;
   const rx = v[0]! * dx + v[1]! * dy + v[2]! * dz;
   const ry = v[3]! * dx + v[4]! * dy + v[5]! * dz;
@@ -70,13 +64,10 @@ export function projectToLabelScreen(pos: THREE.Vector3, out: ScreenPos): void {
   out.behind = _uvScratch.behind;
 }
 
-// Precision-safe camera-to-position distance. Uses the same target-
-// relative decomposition as the projection path so deep-zoom distances
-// (where the focus target is at the camera origin) stay accurate.
 export function distanceFromCamera(pos: THREE.Vector3): number {
-  const dx = (pos.x - target.x) - cameraOffset.x;
-  const dy = (pos.y - target.y) - cameraOffset.y;
-  const dz = (pos.z - target.z) - cameraOffset.z;
+  const dx = (pos.x - target.x) - cameraOffset[0]!;
+  const dy = (pos.y - target.y) - cameraOffset[1]!;
+  const dz = (pos.z - target.z) - cameraOffset[2]!;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
@@ -138,6 +129,13 @@ const ref = Math.abs(galUp.dot(new THREE.Vector3(1, 0, 0))) < 0.9
   ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
 const galX = new THREE.Vector3().crossVectors(galUp, ref).normalize();
 const galZ = new THREE.Vector3().crossVectors(galX, galUp).normalize();
+
+// Normalize an angle delta into [-π, π] for shortest-path interpolation.
+function shortestAngleTo(from: number, to: number): number {
+  let d = to - from;
+  d -= Math.round(d / (2 * Math.PI)) * 2 * Math.PI;
+  return from + d;
+}
 camera.up.copy(galUp);
 
 export const target = new THREE.Vector3(0, 0, 0);
@@ -161,11 +159,10 @@ export function updateCamera() {
     .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
     .addScaledVector(galUp, orbitRadius * cosPhi);
   camera.lookAt(target);
-  // Near plane floor: nothing renders inside 1e-4 of the camera — the
-  // selected target is at the camera origin (no self-clipping), and BH
-  // visuals come from a screen-space lensing pass rather than world-
-  // space geometry. Keeps depth-buffer precision sane at any zoom.
-  camera.near = Math.max(1e-4, orbitRadius * 0.001);
+  // Near plane scales with orbit radius so the selected target is never
+  // clipped, even at deep zoom. The 0.1× factor keeps the near plane
+  // well inside the orbit sphere.
+  camera.near = Math.min(0.01, Math.max(1e-8, orbitRadius * 0.1));
   camera.far = Math.max(20000, orbitRadius * 100000);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
@@ -189,12 +186,16 @@ export function updateCamera() {
   viewRotation[3] = yx; viewRotation[4] = yy; viewRotation[5] = yz;
   viewRotation[6] = zx; viewRotation[7] = zy; viewRotation[8] = zz;
 
-  starTargetUniform.value.copy(target);
-  starCameraOffsetUniform.value
-    .set(0, 0, 0)
-    .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
-    .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
-    .addScaledVector(galUp, orbitRadius * cosPhi);
+  // Float64 orbit offset for label projection (two-part decomposition).
+  const oxPhi = orbitRadius * sinPhi;
+  cameraOffset[0] = galX.x * oxPhi * cosTheta + galZ.x * oxPhi * sinTheta + galUp.x * orbitRadius * cosPhi;
+  cameraOffset[1] = galX.y * oxPhi * cosTheta + galZ.y * oxPhi * sinTheta + galUp.y * orbitRadius * cosPhi;
+  cameraOffset[2] = galX.z * oxPhi * cosTheta + galZ.z * oxPhi * sinTheta + galUp.z * orbitRadius * cosPhi;
+
+  // Camera orbit offset for Float32 shaders. The other half of the
+  // decomposition (target - tileOrigin) is computed per-tile in
+  // starfield.ts updateTileTargets().
+  starCameraOffsetUniform.value.set(cameraOffset[0]!, cameraOffset[1]!, cameraOffset[2]!);
   starViewRotationUniform.value.set(xx, xy, xz, yx, yy, yz, zx, zy, zz);
 }
 updateCamera();
@@ -211,6 +212,15 @@ export let animation: {
   fromRadius: number;
   toRadius: number;
   start: number;
+  duration: number;    // ms — scaled by log range of transit
+  totalDist: number;
+  dir: THREE.Vector3;
+  D0: number;         // initial camera-to-destination distance
+  // Orbit rotation interpolated in parallel with the transit.
+  fromTheta: number;
+  fromPhi: number;
+  toTheta: number;
+  toPhi: number;
 } | null = null;
 
 // Camera-to-star distance for angular-size math. Mid-animation,
@@ -235,12 +245,41 @@ export function animateTo(pos: THREE.Vector3, toRadius?: number) {
   // to the instanced mesh and back — producing a visible blip on the
   // zoomed-in disc.
   if (target.equals(pos) && orbitRadius === targetRadius) return;
+  const from = target.clone();
+  const to = pos.clone();
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const totalDist = dir.length();
+  if (totalDist > 0) dir.divideScalar(totalDist);
+  const D0 = totalDist + orbitRadius;
+  // Scale duration by the log range of the transit so deep-zoom
+  // approaches that span many orders of magnitude get enough frames
+  // to render each scale smoothly. Base duration covers ~6 orders
+  // (typical star-to-star); each additional order adds ~120ms.
+  const logRange = Math.abs(Math.log(D0) - Math.log(targetRadius));
+  const duration = Math.max(ANIM_DURATION, ANIM_DURATION + (logRange - 6) * 120);
+  // Compute destination orbit angles so the camera faces the target
+  // on arrival. The rotation interpolates in parallel with the transit.
+  let toTheta = orbitTheta;
+  let toPhi = orbitPhi;
+  if (totalDist > 0) {
+    const lookDir = new THREE.Vector3().subVectors(from, to).normalize();
+    const lx = lookDir.dot(galX);
+    const lz = lookDir.dot(galZ);
+    const ly = lookDir.dot(galUp);
+    toTheta = Math.atan2(lz, lx);
+    toPhi = THREE.MathUtils.clamp(Math.acos(THREE.MathUtils.clamp(ly, -1, 1)), 0.1, Math.PI - 0.1);
+    toTheta = shortestAngleTo(orbitTheta, toTheta);
+  }
+
   animation = {
-    from: target.clone(),
-    to: pos.clone(),
+    from, to,
     fromRadius: orbitRadius,
     toRadius: targetRadius,
     start: performance.now(),
+    duration,
+    totalDist, dir, D0,
+    fromTheta: orbitTheta, fromPhi: orbitPhi,
+    toTheta, toPhi,
   };
   kick();
 }
@@ -271,14 +310,48 @@ function easeInOutExpoRest(t: number): number {
     : 0.5 + 0.5 * (1 - Math.pow(2, -10 * (t - MID) / (1 - MID)));
 }
 
+// Hold Shift to slow transit animations 10×.
+let slowMotion = false;
+window.addEventListener("keydown", (e) => { if (e.key === "Shift") slowMotion = true; });
+window.addEventListener("keyup", (e) => { if (e.key === "Shift") slowMotion = false; });
+
 export function tickAnimation(now: number) {
   tickAutoOrbit(now);
   tickOrbitAnim(now);
   if (!animation) return;
-  const t = Math.min(1, (now - animation.start) / ANIM_DURATION);
+  const duration = slowMotion ? animation.duration * 10 : animation.duration;
+  const t = Math.min(1, (now - animation.start) / duration);
   const ease = easeInOutExpoRest(t);
-  target.lerpVectors(animation.from, animation.to, ease);
-  orbitRadius = animation.fromRadius + (animation.toRadius - animation.fromRadius) * ease;
+
+  // Orbit rotation: ease in/out over the first half of the transit
+  // so the camera is fully facing the destination during approach.
+  const ROT_FRAC = 0.5;
+  const rotT = Math.min(1, t / ROT_FRAC);
+  const rotEase = rotT * rotT * (3 - 2 * rotT); // smoothstep
+  orbitTheta = animation.fromTheta + (animation.toTheta - animation.fromTheta) * rotEase;
+  orbitPhi = animation.fromPhi + (animation.toPhi - animation.fromPhi) * rotEase;
+
+  if (t >= 1) {
+    // Exact endpoint — no residual, no snap.
+    target.copy(animation.to);
+    orbitRadius = animation.toRadius;
+  } else {
+    // D (camera-to-destination) interpolates in log-space over the full
+    // ease. Orbit radius is DELAYED — it stays at fromRadius during
+    // departure so the camera doesn't zoom in before it starts moving,
+    // then eases to toRadius during the approach. Clamped to D so
+    // remaining = D - orbitRadius >= 0 always.
+    const { D0, fromRadius, toRadius, dir } = animation;
+    const logD = Math.log(D0) * (1 - ease) + Math.log(toRadius) * ease;
+    const D = Math.exp(logD);
+    const RADIUS_DELAY = 0.3;
+    const rEase = Math.max(0, (ease - RADIUS_DELAY) / (1 - RADIUS_DELAY));
+    const logR = Math.log(fromRadius) * (1 - rEase) + Math.log(toRadius) * rEase;
+    orbitRadius = Math.min(Math.exp(logR), D);
+    const remaining = D - orbitRadius;
+    target.copy(animation.to).addScaledVector(dir, -remaining);
+  }
+
   updateGridCenter();
   updateCamera();
   if (t >= 1) animation = null;
@@ -302,10 +375,7 @@ export function lookToward(worldPos: THREE.Vector3) {
   let toPhi = Math.acos(THREE.MathUtils.clamp(y, -1, 1));
   toPhi = THREE.MathUtils.clamp(toPhi, 0.1, Math.PI - 0.1);
 
-  // Shortest angular path for theta
-  let dTheta = toTheta - orbitTheta;
-  if (dTheta > Math.PI) toTheta -= 2 * Math.PI;
-  else if (dTheta < -Math.PI) toTheta += 2 * Math.PI;
+  toTheta = shortestAngleTo(orbitTheta, toTheta);
 
   orbitAnim = { fromTheta: orbitTheta, fromPhi: orbitPhi, toTheta, toPhi, start: performance.now() };
   kick();
@@ -579,25 +649,43 @@ export interface LensingParams {
   shadowRadiusScene: number;   // where the event-horizon shadow ends
   massMsun: number;             // for Schwarzschild deflection magnitude
   mode: LensingMode;
+  camDist?: number;             // actual camera-to-object distance (defaults to orbitRadius)
 }
-let lensingRequestedThisFrame = false;
+// Per-frame lensing candidates. Multiple handlers may call
+// requestLensing in the same frame (e.g. departing BH + arriving NS
+// during a transit). finalizeLensingFrame picks the one with the
+// largest on-screen shadow — the closer/more-massive object wins.
+interface LensingCandidate {
+  params: LensingParams;
+  shadowFrac: number;
+}
+let lensingCandidates: LensingCandidate[] = [];
 
 export function requestLensing(p: LensingParams): void {
+  const dist = p.camDist ?? orbitRadius;
+  const fov = camera.fov * Math.PI / 180;
+  const halfTan = Math.tan(fov / 2) * BLOOM_OVERSCAN;
+  const shadowFrac = (p.shadowRadiusScene / dist) / (2 * halfTan);
+  lensingCandidates.push({ params: p, shadowFrac });
+}
+
+function applyLensing(p: LensingParams, shadowFrac: number): void {
   const uniforms = lensingPass.uniforms as Record<string, THREE.IUniform>;
-  // When the lensed body IS the orbit target (the common case),
-  // the screen UV is (0.5, 0.5) by construction. Shortcut it —
-  // projectToScreenUV runs a projection-matrix dot product using
-  // Float32 matrix elements, so it carries ~1e-7 of drift per frame
-  // as orbit rotation changes. That drift propagates into
-  // `uvDeflect = uv - uBHScreen` and gets amplified by the strong
-  // near-center deflection (max ≈ 0.82 for an NS), enough to move
-  // the bent-UV sample between neighboring dust pixels. BHs hide
-  // the entire region under a black shadow disc; NSes don't, so
-  // the jitter shows up as nebula shimmer.
+  const dist = p.camDist ?? orbitRadius;
+
+  // When the lensed body IS the orbit target, the screen UV is
+  // (0.5, 0.5) by construction. Shortcut avoids residual Float32
+  // projection-matrix drift that can shimmer nebula dust under NS
+  // lensing. Safe at rest and during transit (camera always looks
+  // at target; when pos=target the body is at screen center).
   if (p.pos.equals(target)) {
     uniforms.uBHScreen!.value.set(0.5, 0.5);
   } else {
     projectToScreenUV(p.pos, _uvScratch);
+    if (_uvScratch.behind) {
+      lensingPass.enabled = false;
+      return;
+    }
     uniforms.uBHScreen!.value.set(_uvScratch.u, _uvScratch.v);
   }
   uniforms.uAspect!.value = camera.aspect;
@@ -605,19 +693,35 @@ export function requestLensing(p: LensingParams): void {
   const rsScene = ((RS_KM_PER_MSUN * p.massMsun) / KM_PER_PC) * SCALE;
   const fov = camera.fov * Math.PI / 180;
   const halfTan = Math.tan(fov / 2) * BLOOM_OVERSCAN;
-  const shadowFrac = (p.shadowRadiusScene / orbitRadius) / (2 * halfTan);
   uniforms.uShadowRadius!.value = shadowFrac;
-  uniforms.uSchwarzRadius!.value = (rsScene / orbitRadius) / (2 * halfTan);
+  uniforms.uSchwarzRadius!.value = (rsScene / dist) / (2 * halfTan);
   uniforms.uScreenScale!.value = shadowFrac * window.innerHeight * BLOOM_OVERSCAN;
   uniforms.uBodyEmissive!.value = p.mode === "bodyElsewhere" ? 1 : 0;
 
   lensingPass.enabled = true;
-  lensingRequestedThisFrame = true;
 }
 
 export function finalizeLensingFrame(): void {
-  if (!lensingRequestedThisFrame) lensingPass.enabled = false;
-  lensingRequestedThisFrame = false;
+  if (lensingCandidates.length === 0) {
+    lensingPass.enabled = false;
+  } else {
+    let best = lensingCandidates[0]!;
+    for (let i = 1; i < lensingCandidates.length; i++) {
+      if (lensingCandidates[i]!.shadowFrac > best.shadowFrac) {
+        best = lensingCandidates[i]!;
+      }
+    }
+    // Skip the full-screen shader when the shadow covers less than
+    // ~0.1 px — no visible effect, just GPU cost.
+    const MIN_SHADOW_FRAC = 0.1 / (window.innerHeight * BLOOM_OVERSCAN);
+    if (best.shadowFrac < MIN_SHADOW_FRAC) {
+      lensingPass.enabled = false;
+      lensingCandidates.length = 0;
+      return;
+    }
+    applyLensing(best.params, best.shadowFrac);
+  }
+  lensingCandidates.length = 0;
 }
 
 export function getLensingOccluder(): { cx: number; cy: number; radius: number } | null {
