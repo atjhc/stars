@@ -12,9 +12,6 @@ export const LABEL_FADE_FAR = 50;
 export const LABEL_HIDE_DIST = 55;
 export const COLLAPSE_PX = 45;
 export const COLLAPSE_PX_SQ = COLLAPSE_PX * COLLAPSE_PX;
-export const GRID_SIZE = 300;
-export const GRID_DIVISIONS = 65;
-export const GRID_FADE_RADIUS = 30.0;
 // Extra screen pixels added around each star's rendered disc radius
 // to give small / faint stars a clickable target. Stars with bigger
 // discs keep their generous hit area; tiny 1-2 px discs become a

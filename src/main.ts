@@ -3,7 +3,7 @@ import type { Star, SystemGroup } from "./types.ts";
 import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ANIM_DURATION } from "./constants.ts";
 import {
   scene, camera, renderer, composer, lensingPass,
-  gridHelper, handleResize, bloomPass,
+  gridMesh, handleResize, bloomPass,
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
   orbitRadius, orbitPhi, orbitTheta, target,
@@ -357,7 +357,7 @@ window.addEventListener("keydown", (e) => {
     doUpdateLabelVisibility();
     scheduleUrlWrite();
   } else if (e.key === "g") {
-    gridHelper.visible = !gridHelper.visible;
+    gridMesh.visible = !gridMesh.visible;
     scheduleUrlWrite();
   } else if (e.key === "c") {
     toggleConstellations();
@@ -479,7 +479,7 @@ onSelectionChanged(updateDetailPanel);
   const parsed = parseUrlState(window.location.search);
   const urlToggles = parsed.toggles;
   if (urlToggles?.labels !== undefined) labelsVisible = urlToggles.labels;
-  if (urlToggles?.grid !== undefined) gridHelper.visible = urlToggles.grid;
+  if (urlToggles?.grid !== undefined) gridMesh.visible = urlToggles.grid;
   if (urlToggles?.constellations !== undefined) setConstellationsVisible(urlToggles.constellations);
   if (urlToggles?.nebulae !== undefined) setDustVisible(urlToggles.nebulae);
   if (parsed.mag !== undefined) {
@@ -577,7 +577,7 @@ initUrlState({
     focus: currentFocusName(),
     toggles: {
       labels: labelsVisible,
-      grid: gridHelper.visible,
+      grid: gridMesh.visible,
       constellations: constellationsVisible(),
       nebulae: isDustVisible(),
     },

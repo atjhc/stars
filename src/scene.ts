@@ -4,7 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
-import { GRID_SIZE, GRID_DIVISIONS, GRID_FADE_RADIUS, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD, KM_PER_PC, RS_KM_PER_MSUN, SCALE } from "./constants.ts";
+import { MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD, KM_PER_PC, RS_KM_PER_MSUN, SCALE } from "./constants.ts";
 import {
   halfViewportPxUniform,
   starCameraOffsetUniform, starViewRotationUniform,
@@ -78,7 +78,9 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 viewport.appendChild(renderer.domElement);
 
-// Galactic plane grid
+// Galactic basis. galUp is the IAU galactic north pole in equatorial-XYZ.
+// galX / galZ are arbitrary in-plane axes (used by the procedural grid
+// shader and the camera orbit).
 const raGNP = (192.8595 * Math.PI) / 180;
 const decGNP = (27.1284 * Math.PI) / 180;
 const galNorthEq = new THREE.Vector3(
@@ -86,49 +88,93 @@ const galNorthEq = new THREE.Vector3(
   Math.sin(decGNP),
   -Math.cos(decGNP) * Math.sin(raGNP),
 ).normalize();
-
-const gridShaderMat = new THREE.ShaderMaterial({
-  transparent: true,
-  depthWrite: false,
-  uniforms: {
-    uCenter: { value: new THREE.Vector3(0, 0, 0) },
-    uFadeRadius: { value: GRID_FADE_RADIUS },
-    uColor: { value: new THREE.Color(0x4d7fc4) },
-  },
-  vertexShader: `
-    varying vec3 vWorldPos;
-    void main() {
-      vec4 world = modelMatrix * vec4(position, 1.0);
-      vWorldPos = world.xyz;
-      gl_Position = projectionMatrix * viewMatrix * world;
-    }
-  `,
-  fragmentShader: `
-    uniform vec3 uCenter;
-    uniform float uFadeRadius;
-    uniform vec3 uColor;
-    varying vec3 vWorldPos;
-    void main() {
-      float d = distance(vWorldPos, uCenter);
-      float alpha = 1.0 * smoothstep(uFadeRadius, 0.0, d);
-      if (alpha < 0.005) discard;
-      gl_FragColor = vec4(uColor, alpha);
-    }
-  `,
-});
-
-export const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_DIVISIONS);
-gridHelper.material = gridShaderMat;
-gridHelper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), galNorthEq);
-gridHelper.visible = false;
-scene.add(gridHelper);
-
-// Camera orbit
 const galUp = galNorthEq;
 const ref = Math.abs(galUp.dot(new THREE.Vector3(1, 0, 0))) < 0.9
   ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
 const galX = new THREE.Vector3().crossVectors(galUp, ref).normalize();
 const galZ = new THREE.Vector3().crossVectors(galX, galUp).normalize();
+
+// Galactic-plane grid. A circular mesh sits at the focused target,
+// oriented with its local axes along (galX, galZ, galUp). Cell spacing
+// is derived from orbit radius and snaps to the nearest power of 10;
+// two scales crossfade for seamless LOD as you zoom across decades.
+const gridShaderMat = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+  uniforms: {
+    uColor: { value: new THREE.Color(0x4d7fc4) },
+    uOrbitRadius: { value: 1.0 },
+    uSide: { value: 1.0 },
+  },
+  vertexShader: `
+    uniform float uSide;
+    varying vec2 vUv2;
+    void main() {
+      vUv2 = position.xy * uSide;
+      gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 uColor;
+    uniform float uOrbitRadius;
+    varying vec2 vUv2;
+
+    // 1.0 on a grid line, 0.0 elsewhere. fwidth keeps the line constant
+    // ~1.5 px wide regardless of zoom, so distant grids stay visible.
+    float gridLine(vec2 uv, float spacing) {
+      vec2 g = uv / spacing;
+      vec2 dist = abs(fract(g - 0.5) - 0.5);
+      vec2 px = max(fwidth(g), vec2(1e-30));
+      vec2 line = smoothstep(vec2(0.0), px * 1.5, dist);
+      return 1.0 - min(line.x, line.y);
+    }
+
+    void main() {
+      // Two-scale grid: pick minor = nearest pow(10) below orbitRadius/5,
+      // major = 10× coarser. Minor fades out as zoom approaches the next
+      // decade, at which point the just-major becomes the new minor and
+      // a new (sparser) major appears — seamless in the visible area.
+      float spacing = uOrbitRadius * 0.2;
+      float logS = log(spacing) / log(10.0);
+      float levelF = floor(logS);
+      float frac = logS - levelF;
+      float minor = pow(10.0, levelF);
+      float major = minor * 10.0;
+
+      float minorAlpha = gridLine(vUv2, minor) * (1.0 - frac);
+      float majorAlpha = gridLine(vUv2, major);
+      float alpha = max(minorAlpha, majorAlpha);
+
+      // Radial fade — keeps the visible grid disc ~30% of view.
+      alpha *= 1.0 - smoothstep(uOrbitRadius * 0.3, uOrbitRadius * 0.6, length(vUv2));
+
+      if (alpha < 0.01) discard;
+      gl_FragColor = vec4(uColor, alpha);
+    }
+  `,
+});
+
+// Local axes (X, Y, Z) aligned with (galX, galZ, galUp) so the vertex
+// shader can read in-plane offsets directly from position.xy. Disc
+// radius (mesh.scale) is sized just past the shader's 0.6×R fade end.
+export const gridMesh = new THREE.Mesh(new THREE.CircleGeometry(1, 64), gridShaderMat);
+gridMesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(galX, galZ, galUp));
+gridMesh.visible = false;
+gridMesh.frustumCulled = false;
+scene.add(gridMesh);
+
+const _gridScratch = new THREE.Vector3();
+function updateGrid() {
+  // Always refresh — toggling visibility doesn't run updateCamera,
+  // and we want the next render to use current target/orbit state.
+  _gridScratch.copy(target).addScaledVector(galUp, -target.dot(galUp));
+  gridMesh.position.copy(_gridScratch);
+  const side = orbitRadius * 0.7;
+  gridMesh.scale.set(side, side, 1);
+  gridShaderMat.uniforms.uOrbitRadius.value = orbitRadius;
+  gridShaderMat.uniforms.uSide.value = side;
+}
 
 // Normalize an angle delta into [-π, π] for shortest-path interpolation.
 function shortestAngleTo(from: number, to: number): number {
@@ -197,14 +243,9 @@ export function updateCamera() {
   // starfield.ts updateTileTargets().
   starCameraOffsetUniform.value.set(cameraOffset[0]!, cameraOffset[1]!, cameraOffset[2]!);
   starViewRotationUniform.value.set(xx, xy, xz, yx, yy, yz, zx, zy, zz);
+  updateGrid();
 }
 updateCamera();
-
-export function updateGridCenter() {
-  const scratchVec3 = new THREE.Vector3();
-  scratchVec3.copy(target).addScaledVector(galUp, -target.dot(galUp));
-  gridShaderMat.uniforms.uCenter.value.copy(scratchVec3);
-}
 
 export let animation: {
   from: THREE.Vector3;
@@ -291,7 +332,6 @@ export function setTargetImmediate(pos: THREE.Vector3) {
   target.copy(pos);
   animation = null;
   orbitAnim = null;
-  updateGridCenter();
   updateCamera();
 }
 
@@ -352,7 +392,6 @@ export function tickAnimation(now: number) {
     target.copy(animation.to).addScaledVector(dir, -remaining);
   }
 
-  updateGridCenter();
   updateCamera();
   if (t >= 1) animation = null;
 }
