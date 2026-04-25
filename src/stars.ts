@@ -2,38 +2,34 @@ import * as THREE from "three";
 import { GLOW_GLSL } from "./starShader.ts";
 import {
   halfViewportPxUniform,
-  starTargetUniform,
   starCameraOffsetUniform,
   starViewRotationUniform,
 } from "./shaderUniforms.ts";
 
-// Shared uniform: when > 0.5, the instanced shader skips the one instance
-// whose position matches uStarTarget. The selected-star overlay (below)
-// renders that star in screen space so its position is precision-exact.
-const skipSelectedUniform: THREE.IUniform<number> = { value: 0 };
-
 // Hover affordance — matched instance gets its intensity multiplied so
 // the user sees a subtle brightness bump (no size change, since the
 // disc's physical angular extent stays honest).
-const hoveredPosUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
+let hoveredWorldPos: THREE.Vector3 | null = null;
 const hoveredActiveUniform: THREE.IUniform<number> = { value: 0 };
 export const HOVER_BOOST = 1.6;
 
+export function getHoveredWorldPos(): THREE.Vector3 | null { return hoveredWorldPos; }
+
 export function setHoveredStar(pos: THREE.Vector3 | null): void {
   if (pos) {
-    hoveredPosUniform.value.copy(pos);
+    hoveredWorldPos = pos;
     hoveredActiveUniform.value = 1;
   } else {
+    hoveredWorldPos = null;
     hoveredActiveUniform.value = 0;
   }
 }
 
 // Minimum orbit radius for a selected star — chosen so the disc can't
 // exceed `maxFraction` of the viewport half-height at minimum zoom
-// (i.e., disc diameter = 2·maxFraction of the viewport). 0.5 puts the
-// disc at half the viewport height when fully zoomed in — prominent
-// but with room around it for context.
-export function computeStarMinOrbit(radius: number, maxFraction = 0.5): number {
+// (i.e., disc diameter = 2·maxFraction of the viewport). 0.15 keeps
+// the star prominent but leaves plenty of room for context.
+export function computeStarMinOrbit(radius: number, maxFraction = 0.15): number {
   return (radius * DISC_SCALE * F_HALF_TAN_INV) / maxFraction;
 }
 
@@ -98,11 +94,10 @@ export function computeStarScreenMetrics(
 const vertexShader = `
   uniform float uMagLimit;
   uniform float uHalfViewportPx;
-  uniform vec3 uStarTarget;       // orbit focus in world coordinates
-  uniform vec3 uStarCameraOffset; // camera-to-target vector, unclamped
-  uniform mat3 uStarViewRotation; // pure rotation of the view matrix
-  uniform float uSkipSelected;    // 1.0 → skip the instance at uStarTarget
-  uniform vec3 uHoveredPos;       // world position of hovered star, if any
+  uniform vec3 uLocalTarget;       // target - tileOrigin (per-tile, Float64 on CPU)
+  uniform vec3 uStarCameraOffset;  // camera offset from target (orbit vector)
+  uniform mat3 uStarViewRotation;  // pure rotation of the view matrix
+  uniform vec3 uLocalHoveredPos;   // hoveredPos - tileOrigin (per-tile)
   uniform float uHoveredActive;   // 1.0 when a star is hovered
   uniform float uHoverBoost;      // brightness multiplier when matched
 
@@ -125,23 +120,10 @@ const vertexShader = `
     vUv = uv;
     vColor = instanceColor;
 
-    // Target-relative view math. modelViewMatrix would go through
-    // camera.position, which scene.updateCamera clamps for Float32
-    // safety during deep zoom — that clamp makes mvCenter.z bottom out
-    // at the clamp threshold, so the disc stops growing. Instead, we
-    // recompose camera-space from the unclamped orbit offset: both
-    // subtractions stay near zero, so Float32 precision holds even for
-    // stars tens of AU from the camera.
-    vec3 relPos = instancePos - uStarTarget;
-
-    // Selected-star skip: when the overlay takes over rendering for the
-    // orbit-target star, suppress this instance so we don't double-draw.
-    if (uSkipSelected > 0.5 && dot(relPos, relPos) < 1e-10) {
-      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-      return;
-    }
-
-    vec3 camRelPos = relPos - uStarCameraOffset;
+    // Floating-origin subtraction. uLocalTarget = target - tileOrigin,
+    // computed in Float64 on the CPU. For rebased tiles both instancePos
+    // and uLocalTarget are small, so the subtraction is precise.
+    vec3 camRelPos = (instancePos - uLocalTarget) - uStarCameraOffset;
     vec3 viewPos = uStarViewRotation * camRelPos;
     float camDist = max(-viewPos.z, 1e-20);
 
@@ -157,7 +139,7 @@ const vertexShader = `
 
     float hoverMul = 1.0;
     if (uHoveredActive > 0.5) {
-      vec3 toHovered = instancePos - uHoveredPos;
+      vec3 toHovered = instancePos - uLocalHoveredPos;
       if (dot(toHovered, toHovered) < 1e-10) hoverMul = uHoverBoost;
     }
     vIntensity = rawBrightness * tierFade * hoverMul;
@@ -266,17 +248,20 @@ export function decodeTileBinary(buffer: ArrayBuffer): TileInstanceData {
   return { count, positions, colors, absMags, radii };
 }
 
-function createMaterial(opacityUniform: THREE.IUniform<number>): THREE.ShaderMaterial {
+function createMaterial(
+  opacityUniform: THREE.IUniform<number>,
+  localTargetUniform: THREE.IUniform<THREE.Vector3>,
+  localHoveredPosUniform: THREE.IUniform<THREE.Vector3>,
+): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uMagLimit: magLimitUniform,
       uHalfViewportPx: halfViewportPxUniform,
       uTileOpacity: opacityUniform,
-      uStarTarget: starTargetUniform,
+      uLocalTarget: localTargetUniform,
       uStarCameraOffset: starCameraOffsetUniform,
       uStarViewRotation: starViewRotationUniform,
-      uSkipSelected: skipSelectedUniform,
-      uHoveredPos: hoveredPosUniform,
+      uLocalHoveredPos: localHoveredPosUniform,
       uHoveredActive: hoveredActiveUniform,
       uHoverBoost: { value: HOVER_BOOST },
     },
@@ -292,6 +277,8 @@ function createMaterial(opacityUniform: THREE.IUniform<number>): THREE.ShaderMat
 export function createTileMesh(
   data: TileInstanceData,
   opacityUniform: THREE.IUniform<number>,
+  localTargetUniform: THREE.IUniform<THREE.Vector3>,
+  localHoveredPosUniform: THREE.IUniform<THREE.Vector3>,
 ): THREE.Mesh {
   const geometry = new THREE.InstancedBufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(QUAD_POSITIONS, 3));
@@ -304,7 +291,7 @@ export function createTileMesh(
   geometry.setAttribute("instanceAbsMag", new THREE.InstancedBufferAttribute(data.absMags, 1));
   geometry.setAttribute("instanceRadius", new THREE.InstancedBufferAttribute(data.radii, 1));
 
-  const mesh = new THREE.Mesh(geometry, createMaterial(opacityUniform));
+  const mesh = new THREE.Mesh(geometry, createMaterial(opacityUniform, localTargetUniform, localHoveredPosUniform));
   mesh.frustumCulled = false;
   return mesh;
 }
@@ -315,120 +302,7 @@ export function createTileMesh(
 // camera always looks at the orbit target, so a selected star is always
 // at screen center by definition — we output gl_Position directly in
 // clip space, with no world-space math. This is the same pattern the
-// black-hole lensing pass uses, and it's immune to Float32 precision
-// loss at any zoom level regardless of where the star sits in world
-// coordinates (Sol at origin, Tau Ceti at ~11 units, Betelgeuse at ~500,
-// all behave identically).
-//
-// The instanced pass skips the selected instance (via uSkipSelected) so
-// the star isn't drawn twice.
-
-const overlayVertexShader = `
-  uniform float uOverlayHalfBillPx;
-  uniform float uHalfViewportPx;
-
-  varying vec2 vUv;
-
-  const float F_HALF_TAN_INV = ${F_HALF_TAN_INV.toFixed(7)};
-  const float OVERLAY_DEPTH = 1.0;
-
-  void main() {
-    vUv = uv;
-    // Place the quad at a fixed camera-space depth and size it in world
-    // units so projectionMatrix maps its edge to halfBillPx pixels. We
-    // MUST go through projectionMatrix (not raw NDC) so bloom-overscan
-    // fov widening self-compensates: beginBloomRender widens camera.fov
-    // by 1.2× and the composer RT also widens 1.2×, and those two factors
-    // only cancel for geometry that goes through the projection matrix.
-    // A direct gl_Position = NDC output would render 1.2× too big, with
-    // the error scaling as disc size grows (user observable as the
-    // label drifting further inside the disc at high zoom).
-    float worldScale = uOverlayHalfBillPx * OVERLAY_DEPTH /
-                       (F_HALF_TAN_INV * uHalfViewportPx);
-    vec4 viewPos = vec4(position.xy * worldScale * 2.0, -OVERLAY_DEPTH, 1.0);
-    gl_Position = projectionMatrix * viewPos;
-  }
-`;
-
-const overlayFragmentShader = `
-  uniform vec3 uOverlayColor;
-  uniform float uOverlayIntensity;
-  uniform float uOverlayDiscPx;
-  uniform float uOverlayHalfBillPx;
-
-  varying vec2 vUv;
-
-  ${GLOW_GLSL}
-
-  void main() {
-    float rUv = length((vUv - 0.5) * 2.0);
-    float rPx = rUv * uOverlayHalfBillPx;
-
-    float edgeFade = 1.0 - smoothstep(0.95, 1.0, rUv);
-
-    // Same disc + halo math as the instanced fragment shader.
-    float discMask = smoothstep(uOverlayDiscPx + 0.5, uOverlayDiscPx - 0.5, rPx);
-    float r2 = (uOverlayDiscPx > 0.0) ? (rPx * rPx) / (uOverlayDiscPx * uOverlayDiscPx) : 1.0;
-    float inside = max(0.0, 1.0 - r2);
-    float limbDark = 1.0 - 0.6 * (1.0 - sqrt(inside));
-    vec3 discColor = uOverlayColor * limbDark;
-
-    float coronaSpan = max(uOverlayHalfBillPx - uOverlayDiscPx, 1.0);
-    float linearT = clamp((rPx - uOverlayDiscPx) / coronaSpan, 0.0, 1.0);
-    const float CORONA_PEAK_OFFSET = 0.15;
-    float coronaT = CORONA_PEAK_OFFSET + (1.0 - CORONA_PEAK_OFFSET) * linearT;
-    vec2 g = glowAt(coronaT);
-    float glowIntensity = g.x * uOverlayIntensity;
-    vec3 glowColor = mix(uOverlayColor, vec3(1.0), smoothstep(0.3, 1.0, g.y * uOverlayIntensity));
-
-    float outDisc = 1.0 - discMask;
-    vec3 color = (discColor * discMask + glowColor * glowIntensity * outDisc) * edgeFade;
-    float alpha = max(discMask, glowIntensity * outDisc) * edgeFade;
-
-    gl_FragColor = vec4(color, alpha);
-  }
-`;
-
-const overlayGeometry = new THREE.PlaneGeometry(1, 1);
-const overlayMaterial = new THREE.ShaderMaterial({
-  uniforms: {
-    uHalfViewportPx: halfViewportPxUniform,
-    uOverlayHalfBillPx: { value: 0 },
-    uOverlayDiscPx: { value: 0 },
-    uOverlayColor: { value: new THREE.Color(1, 1, 1) },
-    uOverlayIntensity: { value: 1 },
-  },
-  vertexShader: overlayVertexShader,
-  fragmentShader: overlayFragmentShader,
-  transparent: true,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-  depthTest: false,
-});
-
-export const selectedStarOverlay = new THREE.Mesh(overlayGeometry, overlayMaterial);
-selectedStarOverlay.frustumCulled = false;
-selectedStarOverlay.visible = false;
-// Render after tile meshes so the overlay sits on top — same scene as
-// everything else so bloom picks up its halo.
-selectedStarOverlay.renderOrder = 100;
-
-// Publish the "skip the selected instance" state. main.ts sets this
-// when the overlay takes over so the tile meshes don't draw the star.
-export function setOverlayActive(active: boolean): void {
-  skipSelectedUniform.value = active ? 1 : 0;
-  selectedStarOverlay.visible = active;
-}
-
-export function setOverlayUniforms(
-  discPx: number,
-  halfBillPx: number,
-  color: THREE.Color,
-  intensity: number,
-): void {
-  const u = overlayMaterial.uniforms;
-  u.uOverlayDiscPx!.value = discPx;
-  u.uOverlayHalfBillPx!.value = halfBillPx;
-  (u.uOverlayColor!.value as THREE.Color).copy(color);
-  u.uOverlayIntensity!.value = intensity;
-}
+// The camera-relative reference frame gives every star full Float32
+// precision at close range, so no separate overlay is needed for the
+// selected star. The instanced shader renders it correctly at all
+// distances and during transit.

@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import type { Star, SystemGroup, BinarySystem, ClusterGroup } from "./types.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
-import { scene, camera } from "./scene.ts";
+import { scene, camera, target } from "./scene.ts";
 import { createStarAnchor } from "./billboard.ts";
 import { showSystemMembers } from "./interaction.ts";
-import { setLabelsDirty, relinkAfterRebuild, getPinnedTile } from "./systemStore.ts";
+import { setLabelsDirty, relinkAfterRebuild, getPinnedTile, getSelectedMesh } from "./systemStore.ts";
 import { registerMembers } from "./systemDispatch.ts";
 import {
   registerCanvasLabel, unregisterCanvasLabel,
@@ -13,7 +13,7 @@ import {
 import {
   BYTES_PER_STAR, createTileMesh, decodeTileBinary,
   magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag,
-  selectedStarOverlay,
+  getHoveredWorldPos,
 } from "./stars.ts";
 import {
   initCatalog, getMeta, getNotable, getSystems, getTileLabels,
@@ -23,7 +23,7 @@ import {
 } from "./catalog.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
 
-export { magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag };
+export { magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag, getHoveredWorldPos };
 
 const MAX_LOADED_TILES = 80;
 const TILE_FADE_MS = 400;
@@ -32,7 +32,11 @@ let tier1LoadDist = 150;
 interface LoadedTile {
   mesh: THREE.Mesh;
   starCount: number;
-  positions: Float32Array;   // kept for anchor lookup on tile-label spawn
+  worldPositions: Float32Array; // original world-space positions (immutable)
+  positions: Float32Array;      // current (possibly rebased) positions on GPU
+  origin: THREE.Vector3;        // Float64 origin subtracted from positions
+  localTargetUniform: THREE.IUniform<THREE.Vector3>;
+  localHoveredPosUniform: THREE.IUniform<THREE.Vector3>;
   lastUsed: number;
   labelsLoaded: boolean;
   opacityUniform: THREE.IUniform<number>;
@@ -43,6 +47,75 @@ interface LoadedTile {
 
 let tileMeshGroup: THREE.Group;
 let anchorsGroup: THREE.Group;
+
+// Floating-origin state: which tile is rebased and to what origin.
+let rebasedTilePath: string | null = null;
+const rebasedOrigin = new THREE.Vector3();
+
+function rebaseTileToOrigin(path: string, origin: THREE.Vector3) {
+  const tile = loadedTiles.get(path);
+  if (!tile) return;
+  const world = tile.worldPositions;
+  const local = tile.positions === world ? new Float32Array(world.length) : tile.positions;
+  for (let i = 0; i < world.length; i += 3) {
+    local[i]     = world[i]!     - origin.x;
+    local[i + 1] = world[i + 1]! - origin.y;
+    local[i + 2] = world[i + 2]! - origin.z;
+  }
+  if (tile.positions === world) {
+    tile.positions = local;
+    const attr = tile.mesh.geometry.getAttribute("instancePos") as THREE.InstancedBufferAttribute;
+    attr.array = local;
+  }
+  (tile.mesh.geometry.getAttribute("instancePos") as THREE.InstancedBufferAttribute).needsUpdate = true;
+  tile.origin.copy(origin);
+}
+
+function unrebaseTile(path: string) {
+  const tile = loadedTiles.get(path);
+  if (!tile) return;
+  if (tile.origin.lengthSq() === 0) return;
+  tile.positions = tile.worldPositions;
+  const attr = tile.mesh.geometry.getAttribute("instancePos") as THREE.InstancedBufferAttribute;
+  attr.array = tile.worldPositions;
+  attr.needsUpdate = true;
+  tile.origin.set(0, 0, 0);
+}
+
+// Rebase the tile containing the focused star. Called on selection and
+// transit start. Un-rebases the previous tile if it's different.
+export function rebaseForTarget(tilePath: string, worldPos: THREE.Vector3) {
+  if (rebasedTilePath && rebasedTilePath !== tilePath) {
+    unrebaseTile(rebasedTilePath);
+  }
+  rebasedTilePath = tilePath;
+  rebasedOrigin.copy(worldPos);
+  rebaseTileToOrigin(tilePath, worldPos);
+}
+
+// Per-frame update: set each tile's uLocalTarget = target - tileOrigin.
+// Called after updateCamera() in the render loop.
+function setTileLocalTarget(tile: LoadedTile) {
+  tile.localTargetUniform.value.set(
+    target.x - tile.origin.x,
+    target.y - tile.origin.y,
+    target.z - tile.origin.z,
+  );
+}
+
+export function updateTileTargets(hoveredWorldPos: THREE.Vector3 | null) {
+  for (const tile of loadedTiles.values()) {
+    setTileLocalTarget(tile);
+    if (hoveredWorldPos) {
+      tile.localHoveredPosUniform.value.set(
+        hoveredWorldPos.x - tile.origin.x,
+        hoveredWorldPos.y - tile.origin.y,
+        hoveredWorldPos.z - tile.origin.z,
+      );
+    }
+  }
+  for (const tile of fadingOutTiles.values()) setTileLocalTarget(tile);
+}
 
 const loadedTiles = new Map<string, LoadedTile>();
 const fadingOutTiles = new Map<string, LoadedTile>();
@@ -156,9 +229,9 @@ function spawnTileLabels(path: string, labels: LabelRow[]) {
   for (const row of labels) {
     if (row.tier === 0) continue;  // tier-0 already spawned from notable.json
     const i = row.i;
-    const sx = tile.positions[i * 3];
-    const sy = tile.positions[i * 3 + 1];
-    const sz = tile.positions[i * 3 + 2];
+    const sx = tile.worldPositions[i * 3];
+    const sy = tile.worldPositions[i * 3 + 1];
+    const sz = tile.worldPositions[i * 3 + 2];
     const anchor = spawnTier1Anchor(row, path, sx, sy, sz);
     anchorByRef.set(refKey(path, i), anchor);
     allInteractiveStars.push(anchor);
@@ -365,19 +438,32 @@ async function loadTile(path: string, tile: TileMeta) {
     const data = decodeTileBinary(buffer);
 
     const opacityUniform: THREE.IUniform<number> = { value: 0.0 };
-    const mesh = createTileMesh(data, opacityUniform);
+    const localTargetUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
+    const localHoveredPosUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
+    const mesh = createTileMesh(data, opacityUniform, localTargetUniform, localHoveredPosUniform);
     tileMeshGroup.add(mesh);
 
     const now = performance.now();
-    loadedTiles.set(path, {
+    const tileEntry: LoadedTile = {
       mesh,
       starCount: data.count,
+      worldPositions: data.positions,
       positions: data.positions,
+      origin: new THREE.Vector3(0, 0, 0),
+      localTargetUniform,
+      localHoveredPosUniform,
       lastUsed: now,
       labelsLoaded: false,
       opacityUniform,
       fadeStart: now, fadeFrom: 0, fadeTo: 1,
-    });
+    };
+    loadedTiles.set(path, tileEntry);
+
+    // If this tile contains the currently focused star, rebase it
+    // so the star's instancePos is near zero for precision.
+    if (rebasedTilePath && path === rebasedTilePath) {
+      rebaseTileToOrigin(path, rebasedOrigin);
+    }
 
     const cached = getTileLabels(path);
     if (cached) spawnTileLabels(path, cached);
@@ -447,7 +533,6 @@ export async function initStarfield() {
   scene.add(tileMeshGroup);
   anchorsGroup = new THREE.Group();
   scene.add(anchorsGroup);
-  scene.add(selectedStarOverlay);
 
   await initCatalog();
   const meta = getMeta();

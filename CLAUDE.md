@@ -174,6 +174,7 @@ or the term "cluster".
 - `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata
 - `dist/tiles/nebulae.json` — Runtime nebula data with baked scene coordinates
 - `.claude/skills/research/SKILL.md` — Documented workflow for filling tier-0 metadata gaps in batches via research subagents
+- `docs/camera.md` — Camera system: orbit model, floating-origin precision (per-tile rebasing, two-part label projection), transit animation (log-space interpolation, delayed radius, parallel rotation)
 - `docs/stars.md` — Star rendering documentation (shader, bloom, sizing)
 - `docs/starfield.md` — Streaming pipeline + binary format + tier model + catalog scope rationale
 - `docs/data-corrections.md` — Corrections applied on top of source data

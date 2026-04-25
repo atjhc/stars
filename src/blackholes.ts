@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {
   scene, camera, animateTo, setMinOrbitOverride,
   isDeepZoom, orbitRadius, requestLensing,
-  distanceFromCamera,
+  distanceFromCamera, animation,
 } from "./scene.ts";
 import {
   TILE_BASE_URL, RS_KM_PER_MSUN, KM_PER_PC, SCALE,
@@ -15,6 +15,7 @@ import { isFavorite } from "./favorites.ts";
 import {
   registerCanvasLabel, updateCanvasLabel,
 } from "./labelCanvas.ts";
+import { computeStarMinOrbit } from "./stars.ts";
 
 const BH_CANVAS_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const BH_CANVAS_COLOR = "rgba(180,140,220,0.85)";
@@ -44,6 +45,11 @@ const blackHoleLabels: BlackHoleLabel[] = [];
 let selectedBH: BlackHoleLabel | null = null;
 let hoveredBH: BlackHoleLabel | null = null;
 let maxSolDist = 0;
+
+// Departing lensing: when the selection is cleared mid-transit, keep
+// requesting lensing for the old object so its effect fades naturally
+// as the camera recedes rather than popping off.
+let departingBH: BlackHoleLabel | null = null;
 
 function canvasIdFor(name: string): string { return `blackhole:${name}`; }
 
@@ -145,31 +151,58 @@ const bhHandler: LabelTypeHandler = {
       });
     }
 
-    if (isDeepZoom() && selectedBH) {
+    if (selectedBH) {
+      const dist = animation ? distanceFromCamera(selectedBH.anchor.position) : orbitRadius;
       const rsScene = ((RS_KM_PER_MSUN * selectedBH.entry.mass_msun) / KM_PER_PC) * SCALE;
       requestLensing({
         pos: selectedBH.anchor.position,
         shadowRadiusScene: BH_SHADOW_TO_RS * rsScene,
         massMsun: selectedBH.entry.mass_msun,
         mode: "shadow",
+        camDist: dist,
       });
+    }
+
+    // Departing BH: keep requesting lensing until the animation ends
+    // or the shadow fraction becomes negligible.
+    if (departingBH) {
+      if (!animation) {
+        departingBH = null;
+      } else {
+        const dist = distanceFromCamera(departingBH.anchor.position);
+        const rsScene = ((RS_KM_PER_MSUN * departingBH.entry.mass_msun) / KM_PER_PC) * SCALE;
+        requestLensing({
+          pos: departingBH.anchor.position,
+          shadowRadiusScene: BH_SHADOW_TO_RS * rsScene,
+          massMsun: departingBH.entry.mass_msun,
+          mode: "shadow",
+          camDist: dist,
+        });
+      }
     }
   },
 
   selectByName(name) {
     const bh = blackHoleLabels.find((b) => b.name === name);
     if (!bh) return false;
-    if (selectedBH && selectedBH !== bh) removeGlow(selectedBH);
+    if (selectedBH && selectedBH !== bh) {
+      departingBH = selectedBH;
+      removeGlow(selectedBH);
+    }
     selectedBH = bh;
     applyGlow(bh);
     setMinOrbitOverride(DEEP_ZOOM_MIN_ORBIT);
-    animateTo(bh.anchor.position);
+    // Arrive where the shadow disc fills ~15% of the viewport.
+    const rsScene = ((RS_KM_PER_MSUN * bh.entry.mass_msun) / KM_PER_PC) * SCALE;
+    const shadowRadius = BH_SHADOW_TO_RS * rsScene;
+    animateTo(bh.anchor.position, computeStarMinOrbit(shadowRadius, 0.15));
     setLabelsDirty(true);
     return true;
   },
 
   clearSelection() {
     if (selectedBH) {
+      if (animation) departingBH = selectedBH;
       removeGlow(selectedBH);
       selectedBH = null;
       setMinOrbitOverride(null);

@@ -8,15 +8,14 @@ import {
   updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
   orbitRadius, orbitPhi, orbitTheta, target,
   setOrbitRadius, setOrbitPhi, setOrbitTheta, getEffectiveMinOrbit,
-  setTargetImmediate, updateDeepZoom, effectiveCamDist, animation,
+  setTargetImmediate, updateDeepZoom, animation,
   finalizeLensingFrame, getLensingOccluder,
 } from "./scene.ts";
 import {
   initUrlState, enableUrlWrites, scheduleUrlWrite, parseUrlState,
 } from "./urlState.ts";
 import { getSelectedNebulaName, setNebulaHoverByName } from "./nebulaeLabels.ts";
-import { computeStarScreenMetrics, setOverlayActive, setOverlayUniforms } from "./stars.ts";
-import { starRadiusScene, bvToColor } from "./color.ts";
+import { starRadiusScene } from "./color.ts";
 import {
   hoverTarget, unhoverAll,
   selectTarget, selectSystem, selectStar,
@@ -48,12 +47,13 @@ import {
   pickLabelAt, pickStarAt, getCanvasLabel, isCanvasLabelInteractive,
 } from "./labelCanvas.ts";
 import {
-  initStarfield, updateStarfield,
+  initStarfield, updateStarfield, updateTileTargets,
   notableObjects, tier1Meshes,
   systemGroups, meshToSystem, clusterOf,
   onLabelsChanged,
-  requestTileFocus,
+  requestTileFocus, rebaseForTarget,
   magLimitUniform, setMagLimit,
+  getHoveredWorldPos,
 } from "./starfield.ts";
 import { animateTo } from "./scene.ts";
 import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
@@ -78,6 +78,12 @@ import { makeCollapsible } from "./collapse.ts";
 
 let labelsVisible = true;
 
+// Rebase the tile containing a selected star for floating-origin precision.
+function rebaseForStar(mesh: THREE.Object3D) {
+  const star = mesh.userData as Star;
+  if (star.tile) rebaseForTarget(star.tile, mesh.position);
+}
+
 // Input state
 let isDragging = false;
 let prevMouse = { x: 0, y: 0 };
@@ -93,6 +99,7 @@ function trySelectAt(clientX: number, clientY: number) {
   if (starMesh) {
     clearAllSelections();
     selectTarget(starMesh, updateDetailPanel, doUpdateLabelVisibility);
+    rebaseForStar(starMesh);
     return;
   }
   // Missed the disc — try label rects (tier-1 text clicks, systems,
@@ -111,6 +118,7 @@ function dispatchCanvasLabelClick(x: number, y: number): boolean {
       if (!mesh) return false;
       clearAllSelections();
       selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
+      rebaseForStar(mesh);
       return true;
     }
     case "system": {
@@ -438,6 +446,7 @@ function handleSearchSelect(entry: SearchEntry) {
     requestTileFocus(entry.t, entry.i, (mesh) => {
       clearAllSelections();
       selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
+      rebaseForStar(mesh);
       scheduleUrlWrite();
     });
   }
@@ -511,6 +520,7 @@ doUpdateLabelVisibility();
     const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
     if (solAnchor) {
       selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
+      rebaseForStar(solAnchor);
       setTargetImmediate(solAnchor.position);
     }
   }
@@ -588,46 +598,6 @@ if (debugEnabled) {
 
 if (benchEnabled) runBench();
 
-// Per-selection cache: radius and color are constant per star, so only
-// recompute them when the selection changes — not every frame.
-let lastSelected: THREE.Object3D | null = null;
-let cachedRadius = 0;
-const cachedColor = new THREE.Color();
-
-function updateStarDeepZoom() {
-  const selected = getSelectedMesh();
-  if (lastSelected !== selected) {
-    lastSelected = selected;
-    const selStar = selected?.userData as Star | undefined;
-    if (selStar) {
-      cachedRadius = starRadiusScene(selStar.lum, selStar.ci);
-      cachedColor.copy(bvToColor(selStar.ci));
-    }
-  }
-
-  const star = selected?.userData as Star | undefined;
-  // The overlay always renders at screen center (view-space origin),
-  // which only matches the selected star's on-screen position when
-  // `target` equals the star's world position. Mid-animation, target is
-  // lerping — the overlay would draw a ghost disc at the moving
-  // midpoint. Disable it during transit and let the instanced shader
-  // render the destination star at its real angular position, growing
-  // smoothly as the camera closes in. When the animation ends (target
-  // snaps to star.position), the overlay takes over for the crisp
-  // close-up render and uSkipSelected hides the instanced duplicate.
-  if (!selected || !star || animation) {
-    setOverlayActive(false);
-    return;
-  }
-  const { discPx, halfBillPx, intensity } = computeStarScreenMetrics(
-    cachedRadius,
-    star.absmag ?? 10,
-    effectiveCamDist(selected.position),
-  );
-  setOverlayUniforms(discPx, halfBillPx, cachedColor, intensity);
-  setOverlayActive(true);
-}
-
 // Bench + debug need continuous frames for sampling / live stats graphs.
 if (benchEnabled || debugEnabled) setAlwaysOn(true);
 
@@ -636,7 +606,7 @@ function animate(now: number) {
   statsBegin();
   tickAnimation(now);
   updateDeepZoom();
-  updateStarDeepZoom();
+  updateTileTargets(getHoveredWorldPos());
   checkCameraMoved();
   statsPhase("updateStarfield", updateStarfield);
   statsPhase("updateDust", updateDust);

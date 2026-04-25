@@ -33,7 +33,12 @@ export function showHover(target: THREE.Object3D) {
   const lastHovered = getLastHoveredMesh();
   if (lastHovered === target) return;
   setLastHoveredMesh(target);
-  setHoveredStar(target.position);
+  // Don't glow the focused star — it's already prominent at close zoom.
+  if (target === getSelectedMesh()) {
+    setHoveredStar(null);
+  } else {
+    setHoveredStar(target.position);
+  }
   setLabelsDirty(true);
 }
 
@@ -126,12 +131,11 @@ export function selectSystem(
       ? [...group.collapsedMembers]
       : null);
   setSelectedSubset(snap);
-  // Must set the override BEFORE animateTo so its default toRadius picks
-  // up the new floor via getEffectiveMinOrbit.
-  setMinOrbitOverride(systemMinOrbit(group));
+  const viewDist = systemMinOrbit(group);
+  setMinOrbitOverride(viewDist);
   showSystemMembers(group);
   setLabelsDirty(true);
-  animateTo(focusTarget(group, camera.position));
+  animateTo(focusTarget(group, camera.position), viewDist);
   setLastHoveredMesh(null);
   addRecent(group.name);
   refreshSearch();
@@ -158,11 +162,12 @@ export function selectStar(target: THREE.Object3D, updateDetailPanel: () => void
   // BEFORE animateTo so its default toRadius picks up the new floor via
   // getEffectiveMinOrbit.
   const radius = starRadiusScene(star.lum, star.ci);
-  setMinOrbitOverride(computeStarMinOrbit(radius));
+  const viewDist = computeStarMinOrbit(radius);
+  setMinOrbitOverride(viewDist);
   addRecent(star.name);
   refreshSearch();
   setLabelsDirty(true);
-  animateTo(target.position);
+  animateTo(target.position, viewDist);
   updateLabelVisibility();
   setLastHoveredMesh(null);
   updateDetailPanel();

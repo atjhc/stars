@@ -14,21 +14,12 @@ export const halfViewportPxUniform: THREE.IUniform<number> = {
   value: typeof window !== "undefined" ? window.innerHeight / 2 : 540,
 };
 
-// Target-relative coordinate frame for the star shader. Rather than
-// using modelViewMatrix (where the view matrix's large translation
-// component catastrophically cancels against large instance positions
-// in Float32), the shader recomposes camera-space from three pieces
-// computed CPU-side in a precision-safe way:
-//
-//   cameraSpace = uViewRotation · ((instancePos − uTarget) − uCameraOffset)
-//
-// All the Float32-risky subtractions now happen near zero. uTarget is
-// the orbit focus (selected star's world position). uCameraOffset is
-// the camera-to-target vector in world space. uViewRotation is the pure
-// rotation portion of the view matrix.
-export const starTargetUniform: THREE.IUniform<THREE.Vector3> = {
-  value: new THREE.Vector3(0, 0, 0),
-};
+// Camera orbit offset uniform shared by all star/NS shaders. The orbit
+// offset is always small (it's the displacement from the orbit focus),
+// so Float32 represents it with full precision at any zoom level.
+// The other half of the decomposition — the orbit focus relative to each
+// tile's origin — is computed per-tile on the CPU in Float64 and passed
+// as a per-tile uLocalTarget uniform. See starfield.ts rebaseTile().
 export const starCameraOffsetUniform: THREE.IUniform<THREE.Vector3> = {
   value: new THREE.Vector3(0, 0, 0),
 };

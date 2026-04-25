@@ -3,9 +3,9 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import {
-  scene, camera, animateTo, setMinOrbitOverride,
+  scene, camera, target, animateTo, setMinOrbitOverride,
   isDeepZoom, orbitRadius, requestLensing,
-  distanceFromCamera,
+  distanceFromCamera, animation,
 } from "./scene.ts";
 import {
   SCALE, TILE_BASE_URL, KM_PER_PC,
@@ -13,7 +13,7 @@ import {
 } from "./constants.ts";
 import {
   halfViewportPxUniform,
-  starTargetUniform, starCameraOffsetUniform, starViewRotationUniform,
+  starCameraOffsetUniform, starViewRotationUniform,
 } from "./shaderUniforms.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
@@ -22,6 +22,7 @@ import { isFavorite } from "./favorites.ts";
 import {
   registerCanvasLabel, updateCanvasLabel,
 } from "./labelCanvas.ts";
+import { computeStarMinOrbit } from "./stars.ts";
 
 // Canvas label styling — a saturated cyan-teal that reads as cool
 // thermal glow but stays clearly distinct from the pale powder-blue
@@ -66,6 +67,8 @@ const neutronStars: NeutronStarLabel[] = [];
 let selectedNS: NeutronStarLabel | null = null;
 let hoveredNS: NeutronStarLabel | null = null;
 let maxSolDist = 0;
+
+let departingNS: NeutronStarLabel | null = null;
 
 // Scene routing for NS markers.
 //
@@ -202,25 +205,15 @@ function buildDetailHtml(ns: NeutronStarLabel): string {
 }
 
 // Billboard shader: camera-facing quad with a limb-darkened blue disc.
-// Uses target-relative view math (matches stars.ts) so distant NSes
-// don't jitter at deep zoom — modelViewMatrix bakes camera.position
-// and downcasts to Float32, quantizing tiny orbit motion. Recomposing
-// from (NS - target) - cameraOffset keeps both subtractions near zero.
+// Uses camera-relative view math (matches stars.ts) so NSes near the
+// camera get full Float32 precision automatically.
 const markerVertex = `
   uniform float uHalfViewportPx;
   uniform float uSceneRadius;
   uniform float uDiscFloorPx;
-  uniform vec3 uNSPos;
-  uniform vec3 uStarTarget;
-  uniform vec3 uStarCameraOffset;
+  uniform vec3 uNSLocalTarget;    // nsWorldPos - target (Float64 on CPU)
+  uniform vec3 uStarCameraOffset; // camera offset from target
   uniform mat3 uStarViewRotation;
-  // 1.0 when this NS is the orbit target. The generic path goes
-  // through uStarViewRotation × uStarCameraOffset, but at deep zoom
-  // the orthogonality residual (viewX · viewZ isn't exactly zero in
-  // Float32) leaks ~1e-7·orbit noise into the quad center. Skipping
-  // the matrix multiplication for the orbit target keeps the
-  // billboard locked dead center.
-  uniform float uIsOrbitTarget;
 
   varying vec2 vUv;
   varying float vDiscPx;
@@ -230,14 +223,8 @@ const markerVertex = `
 
   void main() {
     vUv = uv;
-    vec3 viewPos;
-    if (uIsOrbitTarget > 0.5) {
-      viewPos = vec3(0.0, 0.0, -length(uStarCameraOffset));
-    } else {
-      vec3 relPos = uNSPos - uStarTarget;
-      vec3 camRelPos = relPos - uStarCameraOffset;
-      viewPos = uStarViewRotation * camRelPos;
-    }
+    vec3 camRelPos = uNSLocalTarget - uStarCameraOffset;
+    vec3 viewPos = uStarViewRotation * camRelPos;
     float camDist = max(-viewPos.z, 1e-20);
 
     // Physical angular radius in screen pixels, floored so far-away
@@ -306,11 +293,9 @@ function createMarkerMesh(ns: NeutronStarEntry, worldPos: THREE.Vector3, sceneRa
       uHalfViewportPx: halfViewportPxUniform,
       uSceneRadius: { value: sceneRadius },
       uDiscFloorPx: { value: DISC_FLOOR_PX },
-      uNSPos: { value: worldPos.clone() },
-      uStarTarget: starTargetUniform,
+      uNSLocalTarget: { value: new THREE.Vector3() },
       uStarCameraOffset: starCameraOffsetUniform,
       uStarViewRotation: starViewRotationUniform,
-      uIsOrbitTarget: { value: 0 },
       uColor: { value: baseColor.clone() },
       uIntensity: { value: 1.4 },
     },
@@ -373,75 +358,89 @@ const nsHandler: LabelTypeHandler = {
       }
     }
 
+    const halfTan = Math.tan((camera.fov * Math.PI) / 360);
+    const halfHeight = window.innerHeight / 2;
+    const BLOOM_SPREAD_PX = 16;
+
     for (const ns of neutronStars) {
       const isActive = ns === selectedNS || ns === hoveredNS;
       const camDist = ns === selectedNS ? orbitRadius : distanceFromCamera(ns.anchor.position);
-      const opacity = isActive ? 1.0 : solDistanceFade(ns.anchor.position.length(), maxSolDist);
+      const solDist = ns.anchor.position.length();
+      const opacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
       updateCanvasLabel(canvasIdFor(ns.name), {
         opacityTarget: opacity,
         pinned: isActive,
         subtitles: isActive ? [formatAstroDistance(camDist)] : [],
       });
 
-      // Marker size/scaling is entirely shader-driven now — the
-      // billboard derives disc-from-radius and halo-from-floor each
-      // frame. The CPU only sets intensity (hover/selection + sol
-      // distance fade) and the orbit-target precision flag.
       const mat = ns.markerMesh.material as THREE.ShaderMaterial;
-      mat.uniforms.uIsOrbitTarget!.value = ns === selectedNS ? 1 : 0;
-      // Distant NSes should read as faint points of light — an
-      // isolated NS's absolute magnitude is ~10 fainter than any
-      // naked-eye star. We're already cheating by rendering them at
-      // all, but keep the intensity low so bloom doesn't inflate
-      // them into prominent halos that compete with the focused one.
-      const distFade = 1 - 0.4 * Math.min(1, ns.anchor.position.length() / Math.max(maxSolDist, 1));
+      const pos = ns.anchor.position;
+      mat.uniforms.uNSLocalTarget!.value.set(
+        pos.x - target.x, pos.y - target.y, pos.z - target.z,
+      );
+      const distFade = 1 - 0.4 * Math.min(1, solDist / Math.max(maxSolDist, 1));
       mat.uniforms.uIntensity!.value = isActive ? 1.0 : 0.3 * distFade;
 
-      // Label margin: push below the marker's projected radius so
-      // text doesn't overlap the body at close zoom. Compute the
-      // same halfBillPx the shader uses.
-      const fovRad = (camera.fov * Math.PI) / 180;
-      const halfTan = Math.tan(fovRad / 2);
-      const discPx = (ns.sceneRadius / Math.max(camDist, 1e-30))
-        * (window.innerHeight / 2) / halfTan;
-      // Label margin accounts for the disc + a rough bloom spread so
-      // the text clears the glow as well as the body.
-      const BLOOM_SPREAD_PX = 16;
+      const discPx = (ns.sceneRadius / Math.max(camDist, 1e-30)) * halfHeight / halfTan;
       const halfBillPx = Math.max(discPx, DISC_FLOOR_PX) + BLOOM_SPREAD_PX;
       updateCanvasLabel(canvasIdFor(ns.name), {
         marginTop: Math.min(halfBillPx + 8, window.innerHeight),
       });
     }
 
-    // Lensing gate — only engage when genuinely zoomed onto the NS.
-    // At normal zoom the bending covers sub-pixels and isn't worth
-    // the composer pass.
-    const LENSING_RADIUS_CUTOFF = 1e-6; // scene units (~10 AU at SCALE=3)
-    if (isDeepZoom() && selectedNS && orbitRadius < LENSING_RADIUS_CUTOFF) {
-      requestLensing({
-        pos: selectedNS.anchor.position,
-        shadowRadiusScene: selectedNS.sceneRadius,
-        massMsun: selectedNS.entry.mass_msun,
-        mode: "bodyElsewhere",
-      });
+    // Lensing: during transit, use real camera distance so the effect
+    // scales naturally. At rest, gate on deep zoom + orbit radius.
+    if (selectedNS) {
+      const dist = animation ? distanceFromCamera(selectedNS.anchor.position) : orbitRadius;
+      const LENSING_RADIUS_CUTOFF = 1e-6;
+      if (animation || (isDeepZoom() && dist < LENSING_RADIUS_CUTOFF)) {
+        requestLensing({
+          pos: selectedNS.anchor.position,
+          shadowRadiusScene: selectedNS.sceneRadius,
+          massMsun: selectedNS.entry.mass_msun,
+          mode: "bodyElsewhere",
+          camDist: dist,
+        });
+      }
+    }
+
+    if (departingNS) {
+      if (!animation) {
+        departingNS = null;
+      } else {
+        const dist = distanceFromCamera(departingNS.anchor.position);
+        requestLensing({
+          pos: departingNS.anchor.position,
+          shadowRadiusScene: departingNS.sceneRadius,
+          massMsun: departingNS.entry.mass_msun,
+          mode: "bodyElsewhere",
+          camDist: dist,
+        });
+      }
     }
   },
 
   selectByName(name) {
     const ns = neutronStars.find((n) => n.name === name);
     if (!ns) return false;
-    if (selectedNS && selectedNS !== ns) removeGlow(selectedNS);
+    if (selectedNS && selectedNS !== ns) {
+      departingNS = selectedNS;
+      removeGlow(selectedNS);
+    }
     setFocusedMesh(ns);
     selectedNS = ns;
     applyGlow(ns);
     setMinOrbitOverride(DEEP_ZOOM_MIN_ORBIT);
-    animateTo(ns.anchor.position);
+    // Arrive where the disc fills ~15% of the viewport — close enough
+    // to see surface detail, far enough for context.
+    animateTo(ns.anchor.position, computeStarMinOrbit(ns.sceneRadius, 0.15));
     setLabelsDirty(true);
     return true;
   },
 
   clearSelection() {
     if (selectedNS) {
+      if (animation) departingNS = selectedNS;
       removeGlow(selectedNS);
       setFocusedMesh(null);
       selectedNS = null;

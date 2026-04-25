@@ -154,7 +154,7 @@ const nebulaHandler: LabelTypeHandler = {
     // the dust structure in frame. Override goes BEFORE animateTo so
     // its default toRadius picks up the new floor.
     setMinOrbitOverride(NEBULA_MIN_ORBIT);
-    animateTo(nl.anchor.position);
+    animateTo(nl.anchor.position, NEBULA_MIN_ORBIT);
     setLabelsDirty(true);
     return true;
   },

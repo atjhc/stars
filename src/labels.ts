@@ -41,7 +41,33 @@ export function updateLabels(
   meshToSystem: Map<THREE.Object3D, SystemGroup>,
 ) {
   if (!labelsVisible) return;
-  if (animation) return;
+
+  // During transit, skip the full collision/visibility pass but keep
+  // the destination star label's margin + subtitle current so the text
+  // tracks the disc as it grows on approach. NS/BH/nebula labels are
+  // managed by their own per-frame handlers in labelRegistry.
+  if (animation) {
+    const selectedMesh = getSelectedMesh();
+    if (selectedMesh) {
+      const canvasId = getCanvasLabelIdForMesh(selectedMesh);
+      if (canvasId) {
+        const star = selectedMesh.userData as Star;
+        const radius = starRadiusScene(star.lum, star.ci);
+        const camDist = distanceFromCamera(selectedMesh.position);
+        const discPx = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20)).discPx;
+        const margin = Math.min(discPx, window.innerHeight) + LABEL_DISC_BUFFER_PX;
+        updateCanvasLabel(canvasId, {
+          marginTop: margin,
+          subtitles: [formatAstroDistance(camDist)],
+          pinned: true,
+          opacityTarget: 1,
+          hidden: false,
+        });
+      }
+    }
+    return;
+  }
+
   if (!isLabelsDirty()) return;
 
   // This is the canonical "labels changed enough that we should
