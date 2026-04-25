@@ -205,6 +205,24 @@ from what the HYG naming hierarchy produces. Examples:
   injects synthetic stars into the output when a `synthetic` field is present
   in the augmentation entry
 
+#### Gaia BH1/BH2/BH3 luminous companions
+- **Source**: AT-HYG omits these stars (sub-Tycho brightness, Gaia-only
+  identifications) and the BH JSON has no slot for the visible component
+- **Fix**: Added each as a synthetic star in `augmentations.json` keyed
+  `Gaia BH1 A` / `Gaia BH2 A` / `Gaia BH3 A`, co-located with the BH and
+  tagged with `system: "Gaia BHn"`. Stellar parameters (Teff, mass,
+  radius, [Fe/H], orbital period) sourced from El-Badry et al. 2023
+  (BH1, BH2) and Gaia Collaboration / Panuzzo et al. 2024 (BH3)
+
+### Black Hole Coordinates
+
+#### Canonical positions for Gaia BH1/BH2/BH3
+- **Convention**: `data/blackholes.json` RA/Dec are the Gaia DR3 ICRS
+  coordinates of each system's luminous component. Companion `synthetic`
+  entries reuse the same coords (the orbital separation is sub-AU at
+  parsec distances and unresolvable from this viewer's viewpoint), so
+  the BH and its companion render co-located
+
 ## How to Add Corrections
 
 Add entries to `data/augmentations.json` keyed by Gliese catalog ID (or
