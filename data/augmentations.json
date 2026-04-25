@@ -2658,5 +2658,61 @@
     "name": "Theta\u00b9 Orionis C",
     "wikipedia": "https://en.wikipedia.org/wiki/Theta1_Orionis_C",
     "notes": "Most massive star in the Trapezium Cluster and the primary ionizing source of the Orion Nebula (M42). One of the most luminous O-type stars within 500 pc of Sol."
+  },
+  "Gaia BH1 A": {
+    "name": "Gaia BH1 A",
+    "aliases": [
+      "2MASS J17284110-0034514"
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Gaia_BH1",
+    "notes": "Sun-like G dwarf (Teff 5850 K, 0.93 M\u2609, [Fe/H] = -0.2) orbiting Gaia BH1 every 186 days. The luminous component of the nearest known black-hole binary. Discovery: El-Badry et al. 2023 (MNRAS 518, 1057).",
+    "system": "Gaia BH1",
+    "synthetic": {
+      "ra": 17.47807,
+      "dec": -0.581,
+      "dist": 480,
+      "mag": 13.77,
+      "absmag": 5.36,
+      "ci": 0.66,
+      "spect": "G2V"
+    }
+  },
+  "Gaia BH2 A": {
+    "name": "Gaia BH2 A",
+    "aliases": [
+      "UCAC4 154-126202",
+      "2MASS J13501675-5914203"
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Gaia_BH2",
+    "notes": "K-giant (Teff 4600 K, ~1 M\u2609, R \u2248 7.8 R\u2609, [Fe/H] = -0.22) orbiting Gaia BH2 every 1,277 days. The widest stellar-mass black-hole binary known. Discovery: El-Badry et al. 2023 (MNRAS 521, 4323).",
+    "system": "Gaia BH2",
+    "synthetic": {
+      "ra": 13.83799,
+      "dec": -59.239,
+      "dist": 1160,
+      "mag": 12.28,
+      "absmag": 1.96,
+      "ci": 1.28,
+      "spect": "K0III"
+    }
+  },
+  "Gaia BH3 A": {
+    "name": "Gaia BH3 A",
+    "aliases": [
+      "LS II +14 13",
+      "ALS 10389"
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Gaia_BH3",
+    "notes": "Metal-poor giant ([Fe/H] = -2.56, Teff 6000 K, 0.76 M\u2609) orbiting Gaia BH3 on an 11.6-year orbit. Among the most metal-poor stars known to host a stellar-mass black hole. Member of the ED-2 stellar stream. Pre-Gaia identifier LS II +14 13. Discovery: Gaia Collaboration, Panuzzo et al. 2024 (A&A 686, L2).",
+    "system": "Gaia BH3",
+    "synthetic": {
+      "ra": 19.65520,
+      "dec": 14.9317,
+      "dist": 590,
+      "mag": 11.23,
+      "absmag": 2.39,
+      "ci": 0.65,
+      "spect": "G III"
+    }
   }
 }

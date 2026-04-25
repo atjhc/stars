@@ -419,7 +419,7 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             "spect": synth.get("spect", ""),
             "key": key,
             "name": aug.get("name", key),
-            "aliases": [],
+            "aliases": aug.get("aliases", []) or [],
             "tier": 0 if aug.get("notable") else 1,
             "wikipedia": aug.get("wikipedia"),
             "notes": aug.get("notes"),
