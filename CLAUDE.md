@@ -10,19 +10,6 @@ bun run dev     # starts dev server with HMR at http://localhost:3000
 bun run build   # builds static site to dist/
 ```
 
-#### Worktree setup
-
-Git worktrees don't include submodules or build artifacts. Before running
-the dev server from a worktree, symlink both into place:
-
-```sh
-mkdir -p vendor && ln -s /path/to/main/repo/vendor/athyg vendor/athyg
-mkdir -p dist   && ln -s /path/to/main/repo/dist/tiles   dist/tiles
-```
-
-Without these the server returns 200 but the app fails at runtime (missing
-tile data).
-
 ### Deploy
 
 Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deploy.
@@ -146,7 +133,7 @@ or the term "cluster".
 - `src/nebulaeLabels.ts` — Nebula label registrations + selection handler
 - `src/blackholes.ts` — Black hole labels + point rendering, registered via labelRegistry
 - `src/neutronstars.ts` — Neutron star / pulsar labels + marker-disc rendering + GR lensing on close zoom
-- `src/dust.ts` — 3D dust volume ray marcher (Lallement/Vergely data + hot-star illumination)
+- `src/dust.ts` — 3D dust volume ray marcher (Edenhofer 2024 data + hot-star illumination)
 - `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
 - `src/systemDispatch.ts` — Polymorphic dispatch functions for SystemGroup variants
 
@@ -157,7 +144,7 @@ or the term "cluster".
 - `index.html` — App shell (styles + markup + viewport wrapper)
 - `scripts/build-catalog.py` — Builds the unified catalog from AT-HYG + augmentations
 - `scripts/audit-notable.py` — Reports tier-0 stars missing wikipedia / notes / traditional aliases (`--json` for machine-readable output)
-- `scripts/bake-dust.py` — Downloads Lallement/Vergely FITS cube, bakes RGBA dust texture with hot-star illumination
+- `scripts/bake-dust.py` — Downloads Edenhofer 2024 HEALPix sphere stack (~3.25 GB from Zenodo), resamples to 6 pc Cartesian, bakes RGBA dust texture with hot-star illumination
 - `scripts/snap-nebula-labels.py` — Snaps nebula label positions to nearest emission peaks in the baked dust volume
 - `scripts/fetch-hunt2023-astro.py` — Downloads RA/Dec/parallax/photometry from VizieR for Hunt & Reffert cluster members
 - `scripts/merge-augmentations.py` — Merges research-batch JSON files into `data/augmentations.json`, preserving existing fields
@@ -228,5 +215,5 @@ inject stars that don't exist in the source catalog (e.g. Sirius B).
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
 - **3D:** Three.js with custom GLSL shaders, 2D canvas overlay for labels, UnrealBloomPass
-- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/athyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Lallement/Vergely 2022](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147) (CC-BY 4.0)
+- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/athyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Edenhofer et al. 2024](https://zenodo.org/records/8187943) (CC-BY 4.0)
 - **Hosting:** Vercel (static)

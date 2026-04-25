@@ -170,26 +170,31 @@ Riello et al. (2021) polynomial fit, which is accurate to ~0.05 mag.
 
 ## 3D dust extinction
 
-### Lallement & Vergely (2022)
+### Edenhofer et al. (2024)
 
-- **Citation:** Lallement, R., Vergely, J.-L., & Cox, N.J. (2022), A&A 661, A147
-- **VizieR catalog:** `J/A+A/661/A147`
+- **Citation:** Edenhofer, G. et al. (2024), A&A 685, A82
+- **Zenodo record:** [8187943](https://zenodo.org/records/8187943)
 - **License:** CC-BY 4.0
-- **Source file:** `data/cache/cube_ext.fits.gz` (~100 MB FITS, auto-downloaded)
-- **Output:** `dist/tiles/dust_volume_rgba.bin` (12.5 MB baked RGBA 3D texture)
+- **Source file:** `data/cache/edenhofer2023_healpix.fits` (~3.25 GB, auto-downloaded)
+- **Output:** `dist/tiles/dust_volume_rgba.bin` (~60 MB baked RGBA 3D texture)
 
-The source FITS contains a 601×601×81 extinction cube at 10 pc resolution.
-We extract a 201×201×81 sub-cube (±1,000 pc from Sol), bake hot-star
-illumination into the RGB channels, and ship the result as a binary texture.
+The source FITS (`mean_and_std_healpix.fits`) is a HEALPix sphere stack
+(NSIDE healpix pixels × log-spaced radial distance bins) covering 69–1250 pc
+from Sol. We resample it onto a 6 pc Cartesian grid covering ±996 pc XY /
+±396 pc Z (333×333×133) using 4-neighbor angular bilinear + 2-neighbor radial
+linear interpolation with 3³ intra-voxel supersampling. Then bake hot-star
+illumination into the RGB channels and ship the result as a binary texture.
 
 ```sh
-# Requires: pip3 install astropy numpy
+# Requires: pip3 install astropy numpy healpy
 python3 scripts/bake-dust.py
 ```
 
 The script downloads the FITS file automatically on first run and caches it
-at `data/cache/cube_ext.fits.gz` (gitignored). It reads hot-star positions
-from the AT-HYG submodule for the illumination pass.
+at `data/cache/edenhofer2023_healpix.fits` (gitignored). Zenodo throttles
+single connections to ~0.3 MB/s; for a faster fetch use 16-way parallel
+range requests (see commit history for a reference script). The script reads
+hot-star positions from the AT-HYG submodule for the illumination pass.
 
 **Illumination model:** For each non-zero dust voxel, UV flux from all O and
 B-type stars within 150 pc is accumulated (1/r² falloff). Ionizing flux
@@ -198,13 +203,11 @@ reflection nebulosity.
 
 **Limitations:**
 
-- 10 pc voxel resolution blurs structures smaller than ~30 ly
+- 6 pc voxel resolution blurs structures smaller than ~20 ly
+- Baked at 6 pc for file-size reasons; the native 2 pc data has more detail
 - No self-shielding (dense cores don't shadow their outer layers)
 - Only two emission colors (Hα red + Rayleigh blue)
 - Dark clouds (foreground extinction) not rendered
-
-**Planned upgrade:** Edenhofer et al. (2024) offers ~10× resolution
-improvement but is not yet integrated.
 
 ---
 

@@ -15,7 +15,7 @@ volumetric dust glow and the named molecular cloud labels.
 
 | Layer | Source | Accuracy |
 |---|---|---|
-| **3D dust density** | Lallement/Vergely (2022), Gaia parallax + photometric reddening | Measured — the dust is where the data says |
+| **3D dust density** | Edenhofer et al. (2024), Gaia parallax + photometric reddening | Measured — the dust is where the data says |
 | **Star positions & types** | AT-HYG / Gaia DR3 | Measured — we know which stars are O/B type |
 | **Which dust is illuminated** | 1/r² UV flux from ~21k O/B stars, luminosity-weighted, 150 pc range | Physics-based — correct inputs, simplified radiative transfer |
 | **Emission color** | HII red (ionizing O/early-B) vs reflection blue (scattering B) | Simplified — two broadband channels, not spectral lines |
@@ -55,8 +55,9 @@ volumetric dust glow and the named molecular cloud labels.
 - **No extinction** — real dust dims and reddens background starlight.
   Stars render through clouds unaffected. See "Dark cloud rendering"
   under Planned Improvements
-- **10 pc voxel resolution** — structures smaller than ~30 ly are blurred.
-  No filaments, dark lanes, or sharp cloud edges at this scale
+- **6 pc voxel resolution** — structures smaller than ~20 ly remain blurred.
+  The native Edenhofer data is 2 pc, but we downsample to keep the baked
+  texture under ~25 MB gzipped; fine filaments still smear together
 - **Isotropic scattering** — real interstellar dust has a
   forward-scattering asymmetry (Henyey-Greenstein phase function).
   We scatter uniformly in all directions
@@ -66,7 +67,7 @@ volumetric dust glow and the named molecular cloud labels.
   more UV than a cooler but equally luminous B8 star
 - **Coordinate epoch mismatch** — AT-HYG star positions are J2000.0;
   the dust cube is from Gaia DR3 (epoch ~2016). The ~0.01 pc offset
-  over 16 years is negligible at 10 pc voxel resolution
+  over 16 years is negligible at 6 pc voxel resolution
 
 ## Rendered molecular clouds
 
@@ -120,14 +121,19 @@ visualization. See "Planned improvements" below.
 Run `python3 scripts/bake-dust.py` (requires `astropy` and `numpy`).
 The script downloads the source FITS automatically on first run.
 
-1. **Download** Lallement/Vergely (2022) FITS cube from
-   [CDS VizieR](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147).
-   Cached at `data/cache/cube_ext.fits.gz` (~100 MB, gitignored).
-   License: CC-BY 4.0.
+1. **Download** Edenhofer et al. (2024) HEALPix reconstruction from
+   [Zenodo record 8187943](https://zenodo.org/records/8187943) —
+   specifically `mean_and_std_healpix.fits` (~3.25 GB, one-time download
+   cached at `data/cache/edenhofer2023_healpix.fits`, gitignored). The
+   map covers 69–1250 pc from Sol as HEALPix angular spheres × log-spaced
+   radial bins. License: CC-BY 4.0.
 
-2. **Extract** ±1000 pc sub-cube (201×201×81 voxels at 10 pc/voxel).
-   Threshold at 95th percentile to clear the Local Bubble (~50 pc
-   around Sol is nearly zero density).
+2. **Resample** onto a 6 pc Cartesian grid at ±996 pc XY / ±396 pc Z
+   (333×333×133 voxels) using 4-neighbor angular bilinear + 2-neighbor
+   radial linear interpolation. Each output voxel averages 3³ intra-voxel
+   supersamples to damp aliasing. Only the posterior mean channel is
+   kept. Threshold low voxels at the 5th percentile of non-zero values
+   to clear Local Bubble residuals.
 
 3. **Compute hot-star illumination**: for each non-zero dust voxel,
    accumulate luminosity-weighted UV flux from ~21k O/B stars within
@@ -138,7 +144,7 @@ The script downloads the source FITS automatically on first run.
    equatorial Cartesian to galactic Cartesian via the IAU rotation
    matrix.
 
-4. **Bake** into RGBA uint8 binary (12.5 MB):
+4. **Bake** into RGBA uint8 binary (~60 MB, ~22 MB gzipped):
    - R = dust density (0-255, thresholded + normalized)
    - G = ionizing flux (0-255, log-scaled)
    - B = scattering flux (0-255, log-scaled)
@@ -146,7 +152,7 @@ The script downloads the source FITS automatically on first run.
 
 ### Runtime (`src/dust.ts`)
 
-1. Load RGBA `Data3DTexture` (201×201×81, 12.5 MB GPU).
+1. Load RGBA `Data3DTexture` (333×333×133, ~60 MB GPU).
 
 2. Render emission at **half resolution** into an offscreen
    `WebGLRenderTarget` via a ray-marching fragment shader on a
@@ -183,48 +189,47 @@ The script downloads the source FITS automatically on first run.
 
 | Component | Cost | Notes |
 |---|---|---|
-| 3D texture | 12.5 MB VRAM | Loaded once at boot |
+| 3D texture | ~60 MB VRAM | Loaded once at boot |
 | Emission ray march | 128 steps/pixel at half-res | Half-resolution reduces fragment count 4× |
 | Upscale blit | Fullscreen quad, bilinear | Volumetric glow is smooth enough for half-res |
 | Labels (12 CSS2D) | DOM update per frame | Distance text only updated when hovered |
 
 ## Data sources
 
-### Lallement / Vergely (2022) — current dust data
+### Edenhofer et al. (2024) — current dust data
+
+| Property | Value |
+|---|---|
+| Paper | Edenhofer et al., A&A 685, A82 (2024) |
+| Coverage | 69–1250 pc from Sol, full sky |
+| Source format | HEALPix × log-distance sphere stack |
+| Source file | `mean_and_std_healpix.fits` (~3.25 GB) |
+| Baked sub-cube | 333 × 333 × 133 (±996 pc XY, ±396 pc Z) at 6 pc voxels |
+| Download | [Zenodo 8187943](https://zenodo.org/records/8187943) |
+| License | CC-BY 4.0 |
+
+### Lallement / Vergely (2022) — previous dust data
 
 | Property | Value |
 |---|---|
 | Paper | Lallement, Vergely & Cox, A&A 661, A147 (2022) |
 | Coverage | 3 kpc in-plane, 400 pc above/below galactic plane |
 | Resolution | 10 pc isotropic voxels |
-| Full grid | 601 × 601 × 81 |
-| Sub-cube used | 201 × 201 × 81 (±1000 pc from Sol) |
 | Download | [CDS VizieR J/A+A/661/A147](https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+A/661/A147) |
-| License | CC-BY 4.0 |
 
-### Edenhofer et al. (2024) — planned upgrade
-
-| Property | Value |
-|---|---|
-| Paper | Edenhofer et al., A&A 685, A82 (2024) |
-| Coverage | 69–1250 pc from Sol, full sky |
-| Resolution | ~0.4 pc (nearby) to ~7 pc (at 1250 pc) |
-| Download | [Zenodo 8187943](https://zenodo.org/records/8187943) |
-
-10× resolution improvement over Lallement. Would resolve cloud cores,
-filaments, and sharp edges that are currently blurred into amorphous
-blobs. Processing pipeline: sample onto 512³ grid via `dustmaps` Python
-package, re-run hot-star illumination at higher resolution.
+Retired in favor of Edenhofer. Lallement covered a wider footprint but
+its 10 pc voxels blurred every cloud into an amorphous blob. Edenhofer's
+finer reconstruction is the higher-impact dataset for the volumes Drake
+actually renders.
 
 ## Planned improvements
 
-### Higher resolution (Edenhofer 2024)
+### Finer downsample
 
-The single highest-impact improvement. At ~1 pc resolution, molecular
-cloud cores would be 10-30 voxels across instead of 1-3. Fine structure
-(filaments, dark lanes within emission regions, sharp cloud boundaries)
-would become visible. The build pipeline is the same — just a larger
-input dataset.
+The Edenhofer source is 2 pc native; we bake at 6 pc to keep the RGBA
+texture under ~25 MB gzipped. Dropping to 4 pc (~200 MB) or 2 pc (~1.6 GB)
+would resolve more filament and cloud-edge structure at real bandwidth /
+VRAM cost. 4 pc is the realistic next step.
 
 ### Dark cloud rendering
 
@@ -252,7 +257,7 @@ these would require:
 ### Planetary nebulae
 
 Helix (NGC 7293), Ring (M57), Dumbbell (M27) are too small for the
-10 pc dust maps (~0.3-1 pc extent vs 10 pc voxels). Published 3D
+dust maps (~0.3-1 pc extent vs 6 pc voxels). Published 3D
 models from Doppler velocity mapping exist. These would need per-object
 volumetric rendering at their catalog positions — similar to the
 sub-scene concept for black holes in `docs/vision.md`.

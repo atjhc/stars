@@ -129,11 +129,10 @@ function createEmissionMaterial(
       uSceneToGal: { value: new THREE.Matrix3().copy(GAL_TO_SCENE).invert() },
       uStarTarget: starTargetUniform,
       uStarCameraOffset: starCameraOffsetUniform,
-      // Calibrated against the physical star rendering in stars.ts —
-      // stars past the naked-eye magnitude limit now fade to zero, so
-      // the old 0.12 made nebulae pop against an unnaturally dark
-      // stellar background. ~1/3 that intensity matches the feel of
-      // nearby bright stars without overwhelming them.
+      // Calibrated against the naked-eye magnitude limit fade-out in
+      // stars.ts: nebulae need to be dimmer than they would be in a
+      // uniformly-lit field, or they overwhelm the bright stars they
+      // surround.
       uOpacity: { value: 0.04 },
       uMagLimit: magLimitUniform,
     },
@@ -200,7 +199,6 @@ export async function initDust(): Promise<void> {
   emissionMesh.frustumCulled = false;
   emissionScene.add(emissionMesh);
 
-  // Half-resolution render target for the emission pass
   const hw = Math.round(window.innerWidth * window.devicePixelRatio / 2);
   const hh = Math.round(window.innerHeight * window.devicePixelRatio / 2);
   halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
@@ -224,13 +222,11 @@ export async function initDust(): Promise<void> {
   const blitQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blitMaterial);
   blitScene.add(blitQuad);
 
-  console.log(`Dust volume: ${xSize}×${ySize}×${zSize}, bbox ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}`);
+  console.log(`Dust volume: ${xSize}×${ySize}×${zSize} @ ${meta.resolution_pc} pc/voxel, bbox ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}`);
 }
 
-// Camera state for the dust shader now comes from the shared
-// starTarget / starCameraOffset uniforms, which scene.ts keeps fresh
-// every frame. Nothing per-frame needed here — kept as an exported
-// no-op so main.ts's animate loop doesn't need to change.
+// No-op: shader uniforms are driven by the shared starTarget /
+// starCameraOffset bindings updated in scene.ts.
 export function updateDust(): void {}
 
 // Ray march to the half-res RT. Run every frame — the target-relative
