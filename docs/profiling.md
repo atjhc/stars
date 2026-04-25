@@ -89,7 +89,7 @@ on sample stop. **When sampling is off, the wrapper is a passthrough**
 path permanently.
 
 Current phase breakdown on a typical 15s trajectory (post canvas-label
-migration — see `docs/canvas-labels-plan.md`):
+migration — see `docs/labels.md`):
 
 | phase             | per-frame ms | notes                                    |
 | ----------------- | ------------ | ---------------------------------------- |

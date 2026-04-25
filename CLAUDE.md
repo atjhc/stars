@@ -161,56 +161,20 @@ or the term "cluster".
 - `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata
 - `dist/tiles/nebulae.json` — Runtime nebula data with baked scene coordinates
 - `.claude/skills/research/SKILL.md` — Documented workflow for filling tier-0 metadata gaps in batches via research subagents
-- `docs/camera.md` — Camera system: orbit model, floating-origin precision (per-tile rebasing, two-part label projection), transit animation (log-space interpolation, delayed radius, parallel rotation)
-- `docs/stars.md` — Star rendering documentation (shader, bloom, sizing)
-- `docs/starfield.md` — Streaming pipeline + binary format + tier model + catalog scope rationale
-- `docs/data-corrections.md` — Corrections applied on top of source data
-- `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown, planned improvements
+- `docs/starfield.md` — Star rendering: shader math, tile streaming, binary format, tier model, catalog scope, bloom
+- `docs/camera.md` — Camera system: orbit model, floating-origin precision, transit animation
+- `docs/labels.md` — Canvas label rendering pipeline, collision system, label type registry
+- `docs/clusters.md` — Star cluster processing: membership from Hunt & Reffert (2023), synthetic injection, runtime behavior
+- `docs/blackholes.md` — Black hole rendering: gravitational lensing, selection, deep zoom
+- `docs/neutronstars.md` — Neutron star rendering: billboard shader, bloom pipeline, scene routing, lensing
+- `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown
+- `docs/constellations.md` — Constellation line rendering: data format, topological model, adding new constellations
+- `docs/data-corrections.md` — Corrections applied on top of AT-HYG source data
 - `docs/data-sources.md` — External data sources, what we extract, known issues, coordinate transforms
-- `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap; consult before making decisions that would foreclose floating-origin retrofits or LOD/sub-scene splits.
-- `docs/profiling.md` — Perf measurement infrastructure (stats panel, P-key sampler, bench automation, phase timing) and a log of optimizations tried + what the bench said about each.
-- `docs/canvas-labels-plan.md` — Canvas-labels migration (shipped): replaced CSS2DRenderer with a 2D canvas overlay. Documents the 5-stage rollout and measured outcome.
+- `docs/profiling.md` — Perf measurement infrastructure and optimization log
+- `docs/neutron-star-post-mortem.md` — Post-mortem: architectural lessons from adding neutron stars as a new celestial type
+- `docs/vision.md` — Long-term vision: full-scale-range viewer (planet surface → galaxy). Not on the current roadmap.
 - `vendor/athyg/` — AT-HYG v3.3 star catalog (git submodule, LFS for CSV data)
-
-### Label tiers
-
-Classification is independent of curation metadata — augmentations (wikipedia, notes,
-aliases) still merge onto whatever tier the star ends up in, so a tier-1 star's detail
-panel can be rich without it being promoted to tier 0.
-
-All stars render through the same instanced-quad shader (`src/stars.ts`)
-— tiers differ only in labeling and interaction. Anchors are lightweight
-`Object3D`s (no geometry); the instanced mesh draws every star.
-
-- **Tier 0 (notable)** — IAU proper name AND apparent magnitude < 4.0,
-  OR an explicit `"notable": true` in its augmentation. ~265 stars
-  globally. Anchors loaded eagerly from `notable.json` with always-on
-  CSS2D labels (subject to `NOTABLE_FADE_NEAR/FAR` distance fade).
-- **Tier 1 (named)** — any catalog name (Bayer/Flamsteed/Gliese/HIP/HD/HR)
-  AND either `mag < 6.0` OR an `aug.system` entry (to keep multi-star
-  system companions like Sirius B selectable). Anchor + child CSS2D
-  label spawn when the tile is within `meta.labelTierVisibility["1"]`
-  of the camera and despawn on eviction.
-- **Tier 2 (none)** — no name or too faint. Rendered by the instanced
-  mesh like everything else, but no anchor / label / hit target.
-- **Explicit `"notable": false`** — demotes a star to tier 2 regardless of
-  brightness/name. Escape hatch; rarely used.
-
-### Star naming (in build-catalog.py)
-
-Priority order:
-
-1. **IAU proper name** — "Sirius", "Proxima Centauri", "Sol"
-2. **Bayer + constellation** — "Alp CMa"
-3. **Flamsteed + constellation** — "9 CMa"
-4. **Gliese catalog** — "Gl 65A"
-5. **Hipparcos** — "HIP 82724"
-6. **Henry Draper** — "HD 265866"
-7. **Harvard Revised** — "HR 2491"
-
-Augmentations (keyed by Gliese / HIP / "Sol") can override the primary name and
-attach Wikipedia links, notes, and system groupings. Synthetic companion blocks
-inject stars that don't exist in the source catalog (e.g. Sirius B).
 
 ### Stack
 
