@@ -25,6 +25,12 @@ export const LY_PER_PARSEC = 3.26156;
 export const AU_PER_LY = 63241;
 export const KM_PER_AU = 1.496e8;
 export const KM_PER_PC = 3.086e13;
+
+// Inside this camera-to-destination distance, projected label positions
+// barely shift frame-to-frame, so the collision pass re-engages during
+// the final deceleration of a transit instead of waiting for the
+// animation to fully end. ~1 ly in scene units.
+export const ARRIVAL_COLLISION_DIST = SCALE / LY_PER_PARSEC;
 // Schwarzschild radius in km for a 1 M☉ body.
 export const RS_KM_PER_MSUN = 2.953;
 

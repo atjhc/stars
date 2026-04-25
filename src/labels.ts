@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ,
+  ARRIVAL_COLLISION_DIST,
   solDistanceFade, formatAstroDistance,
 } from "./constants.ts";
 import {
@@ -44,9 +45,10 @@ export function updateLabels(
 
   // During transit, skip the full collision/visibility pass but keep
   // the destination star label's margin + subtitle current so the text
-  // tracks the disc as it grows on approach. NS/BH/nebula labels are
-  // managed by their own per-frame handlers in labelRegistry.
-  if (animation) {
+  // tracks the disc as it grows on approach. Falls through near arrival
+  // so labels settle during the final deceleration. NS/BH/nebula labels
+  // are managed by their own per-frame handlers in labelRegistry.
+  if (animation && distanceFromCamera(animation.to) > ARRIVAL_COLLISION_DIST) {
     const selectedMesh = getSelectedMesh();
     if (selectedMesh) {
       const canvasId = getCanvasLabelIdForMesh(selectedMesh);
