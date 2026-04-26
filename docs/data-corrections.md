@@ -96,25 +96,24 @@ Companions currently added this way:
   ~104°.
 - **40 Eridani C** (red dwarf, DY Eri): 415 AU from Keid, 20 AU from
   B (230-year inner B+C orbit).
+- **36 Ophiuchi B** (K1V): ~82 AU from A (471-year orbit). AT-HYG has
+  only Gl 663A; B is an unresolved close binary companion.
+- **70 Ophiuchi B** (K4V): ~23 AU from A (88-year orbit). AT-HYG has
+  only Gl 702A; B is absent from Tycho-2.
 
 ### System Misattributions
 
-#### Gl 664 assigned to wrong system
-- **Source**: HYG lists Gl 664 with `base="Gl 664"` and our augmentation initially
-  tagged it as "36 Ophiuchi C" based on catalog notes
-- **Problem**: Gl 664 is at 5.97 pc, co-located with Guniibuu (Gl 663A, 5.93 pc)
-  and Guniibuu B (Gl 663B, 5.99 pc). Meanwhile 36 Ophiuchi A/B (HIP 82724/82725)
-  are at 3.70/4.15 pc in a completely different part of the sky
-- **Fix**: Moved Gl 664 to the Guniibuu system
-- **Impact**: Without this fix, selecting Gl 664 would fly the camera to the
-  centroid of 36 Ophiuchi A/B, far from Gl 664's actual position
-
-#### 36 Ophiuchi A/B distance discrepancy
-- **Source**: HIP 82724 (36 Ophiuchi A) at 3.70 pc, HIP 82725 (B) at 4.15 pc
-- **Problem**: Wikipedia places 36 Ophiuchi at ~6.0 pc (19.5 ly). The Hipparcos
-  parallax measurements for these stars may be inaccurate. They also lack Gliese
-  catalog IDs, making cross-referencing difficult
-- **Status**: Not corrected. Displayed at their HYG positions
+#### 36 Ophiuchi triple system (Gl 663A/B + Gl 664)
+- **Source**: The real 36 Ophiuchi system is Gl 663A (A, proper name Guniibuu),
+  Gl 663B (B), and Gl 664 (C) — all at ~5.95 pc. Separately, Gl 653 (HIP 83591)
+  and Gl 654 (HIP 83599) at ~10.5 pc were incorrectly augmented as "36 Ophiuchi
+  A" and "36 Ophiuchi B"
+- **Problem**: The Gl 653/654 misattribution created a fake "36 Ophiuchi" system
+  at the wrong distance, while the real system was split off under the name
+  "Guniibuu". Additionally Gl 663B is not in AT-HYG (unresolved close binary)
+- **Fix**: Removed incorrect Gl 653/654 name/system augmentations. Unified
+  Gl 663A, Gl 663B, Gl 664 under system "36 Ophiuchi". Added synthetic entry
+  for Gl 663B (36 Ophiuchi B, K1V, mag 5.03) using parent offset from A
 
 ### Inconsistent System Tagging in HYG
 
@@ -127,14 +126,11 @@ Companions currently added this way:
   exoplanets
 - **Note**: GJ 3193B is actually an unresolved BC binary pair in the HYG data
 
-#### Guniibuu / Gl 663 naming confusion
-- **Source**: Gl 663A has `proper="Guniibuu"`, Gl 663B has `proper="Guniibuu B"`.
-  Separately, HIP 82724/82725 are named "36 Ophiuchi A/B" in our augmentations
-- **Problem**: The Gliese and HIP entries appear to be different stars at different
-  distances, despite the Wikipedia article for 36 Ophiuchi covering all of them as
-  one system. The HYG data does not cross-reference these entries
-- **Fix**: Treat as two separate systems: "Guniibuu" (Gl 663A, Gl 663B, Gl 664)
-  and "36 Ophiuchi" (HIP 82724, HIP 82725)
+#### 70 Ophiuchi B missing from AT-HYG
+- **Source**: Gl 702A (70 Ophiuchi A, K0V) is in AT-HYG at 5.08 pc. Gl 702B
+  (70 Ophiuchi B, K4V) is absent — unresolved in Tycho-2
+- **Fix**: Added synthetic entry for Gl 702B (mag 6.07, absmag 7.43) using
+  parent offset from A. 88-year orbit, semi-major axis ~23 AU
 
 ### Catalog ID Gaps
 
@@ -142,7 +138,7 @@ Companions currently added this way:
 16 stars in the nearest 300 have no proper name, Bayer/Flamsteed designation,
 or Gliese catalog number. They are displayed as "HIP NNNNN":
 
-- HIP 82724, HIP 82725 (36 Ophiuchi A/B — named via augmentation)
+- HIP 82724, HIP 82725 (distant background stars, formerly mislabelled 36 Ophiuchi)
 - HIP 67593 (SCR 1845-6357 — named via augmentation)
 - HIP 58910 (Beta Comae Berenices — named via augmentation)
 - HIP 33226 (Gliese 251 — named via augmentation)
@@ -204,6 +200,14 @@ from what the HYG naming hierarchy produces. Examples:
   matching their primaries and known photometric data. The build script
   injects synthetic stars into the output when a `synthetic` field is present
   in the augmentation entry
+
+#### 36 Ophiuchi B (Gl 663B) and 70 Ophiuchi B (Gl 702B)
+- **Source**: Both are close binary companions unresolved in Tycho-2 and
+  therefore absent from AT-HYG. Their primaries (Gl 663A, Gl 702A) are
+  present
+- **Fix**: Added as synthetic entries with parent offsets. 36 Oph B is a
+  K1V at mag 5.03 (~82 AU semi-major axis from A). 70 Oph B is a K4V at
+  mag 6.07 (~23 AU semi-major axis from A)
 
 #### Gaia BH1/BH2/BH3 luminous companions
 - **Source**: AT-HYG omits these stars (sub-Tycho brightness, Gaia-only
