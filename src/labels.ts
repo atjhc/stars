@@ -15,7 +15,7 @@ import { starRadiusScene, starGlowCanvas } from "./color.ts";
 import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
 import { shouldHighlightLabel, type HighlightContext } from "./labelVisibility.ts";
 import { clearFrameOccluders, pushFrameOccluder } from "./labelRegistry.ts";
-import { updateCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty } from "./labelCanvas.ts";
+import { updateCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty, setCanvasLabelsVisible } from "./labelCanvas.ts";
 import {
   getSelectedMesh, getSelectedSystem, getSelectedSubset, getHoveredSystem,
   getLastHoveredMesh, isLabelsDirty, setLabelsDirty,
@@ -54,31 +54,13 @@ export function updateLabels(
 ) {
   if (!labelsVisible) return;
 
-  // During transit, skip the full collision/visibility pass but keep
-  // the destination star label's margin + subtitle current so the text
-  // tracks the disc as it grows on approach. Falls through near arrival
-  // so labels settle during the final deceleration. NS/BH/nebula labels
-  // are managed by their own per-frame handlers in labelRegistry.
-  if (animation && distanceFromCamera(animation.to) > ARRIVAL_COLLISION_DIST) {
-    const selectedMesh = getSelectedMesh();
-    if (selectedMesh) {
-      const canvasId = getCanvasLabelIdForMesh(selectedMesh);
-      if (canvasId) {
-        const star = selectedMesh.userData as Star;
-        const radius = starRadiusScene(star.lum, star.ci);
-        const camDist = distanceFromCamera(selectedMesh.position);
-        const metrics = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
-        updateCanvasLabel(canvasId, {
-          marginTop: starLabelMargin(metrics.discPx, metrics.halfBillPx),
-          subtitles: [formatAstroDistance(camDist)],
-          pinned: true,
-          opacityTarget: 1,
-          hidden: false,
-        });
-      }
-    }
-    return;
-  }
+  // Hide every label during transit and let them fade back in once
+  // the camera enters the arrival window (~1 ly from destination).
+  // setCanvasLabelsVisible is idempotent and forces the collision
+  // pass to flip in lockstep, so all labels fade out together.
+  const inTransit = animation !== null && distanceFromCamera(animation.to) > ARRIVAL_COLLISION_DIST;
+  setCanvasLabelsVisible(!inTransit);
+  if (inTransit) return;
 
   if (!isLabelsDirty()) return;
 
