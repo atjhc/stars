@@ -14,7 +14,7 @@ import { computeStarScreenMetrics } from "./stars.ts";
 import { starRadiusScene, starGlowCanvas } from "./color.ts";
 import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
 import { shouldHighlightLabel, type HighlightContext } from "./labelVisibility.ts";
-import { clearFrameOccluders, pushFrameOccluder } from "./labelRegistry.ts";
+import { pushFrameOccluder } from "./labelRegistry.ts";
 import { updateCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty, setCanvasLabelsVisible } from "./labelCanvas.ts";
 import {
   getSelectedMesh, getSelectedSystem, getSelectedSubset, getHoveredSystem,
@@ -69,7 +69,8 @@ export function updateLabels(
   // throttles it to ~300 ms during orbit, which is exactly the cadence
   // we want for batched collision decisions.
   markCanvasCollisionDirty();
-  clearFrameOccluders();
+  // Frame occluders are cleared in main.ts before updateAllLabels;
+  // star occluders pushed below stack on top of planet ones.
 
   const magLimit = magLimitUniform.value;
   // Narrow fade band: tier-0 labels stay at full opacity until the star

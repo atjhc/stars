@@ -23,13 +23,12 @@ const TOGGLE_DEFAULTS: Record<string, boolean> = {
 // urlState.ts import-free of scene modules.
 const DEFAULT_MAG = 7.5;
 
-// Short aliases for toggle params (both forms accepted on read)
+// Short aliases for toggle params. We always write the short form;
+// the long form is still accepted on parse for back-compat with old
+// shareable URLs.
 const TOGGLE_SHORT: Record<string, string> = {
   labels: "l", grid: "g", constellations: "c", nebulae: "n",
 };
-
-// Track which form was used in the original URL so we preserve it on write
-let preferShort: Record<string, boolean> = {};
 
 export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLSearchParams {
   const q = new URLSearchParams(base ?? "");
@@ -44,12 +43,11 @@ export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLS
     for (const [key, def] of Object.entries(TOGGLE_DEFAULTS)) {
       const short = TOGGLE_SHORT[key];
       const val = (state.toggles as Record<string, boolean | undefined>)[key];
-      // Clean up both forms before writing the preferred one
+      // Strip any prior long-form leftover before writing the short.
       q.delete(key);
       q.delete(short);
       if (val !== undefined && val !== def) {
-        const paramName = preferShort[key] ? short : key;
-        q.set(paramName, val ? "1" : "0");
+        q.set(short, val ? "1" : "0");
       }
     }
   }
@@ -79,13 +77,9 @@ export function parseUrlState(search: string): UrlState {
   let hasToggle = false;
   for (const key of Object.keys(TOGGLE_DEFAULTS)) {
     const short = TOGGLE_SHORT[key];
-    if (q.has(short)) {
-      (toggles as Record<string, boolean>)[key] = q.get(short) !== "0";
-      preferShort[key] = true;
-      hasToggle = true;
-    } else if (q.has(key)) {
-      (toggles as Record<string, boolean>)[key] = q.get(key) !== "0";
-      preferShort[key] = false;
+    const raw = q.get(short) ?? q.get(key);
+    if (raw !== null) {
+      (toggles as Record<string, boolean>)[key] = raw !== "0";
       hasToggle = true;
     }
   }

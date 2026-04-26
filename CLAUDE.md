@@ -112,6 +112,29 @@ zoom in. Selecting/hovering a cluster glows member star billboards without
 glowing their individual labels. Clusters are searchable by name, alias,
 or the term "cluster".
 
+### Planet textures
+
+Equirectangular surface maps fetched once and dropped into
+`dist/tiles/planets/`:
+
+```sh
+python3 scripts/fetch-planet-textures.py
+```
+
+The runtime loads `tiles/planets/<name>.<ext>` per body and falls back
+to flat grey if the file is missing.
+
+Sources and licences:
+
+- **Mercury, Venus, Earth, Luna, Mars, Jupiter, Saturn (+ ring), Uranus, Neptune** —
+  [Solar System Scope](https://www.solarsystemscope.com/textures) (CC-BY 4.0)
+- **Ceres** — [NASA/JPL Dawn HAMO mosaic](https://commons.wikimedia.org/wiki/File:PIA20354-Ceres-DwarfPlanet-MercatorMap-HAMO-20160322.jpg) (Public Domain)
+- **Pluto** — [Wikimedia New Horizons global mosaic](https://commons.wikimedia.org/wiki/File:Pluto-map-sept-16-2015.jpg) (CC-BY-SA 4.0)
+- **Eris, Haumea, Makemake** — Solar System Scope "fictional" maps
+  (CC-BY 4.0); no real-data maps exist since no spacecraft has visited
+  these bodies
+- **Eros** — no published global map; stays flat grey at runtime
+
 ### Source modules
 
 - `src/main.ts` — Entry point: input wiring, render loop, system label hooks
@@ -133,6 +156,8 @@ or the term "cluster".
 - `src/nebulaeLabels.ts` — Nebula label registrations + selection handler
 - `src/blackholes.ts` — Black hole labels + point rendering, registered via labelRegistry
 - `src/neutronstars.ts` — Neutron star / pulsar labels + marker-disc rendering + GR lensing on close zoom
+- `src/planets.ts` — Solar System planet/moon labels + textured sun-lit globe rendering + elliptical orbit rings + Saturn rings, registered via labelRegistry. Positions propagated from JPL Keplerian elements via `src/keplerian.ts` to current date on page load. Bodies with a `parent` field (e.g. Luna) use geocentric elements and offset from the parent's heliocentric position. Surface maps lazy-loaded per body from `dist/tiles/planets/`.
+- `src/keplerian.ts` — Pure helper for JPL Approximate Positions: roll elements forward, solve Kepler, return heliocentric ecliptic Cartesian.
 - `src/dust.ts` — 3D dust volume ray marcher (Edenhofer 2024 data + hot-star illumination)
 - `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
 - `src/systemDispatch.ts` — Polymorphic dispatch functions for SystemGroup variants
@@ -147,6 +172,7 @@ or the term "cluster".
 - `scripts/bake-dust.py` — Downloads Edenhofer 2024 HEALPix sphere stack (~3.25 GB from Zenodo), resamples to 6 pc Cartesian, bakes RGBA dust texture with hot-star illumination
 - `scripts/snap-nebula-labels.py` — Snaps nebula label positions to nearest emission peaks in the baked dust volume
 - `scripts/fetch-hunt2023-astro.py` — Downloads RA/Dec/parallax/photometry from VizieR for Hunt & Reffert cluster members
+- `scripts/fetch-planet-textures.py` — Downloads Solar System Scope equirectangular surface maps into `dist/tiles/planets/`
 - `scripts/merge-augmentations.py` — Merges research-batch JSON files into `data/augmentations.json`, preserving existing fields
 - `data/augmentations.json` — Hand-curated overrides: Wikipedia links, names, notes, aliases, system groupings, synthetic companions. Keyable by Gliese ID / HIP / "Sol" OR by IAU proper name; both entries merge with proper-name winning on conflict.
 - `data/clusters.json` — Star cluster definitions: name, aliases, seed stars, wikipedia, notes
@@ -156,10 +182,12 @@ or the term "cluster".
 - `data/nebulae.json` — Molecular cloud definitions: positions (galactic Cartesian), metadata, wikipedia
 - `data/blackholes.json` — Stellar-mass black holes: RA/Dec, distance, mass, metadata
 - `data/neutronstars.json` — Nearby neutron stars (Magnificent Seven + notable pulsars within 1 kpc): RA/Dec, distance, mass, radius, kind (`ins`/`pulsar`), metadata
+- `data/planets.json` — Solar System planets: JPL Approximate Positions Keplerian elements (per-century rates), physical radius (km), IAU rotational elements (`rotation: [α₀, δ₀, W₀, Ẇ]`), metadata. Runtime fetches the *built* copy at `dist/tiles/planets.json`, so edits here only take effect after re-running `scripts/build-catalog.py`.
 - `data/cache/` — Downloaded source data (gitignored): FITS cubes, etc.
 - `dist/tiles/dust_volume_rgba.bin` — Baked RGBA 3D texture (density + hot-star illumination)
 - `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata
 - `dist/tiles/nebulae.json` — Runtime nebula data with baked scene coordinates
+- `dist/tiles/planets/` — Equirectangular planet surface maps (Solar System Scope, CC-BY 4.0)
 - `.claude/skills/research/SKILL.md` — Documented workflow for filling tier-0 metadata gaps in batches via research subagents
 - `docs/starfield.md` — Star rendering: shader math, tile streaming, binary format, tier model, catalog scope, bloom
 - `docs/camera.md` — Camera system: orbit model, floating-origin precision, transit animation
@@ -167,6 +195,7 @@ or the term "cluster".
 - `docs/clusters.md` — Star cluster processing: membership from Hunt & Reffert (2023), synthetic injection, runtime behavior
 - `docs/blackholes.md` — Black hole rendering: gravitational lensing, selection, deep zoom
 - `docs/neutronstars.md` — Neutron star rendering: billboard shader, bloom pipeline, scene routing, lensing
+- `docs/planets.md` — Solar System planets: data, ecliptic→equatorial transform, sun-lit globe shader, label gating
 - `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown
 - `docs/constellations.md` — Constellation system: 88 IAU constellations, Stellarium data source, Sol-distance fading, overlay selection, label priority, embedded star positions
 - `docs/data-corrections.md` — Corrections applied on top of AT-HYG source data
@@ -179,5 +208,5 @@ or the term "cluster".
 
 - **Runtime/bundler:** Bun (HTML imports, HMR)
 - **3D:** Three.js with custom GLSL shaders, 2D canvas overlay for labels, UnrealBloomPass
-- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/athyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Edenhofer et al. 2024](https://zenodo.org/records/8187943) (CC-BY 4.0)
+- **Data:** [AT-HYG v3.3](https://codeberg.org/astronexus/athyg) with Gaia DR3 distances (CC-BY-SA 4.0); cluster membership from [Hunt & Reffert 2023](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/A+A/673/A114) (Gaia DR3); 3D dust from [Edenhofer et al. 2024](https://zenodo.org/records/8187943) (CC-BY 4.0); planet surface maps from [Solar System Scope](https://www.solarsystemscope.com/textures) (CC-BY 4.0), Wikimedia/[New Horizons](https://commons.wikimedia.org/wiki/File:Pluto-map-sept-16-2015.jpg) (CC-BY-SA 4.0), [NASA Dawn](https://commons.wikimedia.org/wiki/File:PIA20354-Ceres-DwarfPlanet-MercatorMap-HAMO-20160322.jpg) (Public Domain)
 - **Hosting:** Vercel (static)

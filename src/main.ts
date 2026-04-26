@@ -39,9 +39,10 @@ import {
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels } from "./blackholes.ts";
 import { initNeutronStarLabels, renderNeutronStars } from "./neutronstars.ts";
+import { initPlanetLabels, pickPlanetAt } from "./planets.ts";
 import {
   setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType,
-  registerScreenOccluder, onSelectionChanged, clearHoverExcept, getHandlerSelectedName,
+  registerScreenOccluder, clearFrameOccluders, onSelectionChanged, clearHoverExcept, getHandlerSelectedName,
   getHandlerByType, handlerTypeForSearchKind,
 } from "./labelRegistry.ts";
 import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase, refreshDebugPanel } from "./debug.ts";
@@ -106,7 +107,16 @@ function trySelectAt(clientX: number, clientY: number) {
     rebaseForStar(starMesh);
     return;
   }
-  // Missed the disc — try label rects (tier-1 text clicks, systems,
+  // Planet/moon disc pick. Same screen-space approach as stars; the
+  // planet handler maintains a per-frame list of {x, y, hitRadius}
+  // entries during update() and pickPlanetAt walks them.
+  const planetName = pickPlanetAt(clientX, clientY);
+  if (planetName) {
+    clearAllSelections();
+    selectByType("planet", planetName);
+    return;
+  }
+  // Missed all discs — try label rects (tier-1 text clicks, systems,
   // nebulae, BHs).
   dispatchCanvasLabelClick(clientX, clientY);
 }
@@ -270,8 +280,18 @@ renderer.domElement.addEventListener("mousemove", (e) => {
       return;
     }
   }
-  // Missed disc — canvas label hover (text rect pick, plus system /
-  // nebula / BH dispatch).
+  // Planet/moon disc hover — glow the body and label like clicking
+  // the label would. Routed through the registry so cross-type hover
+  // (e.g. star + planet) clears appropriately.
+  const planetName = pickPlanetAt(e.clientX, e.clientY);
+  if (planetName) {
+    clearHoverExcept("planet");
+    const handler = getHandlerByType("planet");
+    handler?.setHoverByName(planetName);
+    return;
+  }
+  // Missed all discs — canvas label hover (text rect pick, plus
+  // system / nebula / BH dispatch).
   if (dispatchCanvasLabelHover(e.clientX, e.clientY)) return;
   unhoverAll();
 });
@@ -457,6 +477,7 @@ await initDust();
 await initNebulaeLabels();
 await initBlackHoleLabels();
 await initNeutronStarLabels();
+await initPlanetLabels();
 registerScreenOccluder(getLensingOccluder);
 onSelectionChanged(updateDetailPanel);
 
@@ -603,6 +624,9 @@ function animate(now: number) {
   checkCameraMoved();
   statsPhase("updateStarfield", updateStarfield);
   statsPhase("updateDust", updateDust);
+  // Cleared once before any pusher runs; planets push during
+  // updateAllLabels, stars push during updateLabels.
+  clearFrameOccluders();
   statsPhase("updateAllLabels", updateAllLabels);
   finalizeLensingFrame();
   statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem));

@@ -11,7 +11,12 @@ Bun.serve({
       const filePath = join("dist", url.pathname);
       try {
         const data = await readFile(filePath);
-        const contentType = filePath.endsWith(".json") ? "application/json" : "application/octet-stream";
+        const ext = filePath.slice(filePath.lastIndexOf(".") + 1);
+        const contentType =
+          ext === "json" ? "application/json"
+          : ext === "jpg" || ext === "jpeg" ? "image/jpeg"
+          : ext === "png" ? "image/png"
+          : "application/octet-stream";
         return new Response(data, { headers: { "Content-Type": contentType } });
       } catch {
         return new Response("Not found", { status: 404 });

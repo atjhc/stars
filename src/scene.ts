@@ -205,10 +205,11 @@ export function updateCamera() {
     .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
     .addScaledVector(galUp, orbitRadius * cosPhi);
   camera.lookAt(target);
-  // Near plane scales with orbit radius so the selected target is never
-  // clipped, even at deep zoom. The 0.1× factor keeps the near plane
-  // well inside the orbit sphere.
-  camera.near = Math.min(0.01, Math.max(1e-8, orbitRadius * 0.1));
+  // Near plane scales with orbit radius (capped so it never crowds
+  // the camera at typical zooms, floored only to keep `near > 0` as
+  // Three.js requires). The 0.1× factor keeps near well inside the
+  // orbit sphere; at planet-close orbits this drops well below 1 km.
+  camera.near = Math.max(1e-30, Math.min(0.01, orbitRadius * 0.1));
   camera.far = Math.max(20000, orbitRadius * 100000);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();

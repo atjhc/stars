@@ -4,6 +4,21 @@ import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 // Float32 precision is adequate — dust spans ~6000 scene units.
 const dustCamPosUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
+// Sphere occluder for the focused planet/moon body — stops dust
+// accumulation along rays that pass through it. Position is passed
+// camera-relative (computed in CPU Float64) because the absolute
+// world coords ~1.4e-5 are too close to Float32 ULP for the GPU to
+// subtract safely; small bodies (~6e-10) would vanish in the noise.
+const dustOccluderFromCamUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
+const dustOccluderRadiusUniform: THREE.IUniform<number> = { value: 0 };
+export function setDustOccluder(pos: THREE.Vector3 | null, radius: number): void {
+  if (pos && radius > 0) {
+    dustOccluderFromCamUniform.value.subVectors(pos, camera.position);
+    dustOccluderRadiusUniform.value = radius;
+  } else {
+    dustOccluderRadiusUniform.value = 0;
+  }
+}
 
 // Galactic Cartesian → Drake scene. Derived in build-catalog.py from
 // IAU galactic pole (RA=192.86°, Dec=27.13°) + equatorial→scene swap.
@@ -48,6 +63,8 @@ const EMISSION_FRAGMENT = `
   uniform vec3 uCamWorldPos;
   uniform float uOpacity;
   uniform float uMagLimit;
+  uniform vec3 uOccluderFromCam;
+  uniform float uOccluderRadius;
   varying vec3 vWorldPos;
 
   vec3 sceneToUV(vec3 scenePos) {
@@ -60,6 +77,20 @@ const EMISSION_FRAGMENT = `
     vec3 rayDir = normalize(camRel);
     vec3 pos = uCamWorldPos;
     float maxDist = length(camRel);
+
+    // Optional sphere occluder — clip the ray when it enters the
+    // focused body's surface so dust doesn't leak through it.
+    // uOccluderFromCam is camera-relative (Float64 on the CPU);
+    // see setDustOccluder for the precision rationale.
+    if (uOccluderRadius > 0.0) {
+      float b = dot(rayDir, uOccluderFromCam);
+      float c = dot(uOccluderFromCam, uOccluderFromCam) - uOccluderRadius * uOccluderRadius;
+      float disc = b * b - c;
+      if (disc > 0.0) {
+        float t = b - sqrt(disc);
+        if (t > 0.0) maxDist = min(maxDist, t);
+      }
+    }
 
     float accumDensity = 0.0;
     float accumHII = 0.0;
@@ -120,6 +151,8 @@ function createEmissionMaterial(
       uCamWorldPos: dustCamPosUniform,
       uOpacity: { value: 0.04 },
       uMagLimit: magLimitUniform,
+      uOccluderFromCam: dustOccluderFromCamUniform,
+      uOccluderRadius: dustOccluderRadiusUniform,
     },
     vertexShader: SHARED_VERTEX,
     fragmentShader: EMISSION_FRAGMENT,

@@ -58,7 +58,12 @@ const instances: ConstellationInstance[] = [];
 const instancesByName = new Map<string, ConstellationInstance>();
 let selectedConstellation: ConstellationInstance | null = null;
 let hoveredConstellation: ConstellationInstance | null = null;
-let visible = true;
+// Two independent toggles. C / URL controls the feature itself
+// (lines + labels). L (via the label registry) only governs labels.
+// Mesh visibility = featureEnabled; label hidden = !featureEnabled
+// || !labelsEnabledExternally.
+let featureEnabled = true;
+let labelsEnabledExternally = true;
 let lastFade = -1;
 let lastSelected: ConstellationInstance | null = null;
 let lastHovered: ConstellationInstance | null = null;
@@ -142,17 +147,12 @@ const constellationHandler: LabelTypeHandler = {
   searchLabel: "Constellation",
 
   setVisible(v) {
-    visible = v;
-    lastFade = -1;
-    for (const ci of instances) {
-      ci.mesh.visible = v;
-      updateCanvasLabel(ci.canvasKey, { hidden: !v });
-    }
-    setLabelsDirty(true);
+    labelsEnabledExternally = v;
+    applyVisibility();
   },
 
   update() {
-    if (!visible) return;
+    if (!featureEnabled) return;
     const fade = cameraFade();
     const fadeQ = Math.round(fade * 200);
     if (fadeQ === lastFade && selectedConstellation === lastSelected && hoveredConstellation === lastHovered) return;
@@ -174,7 +174,7 @@ const constellationHandler: LabelTypeHandler = {
         setMeshHighlight(ci, BASE_COLOR, BASE_OPACITY * fade);
       }
       updateCanvasLabel(ci.canvasKey, {
-        hidden: false,
+        hidden: !labelsEnabledExternally,
         opacityTarget: isActive ? fade : LABEL_OPACITY * fade,
         pinned: isActive,
       });
@@ -338,21 +338,35 @@ export async function initConstellations(): Promise<void> {
   );
 }
 
+function applyVisibility(): void {
+  // Force update() to re-run so its memo doesn't keep stale fade
+  // state when feature/label visibility flips.
+  lastFade = -1;
+  for (const ci of instances) {
+    ci.mesh.visible = featureEnabled;
+    updateCanvasLabel(ci.canvasKey, {
+      hidden: !featureEnabled || !labelsEnabledExternally,
+    });
+  }
+  setLabelsDirty(true);
+}
+
 export function setConstellationsVisible(v: boolean): void {
-  constellationHandler.setVisible(v);
+  featureEnabled = v;
+  applyVisibility();
 }
 
 export function toggleConstellations(): void {
-  constellationHandler.setVisible(!visible);
+  setConstellationsVisible(!featureEnabled);
 }
 
 export function constellationsVisible(): boolean {
-  return visible;
+  return featureEnabled;
 }
 
 // Stars that belong to at least one constellation. Populated at init.
 const constellationStarNames = new Set<string>();
 
 export function isConstellationStar(name: string): boolean {
-  return visible && constellationStarNames.has(name);
+  return featureEnabled && constellationStarNames.has(name);
 }

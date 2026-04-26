@@ -20,6 +20,7 @@ export const HIT_PX_PADDING = 6;
 
 export const LY_PER_PARSEC = 3.26156;
 export const AU_PER_LY = 63241;
+export const AU_PER_PC = AU_PER_LY * LY_PER_PARSEC;
 export const KM_PER_AU = 1.496e8;
 export const KM_PER_PC = 3.086e13;
 
@@ -70,5 +71,11 @@ export const TILE_BASE_URL = "/tiles/";
 
 export const BLOOM_STRENGTH = 0.3;
 export const BLOOM_RADIUS = 0.4;
-export const BLOOM_THRESHOLD = 0.1;
+// Threshold sits above any SDR material output (planets/moons peak
+// around linear 0.7) so the per-pixel bright-pass cutoff doesn't
+// fall mid-gradient on a planet's lit hemisphere — that crossing
+// produced a visible "step" in the Lambertian falloff on uniform
+// bodies (Uranus, Saturn). Stars/BHs/etc. still bloom because they
+// output HDR luma well above 1.0.
+export const BLOOM_THRESHOLD = 1.0;
 

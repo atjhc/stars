@@ -61,6 +61,18 @@ export function registerLabelType(handler: LabelTypeHandler): void {
   }
 }
 
+// Register an additional search kind that dispatches to an existing
+// handler type, with its own keywords and display label. Used when a
+// single handler manages logically distinct families that should show
+// different sublabels in search (e.g. planets and moons both go to the
+// "planet" handler, but moons should sublabel as "Moon").
+export function registerSearchKindAlias(
+  kind: string, type: string, keywords: string[], label: string,
+): void {
+  registerSearchKindKeywords(kind, keywords, label);
+  kindToType.set(kind, type);
+}
+
 // Map a search-entry kind code ("b", "ns", "n") to a handler type name.
 export function handlerTypeForSearchKind(kind: string): string | undefined {
   return kindToType.get(kind);

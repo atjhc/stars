@@ -920,6 +920,139 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
             json.dump(ns_out, f)
         print(f"Neutron stars: {ns_count} in search index")
 
+    # Planets: propagate JPL Approximate Positions (Table 1) Keplerian
+    # elements forward from J2000.0 to the build date, solve Kepler for
+    # the eccentric anomaly, then heliocentric ecliptic → equatorial →
+    # scene. The runtime in src/planets.ts repeats this with the live
+    # date and overwrites the search-index entry, so the value baked
+    # here is just an approximation that's accurate when the catalog
+    # ships and drifts slowly thereafter.
+    planets_path = os.path.join(data_dir, "data", "planets.json")
+    planets_count = 0
+    if os.path.exists(planets_path):
+        import datetime
+        with open(planets_path) as f:
+            planets_raw = json.load(f)
+        AU_PER_PC = 206264.806
+        OBLIQUITY = math.radians(23.4393)
+        cos_e, sin_e = math.cos(OBLIQUITY), math.sin(OBLIQUITY)
+
+        # Julian centuries since J2000.0 for build time.
+        now = datetime.datetime.now(datetime.timezone.utc)
+        j2000 = datetime.datetime(2000, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        T = (now - j2000).total_seconds() / 86400.0 / 36525.0
+
+        def wrap_pi(a):
+            a = a % (2 * math.pi)
+            if a > math.pi: a -= 2 * math.pi
+            return a
+
+        def solve_kepler(M, e):
+            E = M + e * math.sin(M)
+            for _ in range(30):
+                dE = (M + e * math.sin(E) - E) / (1 - e * math.cos(E))
+                E += dE
+                if abs(dE) < 1e-12: break
+            return E
+
+        def helio_ecliptic(pdef):
+            el = pdef["elements"]
+            a = el["a_au"][0] + el["a_au"][1] * T
+            e_ecc = el["e"][0] + el["e"][1] * T
+            i = math.radians(el["i_deg"][0] + el["i_deg"][1] * T)
+            L = math.radians(el["L_deg"][0] + el["L_deg"][1] * T)
+            long_peri = math.radians(el["long_peri_deg"][0] + el["long_peri_deg"][1] * T)
+            long_node = math.radians(el["long_node_deg"][0] + el["long_node_deg"][1] * T)
+            M = wrap_pi(L - long_peri)
+            E = solve_kepler(M, e_ecc)
+            nu = 2 * math.atan2(
+                math.sqrt(1 + e_ecc) * math.sin(E / 2),
+                math.sqrt(1 - e_ecc) * math.cos(E / 2),
+            )
+            r = a * (1 - e_ecc * math.cos(E))
+            omega = long_peri - long_node
+            angle = nu + omega
+            ca, sa = math.cos(angle), math.sin(angle)
+            cn, sn = math.cos(long_node), math.sin(long_node)
+            ci, si = math.cos(i), math.sin(i)
+            return (
+                r * (cn * ca - sn * sa * ci),
+                r * (sn * ca + cn * sa * ci),
+                r * sa * si,
+                a,
+            )
+
+        planets_out = {}
+        helio_positions = {}
+        # Map planets.json `kind` to search-index kind code; runtime
+        # registers each with its own sublabel ("Planet", "Dwarf Planet",
+        # "Asteroid", "Moon"). All dispatch to the same planet handler
+        # so selection / interaction is unchanged.
+        kind_to_search = {"planet": "p", "dwarf": "d", "asteroid": "a", "moon": "m"}
+
+        # First pass: parentless bodies. Same heliocentric Keplerian
+        # propagation runtime planets.ts uses, mirrored so the search
+        # index has a baked starting position before init runs.
+        for pname, pdef in planets_raw.items():
+            if pname.startswith("_") or pdef.get("parent"):
+                continue
+            ecl_x, ecl_y, ecl_z, a_au = helio_ecliptic(pdef)
+            helio_positions[pname] = (ecl_x, ecl_y, ecl_z)
+            scene_factor = SCALE / AU_PER_PC
+            eq_x = ecl_x
+            eq_y = ecl_y * cos_e - ecl_z * sin_e
+            eq_z = ecl_y * sin_e + ecl_z * cos_e
+            scene_pos = [
+                round(eq_x * scene_factor, 12),
+                round(eq_z * scene_factor, 12),
+                round(-eq_y * scene_factor, 12),
+            ]
+            search_kind = kind_to_search.get(pdef.get("kind", "planet"), "p")
+            search_index.append({
+                "n": pname, "k": search_kind,
+                "p": scene_pos,
+                "mg": 0, "M": 0,
+                "d": round(a_au, 3),
+                "a": pdef.get("aliases", []),
+            })
+            planets_out[pname] = pdef
+            planets_count += 1
+        # Second pass: moons. Add parent's heliocentric position to the
+        # moon's geocentric Keplerian to get the moon's heliocentric
+        # ecliptic — same approach as runtime initPlanetLabels.
+        for pname, pdef in planets_raw.items():
+            if pname.startswith("_") or not pdef.get("parent"):
+                continue
+            parent = pdef["parent"]
+            if parent not in helio_positions:
+                print(f"WARN: moon {pname} parent {parent!r} not found, skipping search index")
+                planets_out[pname] = pdef
+                continue
+            geo_x, geo_y, geo_z, a_au = helio_ecliptic(pdef)
+            px, py, pz = helio_positions[parent]
+            ecl_x, ecl_y, ecl_z = px + geo_x, py + geo_y, pz + geo_z
+            scene_factor = SCALE / AU_PER_PC
+            eq_x = ecl_x
+            eq_y = ecl_y * cos_e - ecl_z * sin_e
+            eq_z = ecl_y * sin_e + ecl_z * cos_e
+            scene_pos = [
+                round(eq_x * scene_factor, 12),
+                round(eq_z * scene_factor, 12),
+                round(-eq_y * scene_factor, 12),
+            ]
+            search_index.append({
+                "n": pname, "k": "m",
+                "p": scene_pos,
+                "mg": 0, "M": 0,
+                "d": round(a_au, 6),
+                "a": pdef.get("aliases", []),
+            })
+            planets_out[pname] = pdef
+            planets_count += 1
+        with open(os.path.join(out_dir, "planets.json"), "w") as f:
+            json.dump(planets_out, f)
+        print(f"Planets: {planets_count} in search index (Keplerian @ build time)")
+
     with open(os.path.join(out_dir, "meta.json"), "w") as f:
         json.dump(meta, f)
     with open(os.path.join(out_dir, "notable.json"), "w") as f:
