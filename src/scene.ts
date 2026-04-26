@@ -335,19 +335,20 @@ export function setTargetImmediate(pos: THREE.Vector3) {
   updateCamera();
 }
 
-// Asymmetric exponential ease. The midpoint (where 50% of the
-// distance is covered) sits at t=0.45 instead of 0.5, so the last
-// 55% of the animation is deceleration — the camera settles into the
-// destination with a noticeable glide-to-rest rather than a symmetric
-// stop. The characteristic flat tails of easeInOutExpo remain: both
-// origin and destination linger on screen long enough to read.
-function easeInOutExpoRest(t: number): number {
+// Asymmetric quintic — MID=0.45 leaves more time for deceleration so
+// the camera glides to rest. The quintic shape (vs the more common
+// easeInOutExpo) is load-bearing: transit distance interpolates in
+// LOG space, so target velocity at t=0+ scales as ease'(0) ×
+// log(D₀ / toRadius). For a deep-zoom transit (log range ~10), any
+// nonzero ease'(0) sweeps the start star off-screen in the first
+// frame. Quintic gives ease(0) = ease'(0) = 0 exactly.
+function easeInOutQuintRest(t: number): number {
   if (t <= 0) return 0;
   if (t >= 1) return 1;
   const MID = 0.45;
   return t < MID
-    ? 0.5 * Math.pow(2, 10 * (t / MID - 1))
-    : 0.5 + 0.5 * (1 - Math.pow(2, -10 * (t - MID) / (1 - MID)));
+    ? 0.5 * (t / MID) ** 5
+    : 1 - 0.5 * ((1 - t) / (1 - MID)) ** 5;
 }
 
 // Hold Shift to slow transit animations 10×.
@@ -361,7 +362,7 @@ export function tickAnimation(now: number) {
   if (!animation) return;
   const duration = slowMotion ? animation.duration * 10 : animation.duration;
   const t = Math.min(1, (now - animation.start) / duration);
-  const ease = easeInOutExpoRest(t);
+  const ease = easeInOutQuintRest(t);
 
   // Orbit rotation: ease in/out over the first half of the transit
   // so the camera is fully facing the destination during approach.
