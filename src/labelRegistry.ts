@@ -12,6 +12,10 @@ export interface LabelTypeHandler {
   readonly searchKind?: string;
   readonly searchKeywords?: string[];
   readonly searchLabel?: string;
+  // Overlay selections coexist with the star/system focus. Selecting an
+  // overlay handler clears other handlers but keeps the camera target
+  // and star selection intact. Used for constellations.
+  readonly overlay?: boolean;
   setVisible(visible: boolean): void;
   update(): void;
   selectByName(name: string): boolean;
@@ -95,16 +99,27 @@ export function clearAllSelections(except?: string): void {
 export function selectByType(type: string, name: string): boolean {
   const handler = handlers.find((h) => h.type === type);
   if (!handler) return false;
-  clearAllSelections(type);
+  if (handler.overlay) {
+    // Clear other handler selections but keep star/system focus.
+    for (const h of handlers) {
+      if (h !== handler) h.clearSelection();
+    }
+  } else {
+    clearAllSelections(type);
+  }
   const ok = handler.selectByName(name);
   if (ok) notifySelectionChanged();
   return ok;
 }
 
 export function getActiveDetailHtml(): string | null {
+  // Overlay handlers take priority (e.g. constellation info shown
+  // on top of a star selection).
   for (const h of handlers) {
-    const html = h.detailHtml();
-    if (html) return html;
+    if (h.overlay) { const html = h.detailHtml(); if (html) return html; }
+  }
+  for (const h of handlers) {
+    if (!h.overlay) { const html = h.detailHtml(); if (html) return html; }
   }
   return null;
 }

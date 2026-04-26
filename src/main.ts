@@ -28,7 +28,7 @@ import {
 import { toggleFavorite } from "./favorites.ts";
 
 import { type SearchEntry, getSearchIndex } from "./catalog.ts";
-import { updateDetailPanel } from "./detail.ts";
+import { updateDetailPanel, onDetailStarClick } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
@@ -170,15 +170,18 @@ window.addEventListener("mousemove", (e) => {
   prevMouse.y = e.clientY;
   bumpInput();
   if (e.altKey && !isDragging) {
+    if (!isAltOrbit) { unhoverAll(); clearHoverExcept(null); }
     isAltOrbit = true;
     stopAutoOrbit();
     applyOrbitDrag(dx, dy);
+    scheduleUrlWrite();
     return;
   }
   isAltOrbit = false;
   if (!isDragging) return;
   dragDistance += Math.abs(dx) + Math.abs(dy);
   applyOrbitDrag(dx, dy);
+  scheduleUrlWrite();
 });
 
 window.addEventListener("mouseup", (e) => {
@@ -355,7 +358,7 @@ window.addEventListener("keydown", (e) => {
     doUpdateLabelVisibility();
     scheduleUrlWrite();
   } else if (e.key === "f") {
-    const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name;
+    const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name ?? getHandlerSelectedName();
     if (name) {
       toggleFavorite(name);
       setLabelsDirty(true);
@@ -405,8 +408,11 @@ function trySelectSystem(name: string, subsetNames?: string[]): boolean {
 
 function handleSearchSelect(entry: SearchEntry) {
   pendingSystemSelect = null;
-  animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
-  // Registry-managed types: nebula, BH, NS (and any future kind)
+  // Constellations span the sky — no meaningful point to fly to.
+  if (entry.k !== "x") {
+    animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+  }
+  // Registry-managed types: nebula, BH, NS, constellation (and any future kind)
   const handlerType = entry.k ? handlerTypeForSearchKind(entry.k) : undefined;
   if (handlerType) {
     selectByType(handlerType, entry.n);
@@ -453,6 +459,13 @@ await initBlackHoleLabels();
 await initNeutronStarLabels();
 registerScreenOccluder(getLensingOccluder);
 onSelectionChanged(updateDetailPanel);
+
+// Clicking a star name inside the detail panel (e.g. constellation members)
+// looks it up in the search index and selects it.
+onDetailStarClick((name) => {
+  const entry = getSearchIndex().find((e) => !e.k && e.n === name);
+  if (entry) handleSearchSelect(entry);
+});
 
 // Restore toggle state from URL (defaults: labels on, grid off, constellations on, nebulae on)
 {

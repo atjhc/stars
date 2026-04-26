@@ -28,7 +28,7 @@ export function setHitTargetsOverlay(on: boolean): void {
   hitTargetsOverlay = on;
 }
 
-export type LabelKind = "star" | "system" | "nebula" | "blackhole" | "neutronstar";
+export type LabelKind = "star" | "system" | "nebula" | "blackhole" | "neutronstar" | "constellation";
 
 // A label registration — stable identity across frames. The renderer
 // derives per-frame screen positions and metrics; callers only update
