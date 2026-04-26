@@ -527,6 +527,13 @@ const frustum = new THREE.Frustum();
 const projScreenMatrix = new THREE.Matrix4();
 let lastUpdateTime = 0;
 const UPDATE_INTERVAL = 500;
+// Cached camera state from the last full sweep — when the camera and
+// target haven't moved since then, the next sweep would do identical
+// work, so we skip it. Avoids a recurring per-second tile-iteration
+// spike while the user holds the view still (debug/bench mode keeps
+// the loop awake; in idle mode the loop self-suspends).
+const lastSweepCamPos = new THREE.Vector3(NaN, NaN, NaN);
+const lastSweepTarget = new THREE.Vector3(NaN, NaN, NaN);
 
 export async function initStarfield() {
   tileMeshGroup = new THREE.Group();
@@ -601,6 +608,19 @@ export function updateStarfield() {
   if (now - lastUpdateTime < UPDATE_INTERVAL) return;
   lastUpdateTime = now;
 
+  // labelSetDirty fires asynchronously when a tile load completes its
+  // label spawn — it must run regardless of whether the camera-driven
+  // sweep below is skipped.
+  if (labelSetDirty) {
+    labelSetDirty = false;
+    rebuildSystems();
+    notifyLabelsChanged();
+  }
+
+  if (lastSweepCamPos.equals(camera.position) && lastSweepTarget.equals(target)) return;
+  lastSweepCamPos.copy(camera.position);
+  lastSweepTarget.copy(target);
+
   projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   frustum.setFromProjectionMatrix(projScreenMatrix);
 
@@ -635,12 +655,6 @@ export function updateStarfield() {
   }
 
   evictOldTiles();
-
-  if (labelSetDirty) {
-    labelSetDirty = false;
-    rebuildSystems();
-    notifyLabelsChanged();
-  }
 }
 
 export const tier1LabelMeshFromDiv = (div: HTMLElement): THREE.Object3D | undefined =>

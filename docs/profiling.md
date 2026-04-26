@@ -146,6 +146,16 @@ always.
 
 ### Landed
 
+**Skip tile-stream sweep when camera is still** (`updateStarfield`
+in `src/starfield.ts`). The 500 ms tile-streaming check ran the full
+~184-tile frustum + distance loop unconditionally, producing a
+periodic ~1 ms spike every half-second visible in the bench / debug
+overlay whenever the loop stayed awake (transit, label fades,
+always-on debug mode). Cache the camera position + target from each
+sweep; bail before the iteration when both are unchanged. Spike is
+gone in the still-camera case; sweep still runs every frame the
+camera moves.
+
 **Thrashing fix — collision pass after `labelRenderer.render`** (commit `e189451`).
 `updateLabels` used to call `resolveCollisions` *before* CSS2DRenderer
 had positioned the label divs, so collision decisions were based on
