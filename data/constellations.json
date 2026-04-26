@@ -1,431 +1,7654 @@
 {
-  "Orion": {
-    "iau": "Ori",
-    "description": "The Hunter, one of the most recognizable constellations. Anchored by the bright shoulders Betelgeuse and Bellatrix, the feet Rigel and Saiph, and the three-star Belt Mintaka–Alnilam–Alnitak.",
-    "lines": [
-      ["Meissa", "Betelgeuse"],
-      ["Meissa", "Bellatrix"],
-      ["Betelgeuse", "Bellatrix"],
-      ["Bellatrix", "Mintaka"],
-      ["Betelgeuse", "Alnitak"],
-      ["Mintaka", "Alnilam"],
-      ["Alnilam", "Alnitak"],
-      ["Mintaka", "Rigel"],
-      ["Alnitak", "Saiph"],
-      ["Rigel", "Saiph"]
-    ]
-  },
-
   "Big Dipper": {
     "iau": "UMa",
+    "asterism": true,
     "description": "The seven-star asterism in Ursa Major (Great Bear), one of the most familiar shapes in the northern sky. Dubhe and Merak are the 'pointers' that aim toward Polaris.",
     "lines": [
-      ["Dubhe", "Merak"],
-      ["Merak", "Phecda"],
-      ["Phecda", "Megrez"],
-      ["Megrez", "Dubhe"],
-      ["Megrez", "Alioth"],
-      ["Alioth", "Mizar"],
-      ["Mizar", "Alkaid"]
-    ]
+      [
+        "Dubhe",
+        "Merak"
+      ],
+      [
+        "Merak",
+        "Phecda"
+      ],
+      [
+        "Phecda",
+        "Megrez"
+      ],
+      [
+        "Megrez",
+        "Dubhe"
+      ],
+      [
+        "Megrez",
+        "Alioth"
+      ],
+      [
+        "Alioth",
+        "Mizar"
+      ],
+      [
+        "Mizar",
+        "Alkaid"
+      ]
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Big_Dipper"
   },
-
-  "Cassiopeia": {
-    "iau": "Cas",
-    "description": "The Queen, a distinctive 'W' (or 'M' depending on orientation) of five bright stars in the northern circumpolar sky.",
-    "lines": [
-      ["Caph", "Schedar"],
-      ["Schedar", "Cih"],
-      ["Cih", "Ruchbah"],
-      ["Ruchbah", "Segin"]
-    ]
-  },
-
-  "Crux": {
-    "iau": "Cru",
-    "description": "The Southern Cross, the smallest constellation but one of the most recognizable, depicted on several southern-hemisphere flags. Acrux and Gacrux form the long axis; Mimosa and Imai form the cross-bar.",
-    "lines": [
-      ["Acrux", "Gacrux"],
-      ["Mimosa", "Imai"],
-      ["Imai", "Ginan"]
-    ]
-  },
-
   "Northern Cross": {
     "iau": "Cyg",
+    "asterism": true,
     "description": "The cruciform asterism of Cygnus the Swan, with Deneb at the tail and Albireo at the beak. One leg of the Summer Triangle along with Vega and Altair.",
     "lines": [
-      ["Deneb", "Sadr"],
-      ["Sadr", "Albireo"],
-      ["Sadr", "Aljanah"],
-      ["Sadr", "Fawaris"]
-    ]
+      [
+        "Deneb",
+        "Sadr"
+      ],
+      [
+        "Sadr",
+        "Albireo"
+      ],
+      [
+        "Sadr",
+        "Aljanah"
+      ],
+      [
+        "Sadr",
+        "Fawaris"
+      ]
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Cygnus_(constellation)"
   },
-
-  "Lyra": {
-    "iau": "Lyr",
-    "description": "The Lyre, a small but bright constellation dominated by Vega — the brightest star in the northern celestial hemisphere and one corner of the Summer Triangle.",
-    "lines": [
-      ["Vega", "Sheliak"],
-      ["Sheliak", "Sulafat"],
-      ["Vega", "Sulafat"]
-    ]
-  },
-
-  "Leo": {
-    "iau": "Leo",
-    "description": "The Lion, with the curved 'Sickle' asterism marking the lion's mane and head, and a triangle of stars (Denebola, Zosma, Chertan) marking the hindquarters and tail.",
-    "lines": [
-      ["Regulus", "Algieba"],
-      ["Algieba", "Adhafera"],
-      ["Adhafera", "Rasalas"],
-      ["Rasalas", "Ras Elased Australis"],
-      ["Regulus", "Chertan"],
-      ["Chertan", "Zosma"],
-      ["Zosma", "Algieba"],
-      ["Chertan", "Denebola"],
-      ["Zosma", "Denebola"]
-    ]
-  },
-
-  "Scorpius": {
-    "iau": "Sco",
-    "description": "The Scorpion, with red supergiant Antares at its heart and a long curving tail ending in the stinger stars Shaula and Lesath. One of the few constellations that genuinely resembles its namesake.",
-    "lines": [
-      ["Acrab", "Dschubba"],
-      ["Dschubba", "Fang"],
-      ["Dschubba", "Alniyat"],
-      ["Alniyat", "Antares"],
-      ["Antares", "Paikauhale"],
-      ["Paikauhale", "Larawag"],
-      ["Larawag", "Xamidimura"],
-      ["Xamidimura", "Iklil"],
-      ["Iklil", "Sargas"],
-      ["Sargas", "Fuyue"],
-      ["Fuyue", "Shaula"],
-      ["Shaula", "Lesath"]
-    ]
-  },
-
-  "Canis Major": {
-    "iau": "CMa",
-    "description": "The Greater Dog, hosting Sirius, the brightest star in the night sky. The body is outlined by Mirzam, Adhara, Wezen, and Aludra.",
-    "lines": [
-      ["Mirzam", "Sirius A"],
-      ["Sirius A", "Adhara"],
-      ["Adhara", "Wezen"],
-      ["Wezen", "Aludra"],
-      ["Adhara", "Furud"]
-    ]
-  },
-
-  "Canis Minor": {
-    "iau": "CMi",
-    "description": "The Lesser Dog, a tiny constellation whose only bright stars are Procyon (eighth-brightest in the sky) and Gomeisa.",
-    "lines": [
-      ["Procyon A", "Gomeisa"]
-    ]
-  },
-
-  "Gemini": {
-    "iau": "Gem",
-    "description": "The Twins, with the heads of Castor and Pollux side by side and two parallel lines of stars trailing off representing their bodies.",
-    "lines": [
-      ["Castor", "Pollux"],
-      ["Castor", "Mebsuta"],
-      ["Mebsuta", "Propus"],
-      ["Propus", "Tejat"],
-      ["Pollux", "Wasat"],
-      ["Wasat", "Alhena"],
-      ["Wasat", "Alzirr"]
-    ]
-  },
-
-  "Taurus": {
-    "iau": "Tau",
-    "description": "The Bull, with the V-shaped Hyades cluster forming the face, red giant Aldebaran as the glaring eye, and two long horns ending at Elnath and Tianguan.",
-    "lines": [
-      ["Prima Hyadum", "Secunda Hyadum"],
-      ["Secunda Hyadum", "Chamukuy"],
-      ["Chamukuy", "Aldebaran"],
-      ["Aldebaran", "Ain"],
-      ["Aldebaran", "Elnath"],
-      ["Aldebaran", "Tianguan"]
-    ]
-  },
-
-  "Auriga": {
-    "iau": "Aur",
-    "description": "The Charioteer, a large pentagon of bright stars sharing Elnath with Taurus. Capella, the sixth-brightest star in the sky, dominates.",
-    "lines": [
-      ["Capella", "Menkalinan"],
-      ["Menkalinan", "Mahasim"],
-      ["Mahasim", "Elnath"],
-      ["Elnath", "Hassaleh"],
-      ["Hassaleh", "Capella"],
-      ["Capella", "Haedus"],
-      ["Haedus", "Saclateni"]
-    ]
-  },
-
-  "Perseus": {
-    "iau": "Per",
-    "description": "The Hero, holding the severed head of Medusa (Algol, the 'Demon Star', a famous eclipsing binary). Mirfak anchors the central curve.",
-    "lines": [
-      ["Mirfak", "Algol A"],
-      ["Algol A", "Misam"],
-      ["Mirfak", "Miram"],
-      ["Mirfak", "Atik"],
-      ["Atik", "Menkib"]
-    ]
-  },
-
   "Andromeda": {
     "iau": "And",
-    "description": "The Chained Princess. A chain of three bright stars — Alpheratz, Mirach, Almach — runs away from the Great Square of Pegasus.",
+    "description": "the Chained Maiden. The Chained Princess. A chain of three bright stars — Alpheratz, Mirach, Almach — runs away from the Great Square of Pegasus.",
     "lines": [
-      ["Alpheratz", "Mirach"],
-      ["Mirach", "Almach"]
-    ]
+      [
+        "Alpheratz",
+        "HIP 3092"
+      ],
+      [
+        "HIP 3092",
+        "Mirach"
+      ],
+      [
+        "Mirach",
+        "Almach"
+      ],
+      [
+        "HIP 113726",
+        "HIP 116631"
+      ],
+      [
+        "HIP 116631",
+        "HIP 116805"
+      ],
+      [
+        "HIP 116805",
+        "HIP 116584"
+      ],
+      [
+        "HIP 116631",
+        "HIP 2912"
+      ],
+      [
+        "HIP 2912",
+        "HIP 3092"
+      ],
+      [
+        "HIP 2912",
+        "Mirach"
+      ],
+      [
+        "Mirach",
+        "HIP 4436"
+      ],
+      [
+        "HIP 4436",
+        "HIP 3881"
+      ],
+      [
+        "HIP 3881",
+        "HIP 5434"
+      ],
+      [
+        "HIP 5434",
+        "Nembus"
+      ],
+      [
+        "HIP 3092",
+        "HIP 3031"
+      ],
+      [
+        "HIP 3031",
+        "Shimu"
+      ],
+      [
+        "Shimu",
+        "Kui"
+      ]
+    ],
+    "stars": {
+      "Alpheratz": [
+        77.925,
+        43.383,
+        -2.853
+      ],
+      "HIP 3092": [
+        80.364,
+        48.7389,
+        -13.9269
+      ],
+      "Mirach": [
+        140.838,
+        105.765,
+        -44.226
+      ],
+      "Almach": [
+        229.104,
+        243.396,
+        -137.523
+      ],
+      "HIP 113726": [
+        452.0288,
+        425.272,
+        117.0687
+      ],
+      "HIP 116631": [
+        333.0065,
+        314.8911,
+        31.8644
+      ],
+      "HIP 116805": [
+        110.3767,
+        108.235,
+        9.4585
+      ],
+      "HIP 116584": [
+        54.3111,
+        57.4232,
+        5.3338
+      ],
+      "HIP 2912": [
+        435.456,
+        294.429,
+        -70.686
+      ],
+      "HIP 4436": [
+        85.236,
+        69.933,
+        -21.549
+      ],
+      "HIP 3881": [
+        381.591,
+        340.653,
+        -84.273
+      ],
+      "HIP 5434": [
+        427.203,
+        484.104,
+        -133.677
+      ],
+      "Nembus": [
+        97.275,
+        121.371,
+        -44.325
+      ],
+      "HIP 3031": [
+        134.007,
+        76.314,
+        -22.758
+      ],
+      "Shimu": [
+        148.641,
+        68.469,
+        -31.146
+      ],
+      "Kui": [
+        212.346,
+        94.911,
+        -54.132
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Andromeda_(constellation)"
   },
-
-  "Pegasus": {
-    "iau": "Peg",
-    "description": "The Winged Horse, marked by the Great Square (Markab, Scheat, Alpheratz, Algenib) forming the body. Enif marks the horse's nose.",
+  "Antlia": {
+    "iau": "Ant",
+    "description": "The Air Pump, a faint southern constellation created by Nicolas-Louis de Lacaille in the 18th century.",
     "lines": [
-      ["Markab", "Scheat"],
-      ["Scheat", "Alpheratz"],
-      ["Alpheratz", "Algenib"],
-      ["Algenib", "Markab"],
-      ["Markab", "Homam"],
-      ["Homam", "Biham"],
-      ["Biham", "Enif"],
-      ["Scheat", "Matar"],
-      ["Matar", "Sadalbari"]
-    ]
+      [
+        "HIP 53502",
+        "HIP 51172"
+      ],
+      [
+        "HIP 51172",
+        "HIP 46515"
+      ]
+    ],
+    "stars": {
+      "HIP 53502": [
+        -146.436,
+        -115.266,
+        -41.493
+      ],
+      "HIP 51172": [
+        -265.149,
+        -173.814,
+        -113.709
+      ],
+      "HIP 46515": [
+        -414.645,
+        -380.01,
+        -320.343
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Antlia_(constellation)"
   },
-
-  "Aries": {
-    "iau": "Ari",
-    "description": "The Ram. A small zodiacal constellation marked by a simple arc of three stars: Hamal, Sheratan, and Mesarthim.",
+  "Apus": {
+    "iau": "Aps",
+    "description": "The Bird of Paradise, a faint southern constellation near the south celestial pole.",
     "lines": [
-      ["Hamal", "Sheratan"],
-      ["Sheratan", "Mesarthim"]
-    ]
+      [
+        "HIP 72370",
+        "HIP 81065"
+      ],
+      [
+        "HIP 80047",
+        "HIP 81852"
+      ],
+      [
+        "HIP 81852",
+        "HIP 81065"
+      ]
+    ],
+    "stars": {
+      "HIP 72370": [
+        -58.0708,
+        -403.4695,
+        52.2238
+      ],
+      "HIP 81065": [
+        -10.2069,
+        -141.0567,
+        25.731
+      ],
+      "HIP 80047": [
+        -57.8778,
+        -687.3363,
+        124.6112
+      ],
+      "HIP 81852": [
+        -10.2778,
+        -140.9562,
+        29.4631
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Apus_(constellation)"
   },
-
-  "Virgo": {
-    "iau": "Vir",
-    "description": "The Maiden, the second-largest constellation in the sky. Anchored by the blue supergiant Spica, with Porrima and Vindemiatrix extending the wheat-sheaf the figure carries.",
-    "lines": [
-      ["Spica", "Heze"],
-      ["Heze", "Porrima"],
-      ["Porrima", "Zaniah"],
-      ["Zaniah", "Zavijava"],
-      ["Porrima", "Minelauva"],
-      ["Minelauva", "Vindemiatrix"]
-    ]
-  },
-
-  "Libra": {
-    "iau": "Lib",
-    "description": "The Scales, the only zodiac constellation named for an object rather than a creature. Zubenelgenubi ('southern claw') and Zubeneschamali ('northern claw') recall its former role as part of Scorpius.",
-    "lines": [
-      ["Zubenelgenubi", "Zubeneschamali"],
-      ["Zubenelgenubi", "Brachium"],
-      ["Zubeneschamali", "Zubenelhakrabi"]
-    ]
-  },
-
-  "Sagittarius": {
-    "iau": "Sgr",
-    "description": "The Archer, whose brightest stars form the famous 'Teapot' asterism pointed toward the center of the Milky Way.",
-    "lines": [
-      ["Alnasl", "Kaus Media"],
-      ["Kaus Media", "Kaus Australis"],
-      ["Kaus Australis", "Ascella"],
-      ["Ascella", "Nunki"],
-      ["Nunki", "Kaus Borealis"],
-      ["Kaus Borealis", "Kaus Media"],
-      ["Nunki", "Albaldah"]
-    ]
-  },
-
-  "Capricornus": {
-    "iau": "Cap",
-    "description": "The Sea-Goat, a faint but ancient zodiacal figure forming a rough triangle in the southern sky.",
-    "lines": [
-      ["Algedi", "Dabih"],
-      ["Dabih", "Nashira"],
-      ["Nashira", "Deneb Algedi"],
-      ["Deneb Algedi", "Algedi"]
-    ]
-  },
-
-  "Aquarius": {
-    "iau": "Aqr",
-    "description": "The Water-Bearer, one of the oldest recognized constellations. Sadalmelik and Sadalsuud are the two luckiest stars in the sky by traditional Arabic names.",
-    "lines": [
-      ["Sadalmelik", "Sadalsuud"],
-      ["Sadalmelik", "Sadachbia"],
-      ["Sadalsuud", "Albali"],
-      ["Sadalmelik", "Skat"]
-    ]
-  },
-
   "Aquila": {
     "iau": "Aql",
     "description": "The Eagle, with Altair at the head flanked by Tarazed and Alshain. Altair is the twelfth-brightest star in the sky and one corner of the Summer Triangle.",
     "lines": [
-      ["Tarazed", "Altair"],
-      ["Altair", "Alshain"],
-      ["Altair", "Okab"],
-      ["Altair", "Antinous"]
-    ]
+      [
+        "Alshain",
+        "Altair"
+      ],
+      [
+        "Altair",
+        "Tarazed"
+      ],
+      [
+        "Tarazed",
+        "HIP 95501"
+      ],
+      [
+        "HIP 95501",
+        "HIP 93805"
+      ],
+      [
+        "HIP 95501",
+        "Okab"
+      ],
+      [
+        "HIP 95501",
+        "HIP 97804"
+      ],
+      [
+        "HIP 97804",
+        "HIP 99473"
+      ],
+      [
+        "HIP 93244",
+        "Okab"
+      ],
+      [
+        "HIP 93805",
+        "HIP 93429"
+      ],
+      [
+        "HIP 99473",
+        "HIP 96468"
+      ],
+      [
+        "HIP 96468",
+        "HIP 93805"
+      ],
+      [
+        "HIP 93805",
+        "Okab"
+      ]
+    ],
+    "stars": {
+      "Alshain": [
+        19.6916,
+        4.5856,
+        35.7769
+      ],
+      "Altair": [
+        7.0664,
+        2.3722,
+        13.4619
+      ],
+      "Tarazed": [
+        159.6468,
+        66.893,
+        319.2956
+      ],
+      "HIP 95501": [
+        16.9501,
+        2.5308,
+        43.308
+      ],
+      "HIP 93805": [
+        32.3119,
+        -9.683,
+        108.6496
+      ],
+      "Okab": [
+        20.8764,
+        18.2999,
+        71.1496
+      ],
+      "HIP 97804": [
+        599.0076,
+        22.3108,
+        1120.9844
+      ],
+      "HIP 99473": [
+        142.766,
+        -3.7761,
+        221.3073
+      ],
+      "HIP 93244": [
+        35.3988,
+        37.05,
+        132.9855
+      ],
+      "HIP 93429": [
+        35.0255,
+        -13.2389,
+        126.9851
+      ],
+      "HIP 96468": [
+        147.3043,
+        -8.0768,
+        328.0682
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Aquila_(constellation)"
   },
-
-  "Delphinus": {
-    "iau": "Del",
-    "description": "The Dolphin, a small diamond-shaped constellation. Sualocin and Rotanev encode Nicolaus Venator (Niccolò Cacciatore) when read backwards.",
+  "Aquarius": {
+    "iau": "Aqr",
+    "description": "the Water Bearer. The Water-Bearer, one of the oldest recognized constellations. Sadalmelik and Sadalsuud are the two luckiest stars in the sky by traditional Arabic names.",
     "lines": [
-      ["Sualocin", "Rotanev"]
-    ]
+      [
+        "Albali",
+        "Sadalsuud"
+      ],
+      [
+        "Sadalsuud",
+        "Sadalmelik"
+      ],
+      [
+        "Sadalmelik",
+        "Sadachbia"
+      ],
+      [
+        "Sadachbia",
+        "HIP 110960"
+      ],
+      [
+        "HIP 110960",
+        "HIP 111497"
+      ],
+      [
+        "HIP 110960",
+        "HIP 110672"
+      ],
+      [
+        "HIP 110672",
+        "Sadalmelik"
+      ],
+      [
+        "HIP 109139",
+        "Sadalsuud"
+      ],
+      [
+        "Sadalmelik",
+        "Ancha"
+      ],
+      [
+        "Ancha",
+        "HIP 112961"
+      ],
+      [
+        "HIP 112961",
+        "HIP 114724"
+      ],
+      [
+        "HIP 114724",
+        "HIP 115033"
+      ],
+      [
+        "HIP 115033",
+        "HIP 115438"
+      ],
+      [
+        "HIP 115033",
+        "HIP 114341"
+      ],
+      [
+        "HIP 115033",
+        "Skat"
+      ],
+      [
+        "Skat",
+        "HIP 112716"
+      ],
+      [
+        "HIP 112716",
+        "HIP 112961"
+      ]
+    ],
+    "stars": {
+      "Albali": [
+        125.909,
+        -31.5238,
+        140.2344
+      ],
+      "Sadalsuud": [
+        392.2778,
+        -47.9813,
+        296.788
+      ],
+      "Sadalmelik": [
+        422.9631,
+        -2.6882,
+        230.1668
+      ],
+      "Sadachbia": [
+        136.9078,
+        -3.6462,
+        62.6406
+      ],
+      "HIP 110960": [
+        77.9092,
+        -0.0295,
+        32.7372
+      ],
+      "HIP 111497": [
+        143.9887,
+        -0.3166,
+        55.7366
+      ],
+      "HIP 110672": [
+        658.6571,
+        17.2934,
+        288.8662
+      ],
+      "HIP 109139": [
+        137.606,
+        -38.622,
+        74.3745
+      ],
+      "Ancha": [
+        153.8081,
+        -23.3494,
+        74.3256
+      ],
+      "HIP 112961": [
+        336.0293,
+        -46.719,
+        101.7499
+      ],
+      "HIP 114724": [
+        181.1798,
+        -19.5872,
+        36.5959
+      ],
+      "HIP 115033": [
+        358.588,
+        -58.9581,
+        66.6164
+      ],
+      "HIP 115438": [
+        139.3074,
+        -51.6536,
+        22.7061
+      ],
+      "HIP 114341": [
+        226.5327,
+        -89.9195,
+        50.7953
+      ],
+      "Skat": [
+        136.3771,
+        -40.2704,
+        39.9762
+      ],
+      "HIP 112716": [
+        270.6376,
+        -68.6516,
+        85.8621
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Aquarius_(constellation)"
   },
-
+  "Ara": {
+    "iau": "Ara",
+    "description": "The Altar, a small southern constellation between Scorpius and Triangulum Australe.",
+    "lines": [
+      [
+        "HIP 85267",
+        "HIP 85727"
+      ],
+      [
+        "HIP 85727",
+        "HIP 82363"
+      ],
+      [
+        "HIP 82363",
+        "HIP 83081"
+      ],
+      [
+        "HIP 83081",
+        "HIP 83153"
+      ],
+      [
+        "HIP 83153",
+        "HIP 85792"
+      ],
+      [
+        "HIP 85792",
+        "HIP 88714"
+      ],
+      [
+        "HIP 85792",
+        "HIP 85258"
+      ]
+    ],
+    "stars": {
+      "HIP 85267": [
+        -85.2812,
+        -852.5999,
+        560.4931
+      ],
+      "HIP 85727": [
+        -11.2103,
+        -158.7256,
+        88.4237
+      ],
+      "HIP 82363": [
+        -42.701,
+        -236.0201,
+        134.9906
+      ],
+      "HIP 83081": [
+        -66.1774,
+        -370.6145,
+        241.1603
+      ],
+      "HIP 83153": [
+        -51.8472,
+        -265.5927,
+        192.1012
+      ],
+      "HIP 85792": [
+        -19.4213,
+        -188.0294,
+        157.2747
+      ],
+      "HIP 88714": [
+        13.8856,
+        -573.8678,
+        479.7721
+      ],
+      "HIP 85258": [
+        -50.7127,
+        -489.7553,
+        332.377
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Ara_(constellation)"
+  },
+  "Aries": {
+    "iau": "Ari",
+    "description": "The Ram. A small zodiacal constellation marked by a simple arc of three stars: Hamal, Sheratan, and Mesarthim.",
+    "lines": [
+      [
+        "Mesarthim",
+        "Sheratan"
+      ],
+      [
+        "Sheratan",
+        "Hamal"
+      ],
+      [
+        "Hamal",
+        "Bharani"
+      ]
+    ],
+    "stars": {
+      "Mesarthim": [
+        125.31,
+        49.86,
+        -67.704
+      ],
+      "Sheratan": [
+        44.259,
+        19.167,
+        -24.189
+      ],
+      "Hamal": [
+        47.196,
+        24.102,
+        -29.256
+      ],
+      "Bharani": [
+        99.864,
+        69.786,
+        -91.494
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Aries_(constellation)"
+  },
+  "Auriga": {
+    "iau": "Aur",
+    "description": "The Charioteer, a large pentagon of bright stars sharing Elnath with Taurus. Capella, the sixth-brightest star in the sky, dominates.",
+    "lines": [
+      [
+        "Elnath",
+        "Hassaleh"
+      ],
+      [
+        "Hassaleh",
+        "Haedus"
+      ],
+      [
+        "Haedus",
+        "Capella"
+      ],
+      [
+        "Capella",
+        "Menkalinan"
+      ],
+      [
+        "Menkalinan",
+        "Mahasim"
+      ],
+      [
+        "Mahasim",
+        "Elnath"
+      ],
+      [
+        "Haedus",
+        "Saclateni"
+      ],
+      [
+        "Saclateni",
+        "Almaaz"
+      ],
+      [
+        "Almaaz",
+        "Capella"
+      ],
+      [
+        "Capella",
+        "HIP 28358"
+      ],
+      [
+        "HIP 28358",
+        "Menkalinan"
+      ]
+    ],
+    "stars": {
+      "Elnath": [
+        15.846,
+        58.965,
+        -106.95
+      ],
+      "Hassaleh": [
+        94.044,
+        226.401,
+        -333.417
+      ],
+      "Haedus": [
+        37.212,
+        141.036,
+        -156.546
+      ],
+      "Capella": [
+        5.139,
+        28.32,
+        -26.862
+      ],
+      "Menkalinan": [
+        0.108,
+        52.707,
+        -52.803
+      ],
+      "Mahasim": [
+        0.147,
+        92.097,
+        -121.278
+      ],
+      "Saclateni": [
+        394.32,
+        1383.8604,
+        -1537.9557
+      ],
+      "Almaaz": [
+        548.868,
+        2102.793,
+        -2121.123
+      ],
+      "HIP 28358": [
+        0.1584,
+        105.6483,
+        -75.9573
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Auriga_(constellation)"
+  },
   "Boötes": {
     "iau": "Boo",
     "description": "The Herdsman, a kite-shaped constellation anchored by brilliant orange Arcturus, the fourth-brightest star in the sky.",
     "lines": [
-      ["Arcturus", "Muphrid"],
-      ["Arcturus", "Izar"],
-      ["Izar", "Nekkar"],
-      ["Nekkar", "Seginus"],
-      ["Seginus", "Arcturus"]
-    ]
+      [
+        "Arcturus",
+        "Izar"
+      ],
+      [
+        "Izar",
+        "HIP 74666"
+      ],
+      [
+        "HIP 74666",
+        "Nekkar"
+      ],
+      [
+        "Nekkar",
+        "Seginus"
+      ],
+      [
+        "Seginus",
+        "HIP 71053"
+      ],
+      [
+        "HIP 71053",
+        "Arcturus"
+      ],
+      [
+        "Arcturus",
+        "Muphrid"
+      ],
+      [
+        "Muphrid",
+        "HIP 67275"
+      ],
+      [
+        "Arcturus",
+        "HIP 71795"
+      ],
+      [
+        "Seginus",
+        "Xuange"
+      ],
+      [
+        "Xuange",
+        "HIP 70497"
+      ],
+      [
+        "HIP 70497",
+        "HIP 69483"
+      ],
+      [
+        "HIP 69483",
+        "Xuange"
+      ]
+    ],
+    "stars": {
+      "Arcturus": [
+        -26.4703,
+        11.0968,
+        17.7976
+      ],
+      "Izar": [
+        -124.7483,
+        84.8092,
+        109.3888
+      ],
+      "HIP 74666": [
+        -61.5696,
+        61.5277,
+        70.5181
+      ],
+      "Nekkar": [
+        -110.6293,
+        134.2527,
+        112.5242
+      ],
+      "Seginus": [
+        -49.3483,
+        49.4852,
+        38.5821
+      ],
+      "HIP 71053": [
+        -100.1857,
+        74.4628,
+        78.154
+      ],
+      "Muphrid": [
+        -28.463,
+        10.7901,
+        15.5644
+      ],
+      "HIP 67275": [
+        -39.8884,
+        14.0553,
+        20.1627
+      ],
+      "HIP 71795": [
+        -119.7767,
+        38.3595,
+        101.5324
+      ],
+      "Xuange": [
+        -52.3066,
+        65.6109,
+        35.4088
+      ],
+      "HIP 70497": [
+        -21.7016,
+        34.2808,
+        15.9409
+      ],
+      "HIP 69483": [
+        -77.6398,
+        118.0981,
+        51.1374
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Boötes"
   },
-
-  "Hercules": {
-    "iau": "Her",
-    "description": "The Strong Man, a large but relatively faint constellation named for the mythological hero.",
+  "Canis Major": {
+    "iau": "CMa",
     "lines": [
-      ["Rasalgethi", "Kornephoros"],
-      ["Kornephoros", "Sarin"]
-    ]
+      [
+        "Mirzam",
+        "Sirius"
+      ],
+      [
+        "Sirius",
+        "Wezen"
+      ],
+      [
+        "Wezen",
+        "Adhara"
+      ],
+      [
+        "Wezen",
+        "Aludra"
+      ],
+      [
+        "Mirzam",
+        "HIP 31592"
+      ],
+      [
+        "HIP 31592",
+        "HIP 33152"
+      ],
+      [
+        "HIP 33152",
+        "Adhara"
+      ],
+      [
+        "Sirius",
+        "HIP 33347"
+      ],
+      [
+        "HIP 33347",
+        "Muliphein"
+      ],
+      [
+        "Muliphein",
+        "HIP 33160"
+      ],
+      [
+        "HIP 33160",
+        "HIP 33347"
+      ]
+    ],
+    "stars": {
+      "Mirzam": [
+        -42.63,
+        -139.707,
+        -428.988
+      ],
+      "Sirius": [
+        -1.482,
+        -2.274,
+        -7.431
+      ],
+      "Wezen": [
+        -389.199,
+        -656.94,
+        -1265.283
+      ],
+      "Adhara": [
+        -82.494,
+        -180.516,
+        -315.426
+      ],
+      "Aludra": [
+        -572.286,
+        -895.299,
+        -1489.011
+      ],
+      "HIP 31592": [
+        -9.24,
+        -20.253,
+        -57.237
+      ],
+      "HIP 33152": [
+        -497.625,
+        -954.999,
+        -2067.492
+      ],
+      "HIP 33347": [
+        -735.783,
+        -930.771,
+        -2943.567
+      ],
+      "Muliphein": [
+        -104.643,
+        -106.626,
+        -366.39
+      ],
+      "HIP 33160": [
+        -56.955,
+        -51.852,
+        -236.367
+      ]
+    },
+    "description": "the Greater Dog.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Canis_Major"
   },
-
-  "Ophiuchus": {
-    "iau": "Oph",
-    "description": "The Serpent-Bearer, a large constellation occasionally called the 13th zodiac sign since the ecliptic passes through it.",
+  "Canis Minor": {
+    "iau": "CMi",
     "lines": [
-      ["Rasalhague", "Cebalrai"],
-      ["Cebalrai", "Sabik"],
-      ["Sabik", "Yed Posterior"],
-      ["Yed Posterior", "Yed Prior"],
-      ["Yed Prior", "Marfik"],
-      ["Marfik", "Rasalhague"]
-    ]
+      [
+        "Procyon",
+        "Gomeisa"
+      ]
+    ],
+    "stars": {
+      "Procyon": [
+        -4.407,
+        0.96,
+        -9.528
+      ],
+      "Gomeisa": [
+        -54.63,
+        21.444,
+        -136.668
+      ]
+    },
+    "description": "the Lesser Dog.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Canis_Minor"
   },
-
-  "Draco": {
-    "iau": "Dra",
-    "description": "The Dragon, a long winding circumpolar constellation whose tail once contained the pole star Thuban ~4,800 years ago.",
+  "Canes Venatici": {
+    "iau": "CVn",
+    "description": "The Hunting Dogs, representing the dogs of Boötes. Cor Caroli is named in honor of Charles I of England.",
     "lines": [
-      ["Eltanin", "Rastaban"],
-      ["Rastaban", "Grumium"],
-      ["Grumium", "Eltanin"],
-      ["Eltanin", "Altais"],
-      ["Altais", "Athebyne"],
-      ["Athebyne", "Aldhibah"],
-      ["Aldhibah", "Edasich"],
-      ["Edasich", "Thuban"],
-      ["Thuban", "Giausar"]
-    ]
+      [
+        "Cor Caroli",
+        "Chara"
+      ]
+    ],
+    "stars": {
+      "Cor Caroli": [
+        -80.3853,
+        65.4732,
+        20.0527
+      ],
+      "Chara": [
+        -18.7986,
+        16.7294,
+        2.7879
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Canes_Venatici"
   },
-
-  "Cepheus": {
-    "iau": "Cep",
-    "description": "The King, a house-shaped constellation near the north celestial pole.",
+  "Caelum": {
+    "iau": "Cae",
     "lines": [
-      ["Alderamin", "Alfirk"],
-      ["Alfirk", "Errai"]
-    ]
+      [
+        "HIP 23595",
+        "HIP 21861"
+      ],
+      [
+        "HIP 21861",
+        "HIP 21770"
+      ],
+      [
+        "HIP 21770",
+        "HIP 21060"
+      ]
+    ],
+    "stars": {
+      "HIP 23595": [
+        33.357,
+        -98.991,
+        -134.802
+      ],
+      "HIP 21861": [
+        23.049,
+        -52.341,
+        -65.139
+      ],
+      "HIP 21770": [
+        15.471,
+        -40.806,
+        -42.831
+      ],
+      "HIP 21060": [
+        168.378,
+        -443.187,
+        -410.73
+      ]
+    },
+    "description": "the Chisel.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Caelum_(constellation)"
   },
-
-  "Cetus": {
-    "iau": "Cet",
-    "description": "The Sea Monster (or Whale), a large sprawling southern constellation from the Perseus myth.",
+  "Camelopardalis": {
+    "iau": "Cam",
+    "description": "The Giraffe, a large but faint constellation in the north circumpolar region near Polaris.",
     "lines": [
-      ["Menkar", "Kaffaljidhma"],
-      ["Kaffaljidhma", "Baten Kaitos"],
-      ["Baten Kaitos", "Diphda"]
-    ]
+      [
+        "HIP 23040",
+        "HIP 23522"
+      ],
+      [
+        "HIP 23522",
+        "HIP 22783"
+      ],
+      [
+        "HIP 22783",
+        "HIP 29997"
+      ],
+      [
+        "HIP 29997",
+        "HIP 33694"
+      ],
+      [
+        "HIP 22783",
+        "HIP 17959"
+      ],
+      [
+        "HIP 17959",
+        "HIP 17884"
+      ],
+      [
+        "HIP 17884",
+        "HIP 16228"
+      ]
+    ],
+    "stars": {
+      "HIP 23040": [
+        51.114,
+        257.979,
+        -182.106
+      ],
+      "HIP 23522": [
+        93.213,
+        672.57,
+        -369.852
+      ],
+      "HIP 22783": [
+        577.521,
+        4645.062,
+        -1951.245
+      ],
+      "HIP 29997": [
+        -4.7424,
+        152.976,
+        -57.5499
+      ],
+      "HIP 33694": [
+        -10.257,
+        171.174,
+        -38.238
+      ],
+      "HIP 17959": [
+        60.945,
+        336.567,
+        -95.997
+      ],
+      "HIP 17884": [
+        201.2643,
+        820.2513,
+        -314.469
+      ],
+      "HIP 16228": [
+        873.561,
+        2466.456,
+        -1128.921
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Camelopardalis_(constellation)"
   },
-
-  "Eridanus": {
-    "iau": "Eri",
-    "description": "The River, an enormous winding constellation beginning near Rigel (in Orion) and flowing down to brilliant Achernar in the far south.",
+  "Capricornus": {
+    "iau": "Cap",
+    "description": "the Sea Goat. The Sea-Goat, a faint but ancient zodiacal figure forming a rough triangle in the southern sky.",
     "lines": [
-      ["Cursa", "Zaurak"],
-      ["Zaurak", "Delta Eridani"],
-      ["Delta Eridani", "Epsilon Eridani"],
-      ["Achernar", "Acamar"]
-    ]
+      [
+        "Algedi",
+        "Dabih"
+      ],
+      [
+        "Dabih",
+        "HIP 102485"
+      ],
+      [
+        "HIP 102485",
+        "HIP 102978"
+      ],
+      [
+        "HIP 102978",
+        "HIP 105881"
+      ],
+      [
+        "HIP 105881",
+        "HIP 106723"
+      ],
+      [
+        "HIP 106723",
+        "Deneb Algedi"
+      ],
+      [
+        "Deneb Algedi",
+        "Nashira"
+      ],
+      [
+        "Nashira",
+        "HIP 104139"
+      ],
+      [
+        "HIP 104139",
+        "Algedi"
+      ]
+    ],
+    "stars": {
+      "Algedi": [
+        53.836,
+        -21.1425,
+        78.2922
+      ],
+      "Dabih": [
+        167.7605,
+        -76.6927,
+        237.3509
+      ],
+      "HIP 102485": [
+        26.398,
+        -18.7981,
+        29.8124
+      ],
+      "HIP 102978": [
+        471.0027,
+        -350.9555,
+        505.8778
+      ],
+      "HIP 105881": [
+        257.1526,
+        -135.1962,
+        203.3292
+      ],
+      "HIP 106723": [
+        743.0843,
+        -323.5412,
+        534.5479
+      ],
+      "Deneb Algedi": [
+        28.6032,
+        -9.8886,
+        18.7458
+      ],
+      "Nashira": [
+        113.3805,
+        -41.4149,
+        79.3229
+      ],
+      "HIP 104139": [
+        103.3304,
+        -44.1952,
+        98.1022
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Capricornus_(constellation)"
   },
-
-  "Lepus": {
-    "iau": "Lep",
-    "description": "The Hare, crouching at the feet of Orion.",
-    "lines": [
-      ["Arneb", "Nihal"]
-    ]
-  },
-
-  "Hydra": {
-    "iau": "Hya",
-    "description": "The Water Snake, the largest of the 88 modern constellations by area. Alphard ('the solitary one') is its only bright star.",
-    "lines": [
-      ["Ashlesha", "Alphard"],
-      ["Alphard", "Ukdah"]
-    ]
-  },
-
-  "Centaurus": {
-    "iau": "Cen",
-    "description": "The Centaur, home to the closest stellar system to Sol (Alpha Centauri) and the second-brightest star in the constellation, Hadar.",
-    "lines": [
-      ["Rigil Kentaurus", "Toliman"],
-      ["Rigil Kentaurus", "Hadar"],
-      ["Hadar", "Menkent"]
-    ]
-  },
-
   "Carina": {
     "iau": "Car",
     "description": "The Keel of the ship Argo. Canopus is the second-brightest star in the night sky.",
     "lines": [
-      ["Canopus", "Avior"],
-      ["Avior", "Aspidiske"],
-      ["Aspidiske", "Miaplacidus"],
-      ["Aspidiske", "Tureis"]
-    ]
+      [
+        "Canopus",
+        "Miaplacidus"
+      ],
+      [
+        "Miaplacidus",
+        "HIP 50099"
+      ],
+      [
+        "HIP 50099",
+        "HIP 52419"
+      ],
+      [
+        "HIP 52419",
+        "HIP 51576"
+      ],
+      [
+        "HIP 51576",
+        "HIP 50371"
+      ],
+      [
+        "HIP 50371",
+        "Aspidiske"
+      ],
+      [
+        "Aspidiske",
+        "Alsephina"
+      ],
+      [
+        "HIP 51576",
+        "HIP 53253"
+      ],
+      [
+        "HIP 52419",
+        "HIP 54301"
+      ],
+      [
+        "HIP 54301",
+        "HIP 54751"
+      ],
+      [
+        "HIP 54751",
+        "HIP 54463"
+      ],
+      [
+        "HIP 54463",
+        "HIP 53253"
+      ],
+      [
+        "Aspidiske",
+        "Avior"
+      ],
+      [
+        "Avior",
+        "HIP 38827"
+      ],
+      [
+        "HIP 38827",
+        "HIP 39953"
+      ]
+    ],
+    "stars": {
+      "Canopus": [
+        -17.979,
+        -226.188,
+        -171.396
+      ],
+      "Miaplacidus": [
+        -26.943,
+        -97.641,
+        -24.006
+      ],
+      "HIP 50099": [
+        -110.397,
+        -339.819,
+        -55.2
+      ],
+      "HIP 52419": [
+        -160.263,
+        -354.24,
+        -56.001
+      ],
+      "HIP 51576": [
+        -204.753,
+        -409.86,
+        -82.698
+      ],
+      "HIP 50371": [
+        -301.185,
+        -611.49,
+        -145.14
+      ],
+      "Aspidiske": [
+        -272.664,
+        -605.376,
+        -234.756
+      ],
+      "Alsephina": [
+        -28.182,
+        -60.477,
+        -32.22
+      ],
+      "HIP 53253": [
+        -44.352,
+        -76.59,
+        -13.245
+      ],
+      "HIP 54301": [
+        -158.835,
+        -312.603,
+        -37.737
+      ],
+      "HIP 54751": [
+        -3697.689,
+        -6628.638,
+        -775.851
+      ],
+      "HIP 54463": [
+        -6767.493,
+        -11541.045,
+        -1544.064
+      ],
+      "Avior": [
+        -164.511,
+        -479.619,
+        -229.545
+      ],
+      "HIP 38827": [
+        -154.9512,
+        -421.2945,
+        -277.3182
+      ],
+      "HIP 39953": [
+        -372.9,
+        -755.496,
+        -587.979
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Carina_(constellation)"
   },
-
-  "Vela": {
-    "iau": "Vel",
-    "description": "The Sails of the ship Argo, forming part of the 'False Cross' asterism often mistaken for the Southern Cross.",
+  "Cassiopeia": {
+    "iau": "Cas",
+    "description": "The Queen, a distinctive 'W' (or 'M' depending on orientation) of five bright stars in the northern circumpolar sky.",
     "lines": [
-      ["Alsephina", "Markeb"],
-      ["Markeb", "Suhail"],
-      ["Suhail", "Alsephina"]
-    ]
+      [
+        "Caph",
+        "Schedar"
+      ],
+      [
+        "Schedar",
+        "Cih"
+      ],
+      [
+        "Cih",
+        "Ruchbah"
+      ],
+      [
+        "Ruchbah",
+        "Segin"
+      ]
+    ],
+    "stars": {
+      "Caph": [
+        25.8,
+        43.23,
+        -1.035
+      ],
+      "Schedar": [
+        115.563,
+        177.612,
+        -20.64
+      ],
+      "Cih": [
+        239.511,
+        440.511,
+        -60.504
+      ],
+      "Ruchbah": [
+        43.278,
+        81.306,
+        -17.007
+      ],
+      "Segin": [
+        166.809,
+        383.9046,
+        -90.9426
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Cassiopeia_(constellation)"
   },
-
+  "Centaurus": {
+    "iau": "Cen",
+    "description": "The Centaur, home to the closest stellar system to Sol (Alpha Centauri) and the bright blue giant Hadar.",
+    "lines": [
+      [
+        "HIP 61932",
+        "HIP 66657"
+      ],
+      [
+        "HIP 66657",
+        "Hadar"
+      ],
+      [
+        "Hadar",
+        "Rigil Kentaurus"
+      ],
+      [
+        "HIP 66657",
+        "HIP 68002"
+      ],
+      [
+        "HIP 68002",
+        "HIP 61932"
+      ],
+      [
+        "HIP 68002",
+        "HIP 68282"
+      ],
+      [
+        "HIP 68282",
+        "HIP 68245"
+      ],
+      [
+        "HIP 68245",
+        "HIP 71352"
+      ],
+      [
+        "HIP 68245",
+        "HIP 68862"
+      ],
+      [
+        "HIP 68862",
+        "HIP 70090"
+      ],
+      [
+        "HIP 70090",
+        "Menkent"
+      ],
+      [
+        "Menkent",
+        "HIP 67464"
+      ],
+      [
+        "HIP 67464",
+        "HIP 68002"
+      ],
+      [
+        "HIP 55425",
+        "HIP 59196"
+      ],
+      [
+        "HIP 59196",
+        "HIP 60823"
+      ],
+      [
+        "HIP 60823",
+        "HIP 61932"
+      ],
+      [
+        "HIP 60823",
+        "HIP 59449"
+      ],
+      [
+        "HIP 59449",
+        "HIP 56243"
+      ],
+      [
+        "HIP 67464",
+        "HIP 65936"
+      ],
+      [
+        "HIP 65936",
+        "HIP 65109"
+      ],
+      [
+        "HIP 65109",
+        "HIP 61789"
+      ],
+      [
+        "HIP 71352",
+        "HIP 73334"
+      ]
+    ],
+    "stars": {
+      "HIP 61932": [
+        -77.3155,
+        -90.2931,
+        14.1612
+      ],
+      "HIP 66657": [
+        -212.1795,
+        -315.9271,
+        98.8143
+      ],
+      "Hadar": [
+        -152.8622,
+        -313.4361,
+        91.6886
+      ],
+      "Rigil Kentaurus": [
+        -1.4856,
+        -3.4699,
+        1.2423
+      ],
+      "HIP 68002": [
+        -208.6376,
+        -258.1185,
+        115.1026
+      ],
+      "HIP 68282": [
+        -242.3995,
+        -277.069,
+        138.0929
+      ],
+      "HIP 68245": [
+        -311.7598,
+        -323.8824,
+        176.8724
+      ],
+      "HIP 71352": [
+        -162.2585,
+        -188.709,
+        130.8175
+      ],
+      "HIP 68862": [
+        -301.2488,
+        -309.1185,
+        184.6889
+      ],
+      "HIP 70090": [
+        -153.6682,
+        -146.2101,
+        108.1573
+      ],
+      "Menkent": [
+        -37.0764,
+        -32.0829,
+        22.8726
+      ],
+      "HIP 67464": [
+        -266.324,
+        -267.0966,
+        137.9087
+      ],
+      "HIP 55425": [
+        -123.0198,
+        -174.936,
+        -21.1356
+      ],
+      "HIP 59196": [
+        -331.9362,
+        -406.1415,
+        12.1119
+      ],
+      "HIP 60823": [
+        -240.351,
+        -290.967,
+        29.553
+      ],
+      "HIP 59449": [
+        -146.7123,
+        -190.539,
+        7.4658
+      ],
+      "HIP 56243": [
+        -4652.082,
+        -7939.599,
+        -575.988
+      ],
+      "HIP 65936": [
+        -593.7361,
+        -529.0242,
+        249.1091
+      ],
+      "HIP 65109": [
+        -40.6877,
+        -32.3192,
+        14.9292
+      ],
+      "HIP 61789": [
+        -253.2281,
+        -215.6438,
+        44.5091
+      ],
+      "HIP 73334": [
+        -185.6185,
+        -236.3624,
+        184.2651
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Centaurus_(constellation)"
+  },
+  "Cepheus": {
+    "iau": "Cep",
+    "description": "The King, a house-shaped constellation near the north celestial pole.",
+    "lines": [
+      [
+        "HIP 102422",
+        "Alderamin"
+      ],
+      [
+        "Alderamin",
+        "Alfirk"
+      ],
+      [
+        "Alfirk",
+        "HIP 112724"
+      ],
+      [
+        "Alfirk",
+        "Errai"
+      ],
+      [
+        "Errai",
+        "HIP 112724"
+      ],
+      [
+        "HIP 112724",
+        "HIP 110991"
+      ],
+      [
+        "HIP 110991",
+        "HIP 109492"
+      ],
+      [
+        "HIP 109492",
+        "HIP 109857"
+      ],
+      [
+        "HIP 109857",
+        "HIP 107259"
+      ],
+      [
+        "HIP 107259",
+        "Alderamin"
+      ],
+      [
+        "HIP 101093",
+        "HIP 102422"
+      ]
+    ],
+    "stars": {
+      "HIP 102422": [
+        13.3357,
+        37.7278,
+        15.1678
+      ],
+      "Alderamin": [
+        15.8283,
+        40.0463,
+        13.4496
+      ],
+      "Alfirk": [
+        165.6585,
+        594.3241,
+        128.6602
+      ],
+      "HIP 112724": [
+        40.7944,
+        97.0265,
+        12.925
+      ],
+      "Errai": [
+        9.0246,
+        41.3243,
+        0.8154
+      ],
+      "HIP 110991": [
+        384.4797,
+        677.8771,
+        160.8883
+      ],
+      "HIP 109492": [
+        360.2329,
+        653.7722,
+        185.8214
+      ],
+      "HIP 109857": [
+        38.3498,
+        65.9485,
+        18.9045
+      ],
+      "HIP 107259": [
+        128726.1518,
+        256555.14,
+        87229.8017
+      ],
+      "HIP 101093": [
+        34.6153,
+        111.8358,
+        45.2826
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Cepheus_(constellation)"
+  },
+  "Cetus": {
+    "iau": "Cet",
+    "description": "The Sea Monster (or Whale), a large sprawling southern constellation from the Perseus myth.",
+    "lines": [
+      [
+        "Kaffaljidhma",
+        "Menkar"
+      ],
+      [
+        "Menkar",
+        "HIP 13954"
+      ],
+      [
+        "HIP 13954",
+        "HIP 12828"
+      ],
+      [
+        "HIP 12828",
+        "HIP 11484"
+      ],
+      [
+        "HIP 11484",
+        "Kaffaljidhma"
+      ],
+      [
+        "Kaffaljidhma",
+        "HIP 12387"
+      ],
+      [
+        "HIP 12387",
+        "Mira"
+      ],
+      [
+        "Mira",
+        "Baten Kaitos"
+      ],
+      [
+        "Baten Kaitos",
+        "HIP 8102"
+      ],
+      [
+        "HIP 8102",
+        "Diphda"
+      ],
+      [
+        "Diphda",
+        "HIP 1562"
+      ],
+      [
+        "HIP 1562",
+        "HIP 5364"
+      ],
+      [
+        "HIP 5364",
+        "HIP 6537"
+      ],
+      [
+        "HIP 6537",
+        "Baten Kaitos"
+      ]
+    ],
+    "stars": {
+      "Kaffaljidhma": [
+        55.32,
+        4.134,
+        -47.793
+      ],
+      "Menkar": [
+        160.029,
+        16.344,
+        -163.242
+      ],
+      "HIP 13954": [
+        286.629,
+        63.453,
+        -285.918
+      ],
+      "HIP 12828": [
+        59.079,
+        14.013,
+        -51.786
+      ],
+      "HIP 11484": [
+        142.9626,
+        26.6376,
+        -107.8842
+      ],
+      "HIP 12387": [
+        448.713,
+        3.351,
+        -374.79
+      ],
+      "Mira": [
+        225.393,
+        -14.283,
+        -156.867
+      ],
+      "Baten Kaitos": [
+        202.6188,
+        -41.7951,
+        -107.1219
+      ],
+      "HIP 8102": [
+        9.4671,
+        -3.0075,
+        -4.6224
+      ],
+      "Diphda": [
+        82.752,
+        -27.36,
+        -15.93
+      ],
+      "HIP 1562": [
+        252.474,
+        -39.333,
+        -21.453
+      ],
+      "HIP 5364": [
+        104.268,
+        -19.599,
+        -32.172
+      ],
+      "HIP 6537": [
+        95.4804,
+        -14.709,
+        -36.6618
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Cetus_(constellation)"
+  },
+  "Chamaeleon": {
+    "iau": "Cha",
+    "description": "The Chameleon, a small faint constellation near the south celestial pole.",
+    "lines": [
+      [
+        "HIP 40702",
+        "HIP 51839"
+      ],
+      [
+        "HIP 51839",
+        "HIP 52633"
+      ],
+      [
+        "HIP 52633",
+        "HIP 60000"
+      ],
+      [
+        "HIP 60000",
+        "HIP 58484"
+      ],
+      [
+        "HIP 58484",
+        "HIP 51839"
+      ]
+    ],
+    "stars": {
+      "HIP 40702": [
+        -7.518,
+        -56.943,
+        -10.887
+      ],
+      "HIP 51839": [
+        -75.186,
+        -400.047,
+        -29.061
+      ],
+      "HIP 52633": [
+        -53.559,
+        -339.072,
+        -17.976
+      ],
+      "HIP 60000": [
+        -51.7734,
+        -275.2113,
+        4.1541
+      ],
+      "HIP 58484": [
+        -67.89,
+        -325.593,
+        -0.111
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Chamaeleon_(constellation)"
+  },
+  "Circinus": {
+    "iau": "Cir",
+    "lines": [
+      [
+        "HIP 74824",
+        "HIP 71908"
+      ],
+      [
+        "HIP 71908",
+        "HIP 75323"
+      ]
+    ],
+    "stars": {
+      "HIP 74824": [
+        -30.9125,
+        -78.4031,
+        36.0389
+      ],
+      "HIP 71908": [
+        -15.9596,
+        -45.0436,
+        13.6919
+      ],
+      "HIP 75323": [
+        -132.9468,
+        -354.8982,
+        163.2668
+      ]
+    },
+    "description": "the Compasses.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Circinus_(constellation)"
+  },
+  "Cancer": {
+    "iau": "Cnc",
+    "description": "The Crab, a faint zodiacal constellation between Gemini and Leo. Home to the Beehive Cluster (M44).",
+    "lines": [
+      [
+        "Acubens",
+        "Asellus Australis"
+      ],
+      [
+        "Asellus Australis",
+        "Tarf"
+      ],
+      [
+        "Asellus Australis",
+        "Asellus Borealis"
+      ],
+      [
+        "Asellus Borealis",
+        "HIP 43103"
+      ]
+    ],
+    "stars": {
+      "Acubens": [
+        -112.5066,
+        33.63,
+        -114.0033
+      ],
+      "Asellus Australis": [
+        -78.7611,
+        39.2295,
+        -90.0585
+      ],
+      "Tarf": [
+        -164.472,
+        47.403,
+        -242.658
+      ],
+      "Asellus Borealis": [
+        -97.893,
+        58.893,
+        -113.325
+      ],
+      "HIP 43103": [
+        -185.7786,
+        153.354,
+        -208.7031
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Cancer_(constellation)"
+  },
+  "Columba": {
+    "iau": "Col",
+    "description": "The Dove, a constellation south of Lepus representing the dove sent by Noah or the dove that guided the Argonauts.",
+    "lines": [
+      [
+        "Phact",
+        "Wazn"
+      ],
+      [
+        "HIP 25859",
+        "Phact"
+      ],
+      [
+        "HIP 28328",
+        "Wazn"
+      ],
+      [
+        "Wazn",
+        "HIP 28199"
+      ],
+      [
+        "HIP 28199",
+        "HIP 30277"
+      ]
+    ],
+    "stars": {
+      "Phact": [
+        19.329,
+        -147.429,
+        -217.104
+      ],
+      "Wazn": [
+        2.601,
+        -47.517,
+        -65.907
+      ],
+      "HIP 25859": [
+        26.0949,
+        -148.4106,
+        -206.6499
+      ],
+      "HIP 28328": [
+        1.107,
+        -275.451,
+        -297.3
+      ],
+      "HIP 28199": [
+        8.514,
+        -560.466,
+        -792.018
+      ],
+      "HIP 30277": [
+        -16.026,
+        -109.842,
+        -165.582
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Columba_(constellation)"
+  },
+  "Coma Berenices": {
+    "iau": "Com",
+    "lines": [
+      [
+        "Diadem",
+        "HIP 64394"
+      ],
+      [
+        "HIP 64394",
+        "HIP 60742"
+      ]
+    ],
+    "stars": {
+      "Diadem": [
+        -48.633,
+        16.1066,
+        15.3311
+      ],
+      "HIP 64394": [
+        -23.0282,
+        12.8062,
+        7.4682
+      ],
+      "HIP 60742": [
+        -132.096,
+        71.526,
+        15.597
+      ]
+    },
+    "description": "Berenice's Hair.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Coma_Berenices"
+  },
+  "Corona Australis": {
+    "iau": "CrA",
+    "description": "The Southern Crown, a small constellation below Sagittarius forming a gentle arc of faint stars.",
+    "lines": [
+      [
+        "HIP 93825",
+        "Meridiana"
+      ],
+      [
+        "Meridiana",
+        "HIP 94160"
+      ],
+      [
+        "HIP 94160",
+        "HIP 94005"
+      ],
+      [
+        "HIP 94005",
+        "HIP 90982"
+      ]
+    ],
+    "stars": {
+      "HIP 93825": [
+        11.8373,
+        -31.2864,
+        39.6957
+      ],
+      "Meridiana": [
+        27.1561,
+        -70.8314,
+        86.8246
+      ],
+      "HIP 94160": [
+        101.4492,
+        -276.4237,
+        321.6124
+      ],
+      "HIP 94005": [
+        36.6899,
+        -106.6348,
+        119.3559
+      ],
+      "HIP 90982": [
+        55.2394,
+        -345.2175,
+        375.1779
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Corona_Australis"
+  },
+  "Corona Borealis": {
+    "iau": "CrB",
+    "description": "The Northern Crown, a small semicircular arc of stars. Alphecca (Gemma) is its brightest member.",
+    "lines": [
+      [
+        "HIP 76127",
+        "Nusakan"
+      ],
+      [
+        "Nusakan",
+        "Alphecca"
+      ],
+      [
+        "Alphecca",
+        "HIP 76952"
+      ],
+      [
+        "HIP 76952",
+        "HIP 77512"
+      ],
+      [
+        "HIP 77512",
+        "HIP 78159"
+      ],
+      [
+        "HIP 78159",
+        "HIP 78493"
+      ]
+    ],
+    "stars": {
+      "HIP 76127": [
+        -176.4551,
+        179.6547,
+        236.1509
+      ],
+      "Nusakan": [
+        -55.375,
+        50.0261,
+        70.7678
+      ],
+      "Alphecca": [
+        -36.5283,
+        31.0319,
+        49.6762
+      ],
+      "HIP 76952": [
+        -67.8992,
+        59.5166,
+        99.4831
+      ],
+      "HIP 77512": [
+        -75.7006,
+        68.7344,
+        118.363
+      ],
+      "HIP 78159": [
+        -92.4829,
+        92.0751,
+        156.3606
+      ],
+      "HIP 78493": [
+        -123.0182,
+        142.757,
+        216.2056
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Corona_Borealis"
+  },
+  "Crater": {
+    "iau": "Crt",
+    "description": "The Cup, a faint constellation sitting on the back of Hydra, next to Corvus.",
+    "lines": [
+      [
+        "Alkes",
+        "HIP 54682"
+      ],
+      [
+        "HIP 54682",
+        "HIP 55705"
+      ],
+      [
+        "HIP 55705",
+        "HIP 57283"
+      ],
+      [
+        "HIP 57283",
+        "HIP 58188"
+      ],
+      [
+        "HIP 55705",
+        "HIP 55282"
+      ],
+      [
+        "HIP 55282",
+        "HIP 55687"
+      ],
+      [
+        "HIP 55687",
+        "HIP 56633"
+      ],
+      [
+        "HIP 55282",
+        "Alkes"
+      ]
+    ],
+    "stars": {
+      "Alkes": [
+        -135.0333,
+        -46.2414,
+        -36.3249
+      ],
+      "HIP 54682": [
+        -262.395,
+        -112.941,
+        -56.184
+      ],
+      "HIP 55705": [
+        -74.913,
+        -24.168,
+        -11.571
+      ],
+      "HIP 57283": [
+        -298.713,
+        -99.303,
+        -19.89
+      ],
+      "HIP 58188": [
+        -220.347,
+        -68.013,
+        -3.831
+      ],
+      "HIP 55282": [
+        -167.787,
+        -44.97,
+        -30.081
+      ],
+      "HIP 55687": [
+        -355.983,
+        -69.111,
+        -55.41
+      ],
+      "HIP 56633": [
+        -271.044,
+        -47.073,
+        -27.672
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Crater_(constellation)"
+  },
+  "Crux": {
+    "iau": "Cru",
+    "description": "The Southern Cross, the smallest constellation but one of the most recognizable, depicted on several southern-hemisphere flags. Acrux and Gacrux form the long axis; Mimosa and Imai form the cross-bar.",
+    "lines": [
+      [
+        "Acrux",
+        "Gacrux"
+      ],
+      [
+        "Mimosa",
+        "Imai"
+      ]
+    ],
+    "stars": {
+      "Acrux": [
+        -133.092,
+        -264.105,
+        15.516
+      ],
+      "Gacrux": [
+        -43.821,
+        -68.403,
+        5.997
+      ],
+      "Mimosa": [
+        -126.5063,
+        -221.1694,
+        26.7289
+      ],
+      "Imai": [
+        -216.651,
+        -357.795,
+        14.337
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Crux_(constellation)"
+  },
+  "Corvus": {
+    "iau": "Crv",
+    "description": "The Crow, a small but distinctive quadrilateral of four moderately bright stars sitting on the back of Hydra.",
+    "lines": [
+      [
+        "Algorab",
+        "Gienah"
+      ],
+      [
+        "Gienah",
+        "HIP 59316"
+      ],
+      [
+        "HIP 59316",
+        "Kraz"
+      ],
+      [
+        "Kraz",
+        "Algorab"
+      ],
+      [
+        "HIP 59316",
+        "Alchiba"
+      ]
+    ],
+    "stars": {
+      "Algorab": [
+        -74.931,
+        -22.407,
+        9.819
+      ],
+      "Gienah": [
+        -134.418,
+        -42.591,
+        9.285
+      ],
+      "HIP 59316": [
+        -261.033,
+        -108.87,
+        11.541
+      ],
+      "Kraz": [
+        -121.5897,
+        -53.2062,
+        18.3818
+      ],
+      "Alchiba": [
+        -40.782,
+        -18.795,
+        1.497
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Corvus_(constellation)"
+  },
+  "Cygnus": {
+    "iau": "Cyg",
+    "description": "The Swan, flying along the Milky Way with Deneb at the tail and Albireo at the head. Contains the Northern Cross asterism and forms part of the Summer Triangle.",
+    "lines": [
+      [
+        "Deneb",
+        "Sadr"
+      ],
+      [
+        "Sadr",
+        "Aljanah"
+      ],
+      [
+        "Sadr",
+        "Albireo"
+      ],
+      [
+        "Sadr",
+        "Fawaris"
+      ],
+      [
+        "Fawaris",
+        "HIP 95853"
+      ],
+      [
+        "HIP 95853",
+        "HIP 94779"
+      ],
+      [
+        "HIP 95853",
+        "HIP 99848"
+      ],
+      [
+        "HIP 99848",
+        "Deneb"
+      ],
+      [
+        "Deneb",
+        "HIP 103413"
+      ],
+      [
+        "HIP 103413",
+        "HIP 104732"
+      ],
+      [
+        "HIP 104732",
+        "Aljanah"
+      ]
+    ],
+    "stars": {
+      "Deneb": [
+        591.7519,
+        922.8025,
+        696.3402
+      ],
+      "Sadr": [
+        747.9547,
+        1089.1229,
+        1046.3868
+      ],
+      "Aljanah": [
+        36.7878,
+        37.367,
+        41.5038
+      ],
+      "Albireo": [
+        136.0514,
+        187.29,
+        325.5551
+      ],
+      "Fawaris": [
+        47.3383,
+        107.5443,
+        96.0194
+      ],
+      "HIP 95853": [
+        26.3714,
+        87.6222,
+        63.8979
+      ],
+      "HIP 94779": [
+        22.4933,
+        91.6425,
+        64.3183
+      ],
+      "HIP 99848": [
+        365.216,
+        720.5821,
+        544.1548
+      ],
+      "HIP 103413": [
+        181.0674,
+        226.7244,
+        185.5893
+      ],
+      "HIP 104732": [
+        84.8352,
+        66.2696,
+        75.7606
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Cygnus_(constellation)"
+  },
+  "Delphinus": {
+    "iau": "Del",
+    "description": "The Dolphin, a small diamond-shaped constellation. Sualocin and Rotanev encode Nicolaus Venator (Niccolò Cacciatore) when read backwards.",
+    "lines": [
+      [
+        "Aldulfin",
+        "Rotanev"
+      ],
+      [
+        "Rotanev",
+        "Sualocin"
+      ],
+      [
+        "Sualocin",
+        "HIP 102532"
+      ],
+      [
+        "HIP 102532",
+        "HIP 102281"
+      ],
+      [
+        "HIP 102281",
+        "Rotanev"
+      ]
+    ],
+    "stars": {
+      "Aldulfin": [
+        184.7415,
+        59.575,
+        233.8963
+      ],
+      "Rotanev": [
+        56.9821,
+        23.3824,
+        69.4026
+      ],
+      "Sualocin": [
+        144.0453,
+        64.0066,
+        172.218
+      ],
+      "HIP 102532": [
+        74.2003,
+        32.2682,
+        83.3843
+      ],
+      "HIP 102281": [
+        129.7252,
+        53.4038,
+        149.9453
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Delphinus_(constellation)"
+  },
+  "Dorado": {
+    "iau": "Dor",
+    "description": "the Dolphinfish. The Swordfish (or Dolphinfish), a southern constellation containing the Large Magellanic Cloud.",
+    "lines": [
+      [
+        "HIP 19893",
+        "HIP 21281"
+      ],
+      [
+        "HIP 21281",
+        "HIP 23693"
+      ],
+      [
+        "HIP 23693",
+        "HIP 26069"
+      ],
+      [
+        "HIP 26069",
+        "HIP 21281"
+      ],
+      [
+        "HIP 26069",
+        "HIP 27100"
+      ],
+      [
+        "HIP 27100",
+        "HIP 27890"
+      ],
+      [
+        "HIP 27890",
+        "HIP 26069"
+      ]
+    ],
+    "stars": {
+      "HIP 19893": [
+        16.725,
+        -47.955,
+        -34.302
+      ],
+      "HIP 21281": [
+        32.574,
+        -127.137,
+        -82.689
+      ],
+      "HIP 23693": [
+        4.443,
+        -29.577,
+        -18.33
+      ],
+      "HIP 26069": [
+        54.291,
+        -907.875,
+        -469.686
+      ],
+      "HIP 27100": [
+        3.741,
+        -125.046,
+        -56.241
+      ],
+      "HIP 27890": [
+        0.9558,
+        -73.0965,
+        -37.0869
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Dorado_(constellation)"
+  },
+  "Draco": {
+    "iau": "Dra",
+    "description": "The Dragon, a long winding circumpolar constellation whose tail once contained the pole star Thuban ~4,800 years ago.",
+    "lines": [
+      [
+        "Giausar",
+        "HIP 61281"
+      ],
+      [
+        "HIP 61281",
+        "Thuban"
+      ],
+      [
+        "Thuban",
+        "Edasich"
+      ],
+      [
+        "Edasich",
+        "HIP 78527"
+      ],
+      [
+        "HIP 78527",
+        "Athebyne"
+      ],
+      [
+        "Athebyne",
+        "Aldhibah"
+      ],
+      [
+        "Aldhibah",
+        "HIP 89908"
+      ],
+      [
+        "HIP 89908",
+        "HIP 89937"
+      ],
+      [
+        "HIP 89908",
+        "Altais"
+      ],
+      [
+        "Altais",
+        "HIP 97433"
+      ],
+      [
+        "Altais",
+        "Grumium"
+      ],
+      [
+        "Grumium",
+        "HIP 85829"
+      ],
+      [
+        "HIP 85829",
+        "Rastaban"
+      ],
+      [
+        "Rastaban",
+        "Eltanin"
+      ],
+      [
+        "Eltanin",
+        "Grumium"
+      ]
+    ],
+    "stars": {
+      "Giausar": [
+        -121.524,
+        324.657,
+        -15.243
+      ],
+      "HIP 61281": [
+        -154.2,
+        423.3479,
+        22.6894
+      ],
+      "Thuban": [
+        -103.2481,
+        251.3892,
+        62.2765
+      ],
+      "Edasich": [
+        -30.0479,
+        79.7573,
+        37.4154
+      ],
+      "HIP 78527": [
+        -16.2199,
+        53.8429,
+        28.6362
+      ],
+      "Athebyne": [
+        -16.4318,
+        74.4436,
+        36.9027
+      ],
+      "Aldhibah": [
+        -27.5353,
+        275.3798,
+        121.1644
+      ],
+      "HIP 89908": [
+        8.0618,
+        263.9053,
+        88.7676
+      ],
+      "HIP 89937": [
+        0.6583,
+        23.0836,
+        7.145
+      ],
+      "Altais": [
+        10.6027,
+        82.8819,
+        32.3649
+      ],
+      "HIP 97433": [
+        20.8944,
+        128.1239,
+        40.9313
+      ],
+      "Grumium": [
+        -1.5972,
+        86.6929,
+        56.5508
+      ],
+      "HIP 85829": [
+        -6.3054,
+        75.0801,
+        51.8526
+      ],
+      "Rastaban": [
+        -27.508,
+        276.6563,
+        212.0367
+      ],
+      "Eltanin": [
+        -1.3085,
+        111.0431,
+        88.3531
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Draco_(constellation)"
+  },
+  "Equuleus": {
+    "iau": "Equ",
+    "description": "the Pony. The Little Horse, the second-smallest constellation. Only its head is depicted in the sky.",
+    "lines": [
+      [
+        "Kitalpha",
+        "HIP 104858"
+      ],
+      [
+        "HIP 104858",
+        "HIP 104521"
+      ]
+    ],
+    "stars": {
+      "Kitalpha": [
+        131.4543,
+        16.0089,
+        114.449
+      ],
+      "HIP 104858": [
+        40.9829,
+        9.6376,
+        36.1058
+      ],
+      "HIP 104521": [
+        79.1398,
+        19.1552,
+        72.3015
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Equuleus_(constellation)"
+  },
+  "Eridanus": {
+    "iau": "Eri",
+    "description": "The River, an enormous winding constellation beginning near Rigel (in Orion) and flowing down to brilliant Achernar in the far south.",
+    "lines": [
+      [
+        "Cursa",
+        "HIP 22109"
+      ],
+      [
+        "HIP 22109",
+        "HIP 21444"
+      ],
+      [
+        "HIP 21444",
+        "Beid"
+      ],
+      [
+        "Beid",
+        "Zaurak"
+      ],
+      [
+        "Zaurak",
+        "HIP 17593"
+      ],
+      [
+        "HIP 17593",
+        "Rana"
+      ],
+      [
+        "Rana",
+        "Ran"
+      ],
+      [
+        "Ran",
+        "Azha"
+      ],
+      [
+        "Azha",
+        "HIP 12770"
+      ],
+      [
+        "HIP 12770",
+        "HIP 12770"
+      ],
+      [
+        "HIP 12770",
+        "HIP 12843"
+      ],
+      [
+        "HIP 12843",
+        "HIP 14146"
+      ],
+      [
+        "HIP 14146",
+        "HIP 15474"
+      ],
+      [
+        "HIP 15474",
+        "HIP 16611"
+      ],
+      [
+        "HIP 16611",
+        "HIP 17651"
+      ],
+      [
+        "HIP 17651",
+        "HIP 18216"
+      ],
+      [
+        "HIP 18216",
+        "HIP 18673"
+      ],
+      [
+        "HIP 18673",
+        "HIP 21248"
+      ],
+      [
+        "HIP 21248",
+        "Theemin"
+      ],
+      [
+        "Theemin",
+        "Beemim"
+      ],
+      [
+        "Beemim",
+        "HIP 20042"
+      ],
+      [
+        "HIP 20042",
+        "HIP 17874"
+      ],
+      [
+        "HIP 17874",
+        "HIP 17874"
+      ],
+      [
+        "HIP 17874",
+        "HIP 16870"
+      ],
+      [
+        "HIP 16870",
+        "82 G. Eri"
+      ],
+      [
+        "82 G. Eri",
+        "Acamar"
+      ],
+      [
+        "Acamar",
+        "HIP 12486"
+      ],
+      [
+        "HIP 12486",
+        "HIP 12413"
+      ],
+      [
+        "HIP 12413",
+        "HIP 11407"
+      ],
+      [
+        "HIP 11407",
+        "HIP 9007"
+      ],
+      [
+        "HIP 9007",
+        "Achernar"
+      ]
+    ],
+    "stars": {
+      "Cursa": [
+        18.5976,
+        -7.338,
+        -80.3178
+      ],
+      "HIP 22109": [
+        164.568,
+        -29.301,
+        -488.313
+      ],
+      "HIP 21444": [
+        222.966,
+        -36.579,
+        -583.275
+      ],
+      "Beid": [
+        51.852,
+        -13.68,
+        -101.619
+      ],
+      "Zaurak": [
+        87.0609,
+        -41.2179,
+        -147.8448
+      ],
+      "HIP 17593": [
+        252.9594,
+        -98.3583,
+        -382.698
+      ],
+      "Rana": [
+        15.1008,
+        -4.6233,
+        -22.2273
+      ],
+      "Ran": [
+        5.7036,
+        -1.5888,
+        -7.6317
+      ],
+      "Azha": [
+        87.879,
+        -19.161,
+        -85.179
+      ],
+      "HIP 12770": [
+        261.501,
+        -85.524,
+        -227.565
+      ],
+      "HIP 12843": [
+        30.513,
+        -13.641,
+        -26.781
+      ],
+      "HIP 14146": [
+        52.047,
+        -32.535,
+        -53.145
+      ],
+      "HIP 15474": [
+        169.14,
+        -104.76,
+        -200.715
+      ],
+      "HIP 16611": [
+        162.969,
+        -108.522,
+        -219.813
+      ],
+      "HIP 17651": [
+        26.9049,
+        -21.0603,
+        -40.9794
+      ],
+      "HIP 18216": [
+        143.397,
+        -125.463,
+        -233.343
+      ],
+      "HIP 18673": [
+        137.451,
+        -122.418,
+        -237.891
+      ],
+      "HIP 21248": [
+        36.867,
+        -57.222,
+        -93.009
+      ],
+      "Theemin": [
+        60.225,
+        -98.733,
+        -155.976
+      ],
+      "Beemim": [
+        90.8643,
+        -150.8331,
+        -204.1704
+      ],
+      "HIP 20042": [
+        58.386,
+        -90.696,
+        -122.262
+      ],
+      "HIP 17874": [
+        87.1668,
+        -118.2954,
+        -136.1085
+      ],
+      "HIP 16870": [
+        101.0331,
+        -146.6034,
+        -140.4636
+      ],
+      "82 G. Eri": [
+        8.5143,
+        -12.3768,
+        -10.1397
+      ],
+      "Acamar": [
+        81.888,
+        -97.491,
+        -80.655
+      ],
+      "HIP 12486": [
+        78.969,
+        -86.271,
+        -66.657
+      ],
+      "HIP 12413": [
+        74.6769,
+        -90.4917,
+        -62.5506
+      ],
+      "HIP 11407": [
+        260.703,
+        -357.606,
+        -194.649
+      ],
+      "HIP 9007": [
+        28.6659,
+        -41.3595,
+        -15.8835
+      ],
+      "Achernar": [
+        63.198,
+        -107.856,
+        -28.704
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Eridanus_(constellation)"
+  },
+  "Fornax": {
+    "iau": "For",
+    "description": "The Furnace, a faint constellation south of Cetus. Contains the Fornax Cluster, a nearby galaxy cluster.",
+    "lines": [
+      [
+        "Dalim",
+        "HIP 13147"
+      ],
+      [
+        "HIP 13147",
+        "HIP 9677"
+      ]
+    ],
+    "stars": {
+      "Dalim": [
+        24.5724,
+        -20.3511,
+        -27.3069
+      ],
+      "HIP 13147": [
+        101.5293,
+        -87.0942,
+        -92.2947
+      ],
+      "HIP 9677": [
+        238.182,
+        -156.114,
+        -143.808
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Fornax_(constellation)"
+  },
+  "Gemini": {
+    "iau": "Gem",
+    "description": "The Twins, with the heads of Castor and Pollux side by side and two parallel lines of stars trailing off representing their bodies.",
+    "lines": [
+      [
+        "Alzirr",
+        "HIP 35350"
+      ],
+      [
+        "HIP 35350",
+        "Wasat"
+      ],
+      [
+        "Wasat",
+        "Mekbuda"
+      ],
+      [
+        "Mekbuda",
+        "Alhena"
+      ],
+      [
+        "Wasat",
+        "HIP 36962"
+      ],
+      [
+        "HIP 36962",
+        "HIP 37740"
+      ],
+      [
+        "HIP 36962",
+        "Pollux"
+      ],
+      [
+        "HIP 36962",
+        "HIP 36046"
+      ],
+      [
+        "HIP 36046",
+        "HIP 34693"
+      ],
+      [
+        "HIP 34693",
+        "Castor"
+      ],
+      [
+        "HIP 34693",
+        "HIP 33018"
+      ],
+      [
+        "HIP 34693",
+        "Mebsuta"
+      ],
+      [
+        "Mebsuta",
+        "HIP 30883"
+      ],
+      [
+        "Mebsuta",
+        "Tejat"
+      ],
+      [
+        "Tejat",
+        "Propus"
+      ],
+      [
+        "Propus",
+        "HIP 28734"
+      ]
+    ],
+    "stars": {
+      "Alzirr": [
+        -10.596,
+        12.354,
+        -52.914
+      ],
+      "HIP 35350": [
+        -29.475,
+        26.193,
+        -83.127
+      ],
+      "Wasat": [
+        -17.7201,
+        20.8863,
+        -48.6069
+      ],
+      "Mekbuda": [
+        -252.357,
+        343.02,
+        -878.499
+      ],
+      "Alhena": [
+        -15.798,
+        28.383,
+        -95.142
+      ],
+      "HIP 36962": [
+        -84.45,
+        105.399,
+        -189.852
+      ],
+      "HIP 37740": [
+        -54.4326,
+        56.0964,
+        -111.0552
+      ],
+      "Pollux": [
+        -12.165,
+        14.601,
+        -24.585
+      ],
+      "HIP 36046": [
+        -40.368,
+        58.245,
+        -102.843
+      ],
+      "HIP 34693": [
+        -95.073,
+        181.488,
+        -296.388
+      ],
+      "Castor": [
+        -15.936,
+        24.717,
+        -36.39
+      ],
+      "HIP 33018": [
+        -33.675,
+        99.342,
+        -143.598
+      ],
+      "Mebsuta": [
+        -138.072,
+        339.966,
+        -711.45
+      ],
+      "HIP 30883": [
+        -79.782,
+        233.052,
+        -627.954
+      ],
+      "Tejat": [
+        -19.686,
+        81.585,
+        -195.843
+      ],
+      "Propus": [
+        -37.9998,
+        242.7264,
+        -584.5578
+      ],
+      "HIP 28734": [
+        -2.355,
+        56.343,
+        -131.034
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Gemini_(constellation)"
+  },
   "Grus": {
     "iau": "Gru",
     "description": "The Crane, a southern constellation introduced by Dutch navigators in the late 16th century.",
     "lines": [
-      ["Alnair", "Tiaki"],
-      ["Tiaki", "Aldhanab"]
-    ]
+      [
+        "Aldhanab",
+        "HIP 109111"
+      ],
+      [
+        "HIP 109111",
+        "HIP 110997"
+      ],
+      [
+        "HIP 110997",
+        "Alnair"
+      ],
+      [
+        "Alnair",
+        "Tiaki"
+      ],
+      [
+        "Tiaki",
+        "HIP 110997"
+      ],
+      [
+        "Tiaki",
+        "HIP 112623"
+      ],
+      [
+        "HIP 112623",
+        "HIP 113638"
+      ]
+    ],
+    "stars": {
+      "Aldhanab": [
+        131.5607,
+        -117.8423,
+        80.6768
+      ],
+      "HIP 109111": [
+        150.9756,
+        -141.7961,
+        81.8752
+      ],
+      "HIP 110997": [
+        190.5086,
+        -195.9105,
+        79.6235
+      ],
+      "Alnair": [
+        56.0175,
+        -67.9056,
+        29.712
+      ],
+      "Tiaki": [
+        104.9805,
+        -118.8246,
+        36.8318
+      ],
+      "HIP 112623": [
+        70.5401,
+        -92.5629,
+        22.7312
+      ],
+      "HIP 113638": [
+        58.5991,
+        -79.7107,
+        15.4606
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Grus_(constellation)"
+  },
+  "Hercules": {
+    "iau": "Her",
+    "description": "the Strongman. The Strong Man, a large but relatively faint constellation. The Keystone asterism (four stars forming a trapezoid) marks the torso.",
+    "lines": [
+      [
+        "Sarin",
+        "Rasalgethi"
+      ],
+      [
+        "Rasalgethi",
+        "Kornephoros"
+      ],
+      [
+        "Kornephoros",
+        "HIP 80170"
+      ],
+      [
+        "Kornephoros",
+        "HIP 81693"
+      ],
+      [
+        "HIP 81693",
+        "HIP 83207"
+      ],
+      [
+        "HIP 81693",
+        "HIP 81833"
+      ],
+      [
+        "HIP 81833",
+        "HIP 81126"
+      ],
+      [
+        "HIP 81126",
+        "HIP 79992"
+      ],
+      [
+        "HIP 81833",
+        "HIP 84380"
+      ],
+      [
+        "HIP 84380",
+        "HIP 85112"
+      ],
+      [
+        "HIP 85112",
+        "HIP 87808"
+      ],
+      [
+        "HIP 87808",
+        "HIP 86414"
+      ],
+      [
+        "HIP 84380",
+        "HIP 83207"
+      ],
+      [
+        "HIP 83207",
+        "Sarin"
+      ],
+      [
+        "Sarin",
+        "Maasym"
+      ],
+      [
+        "Maasym",
+        "HIP 86974"
+      ],
+      [
+        "HIP 86974",
+        "HIP 87933"
+      ],
+      [
+        "HIP 87933",
+        "HIP 88794"
+      ],
+      [
+        "HIP 77760",
+        "HIP 79101"
+      ],
+      [
+        "HIP 79101",
+        "HIP 79992"
+      ],
+      [
+        "HIP 80170",
+        "Cujam"
+      ],
+      [
+        "Cujam",
+        "HIP 81008"
+      ]
+    ],
+    "stars": {
+      "Sarin": [
+        -12.2264,
+        29.0302,
+        61.5111
+      ],
+      "Rasalgethi": [
+        -62.9865,
+        82.2026,
+        314.1298
+      ],
+      "Kornephoros": [
+        -45.4676,
+        46.8853,
+        110.0672
+      ],
+      "HIP 80170": [
+        -69.4686,
+        58.138,
+        152.2945
+      ],
+      "HIP 81693": [
+        -9.2195,
+        16.8451,
+        25.7794
+      ],
+      "HIP 83207": [
+        -31.5077,
+        73.2796,
+        118.1855
+      ],
+      "HIP 81833": [
+        -25.6661,
+        62.7848,
+        73.3896
+      ],
+      "HIP 81126": [
+        -78.2363,
+        195.3993,
+        198.8765
+      ],
+      "HIP 79992": [
+        -82.7378,
+        204.4658,
+        176.9088
+      ],
+      "HIP 84380": [
+        -54.0534,
+        207.5578,
+        272.0376
+      ],
+      "HIP 85112": [
+        -45.5192,
+        218.5211,
+        284.8415
+      ],
+      "HIP 87808": [
+        -9.0162,
+        419.3771,
+        551.4244
+      ],
+      "HIP 86414": [
+        -26.0051,
+        301.0107,
+        289.4525
+      ],
+      "Maasym": [
+        -38.8457,
+        149.5261,
+        302.594
+      ],
+      "HIP 86974": [
+        -1.3032,
+        11.597,
+        22.0311
+      ],
+      "HIP 87933": [
+        -1.0708,
+        61.4835,
+        109.7909
+      ],
+      "HIP 88794": [
+        8.9673,
+        149.5891,
+        272.3766
+      ],
+      "HIP 77760": [
+        -18.5541,
+        32.1811,
+        29.8885
+      ],
+      "HIP 79101": [
+        -61.9591,
+        132.5144,
+        117.4781
+      ],
+      "Cujam": [
+        -89.5202,
+        55.7864,
+        204.4557
+      ],
+      "HIP 81008": [
+        -117.7726,
+        64.3154,
+        293.727
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Hercules_(constellation)"
+  },
+  "Horologium": {
+    "iau": "Hor",
+    "lines": [
+      [
+        "HIP 19747",
+        "HIP 12653"
+      ],
+      [
+        "HIP 12653",
+        "HIP 12225"
+      ],
+      [
+        "HIP 12225",
+        "HIP 12484"
+      ],
+      [
+        "HIP 12484",
+        "HIP 14240"
+      ],
+      [
+        "HIP 14240",
+        "HIP 13884"
+      ]
+    ],
+    "stars": {
+      "HIP 19747": [
+        35.718,
+        -72.825,
+        -71.64
+      ],
+      "HIP 12653": [
+        24.972,
+        -40.353,
+        -21.435
+      ],
+      "HIP 12225": [
+        55.9701,
+        -94.4736,
+        -45.894
+      ],
+      "HIP 12484": [
+        65.706,
+        -120.765,
+        -55.458
+      ],
+      "HIP 14240": [
+        45.528,
+        -112.134,
+        -46.989
+      ],
+      "HIP 13884": [
+        91.803,
+        -265.638,
+        -90.843
+      ]
+    },
+    "description": "the Pendulum Clock.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Horologium_(constellation)"
+  },
+  "Hydra": {
+    "iau": "Hya",
+    "lines": [
+      [
+        "HIP 43234",
+        "HIP 42799"
+      ],
+      [
+        "HIP 42799",
+        "Minchir"
+      ],
+      [
+        "Minchir",
+        "HIP 42313"
+      ],
+      [
+        "HIP 42313",
+        "Ashlesha"
+      ],
+      [
+        "Ashlesha",
+        "HIP 43813"
+      ],
+      [
+        "HIP 43813",
+        "HIP 45336"
+      ],
+      [
+        "HIP 45336",
+        "Ukdah"
+      ],
+      [
+        "Ukdah",
+        "Alphard"
+      ],
+      [
+        "Alphard",
+        "Zhang"
+      ],
+      [
+        "Zhang",
+        "HIP 49402"
+      ],
+      [
+        "HIP 49402",
+        "HIP 49841"
+      ],
+      [
+        "HIP 49841",
+        "HIP 51069"
+      ],
+      [
+        "HIP 51069",
+        "HIP 52943"
+      ],
+      [
+        "HIP 52943",
+        "Alkes"
+      ],
+      [
+        "HIP 54682",
+        "HIP 56343"
+      ],
+      [
+        "HIP 56343",
+        "HIP 57936"
+      ],
+      [
+        "HIP 57936",
+        "HIP 64962"
+      ],
+      [
+        "HIP 64962",
+        "HIP 68895"
+      ],
+      [
+        "HIP 68895",
+        "HIP 72571"
+      ]
+    ],
+    "stars": {
+      "HIP 43234": [
+        -191.625,
+        29.22,
+        -212.016
+      ],
+      "HIP 42799": [
+        -306.501,
+        27.855,
+        -355.008
+      ],
+      "Minchir": [
+        -220.125,
+        20.124,
+        -265.245
+      ],
+      "HIP 42313": [
+        -102.84,
+        16.179,
+        -125.136
+      ],
+      "Ashlesha": [
+        -78.594,
+        13.293,
+        -88.233
+      ],
+      "HIP 43813": [
+        -96.987,
+        14.58,
+        -100.965
+      ],
+      "HIP 45336": [
+        -83.0496,
+        4.4751,
+        -73.2399
+      ],
+      "Ukdah": [
+        -190.296,
+        -4.635,
+        -133.425
+      ],
+      "Alphard": [
+        -129.009,
+        -24.966,
+        -101.169
+      ],
+      "Zhang": [
+        -187.0824,
+        -58.5624,
+        -117.4947
+      ],
+      "HIP 49402": [
+        -257.568,
+        -68.154,
+        -141.123
+      ],
+      "HIP 49841": [
+        -86.6961,
+        -21.3795,
+        -44.8494
+      ],
+      "HIP 51069": [
+        -196.971,
+        -64.986,
+        -85.554
+      ],
+      "HIP 52943": [
+        -115.416,
+        -35.163,
+        -36.6
+      ],
+      "Alkes": [
+        -135.0333,
+        -46.2414,
+        -36.3249
+      ],
+      "HIP 54682": [
+        -262.395,
+        -112.941,
+        -56.184
+      ],
+      "HIP 56343": [
+        -101.367,
+        -63.432,
+        -11.997
+      ],
+      "HIP 57936": [
+        -236.334,
+        -158.934,
+        -7.314
+      ],
+      "HIP 64962": [
+        -106.5275,
+        -48.4388,
+        38.2062
+      ],
+      "HIP 68895": [
+        -70.6896,
+        -41.7073,
+        43.4765
+      ],
+      "HIP 72571": [
+        -198.1109,
+        -142.8,
+        181.9945
+      ]
+    },
+    "description": "the Water Snake.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Hydra_(constellation)"
+  },
+  "Hydrus": {
+    "iau": "Hyi",
+    "lines": [
+      [
+        "HIP 2021",
+        "HIP 17678"
+      ],
+      [
+        "HIP 17678",
+        "HIP 11001"
+      ],
+      [
+        "HIP 11001",
+        "HIP 9236"
+      ],
+      [
+        "HIP 9236",
+        "HIP 2021"
+      ]
+    ],
+    "stars": {
+      "HIP 2021": [
+        4.92,
+        -21.882,
+        -0.555
+      ],
+      "HIP 17678": [
+        29.583,
+        -191.469,
+        -45.222
+      ],
+      "HIP 11001": [
+        38.208,
+        -120.033,
+        -27.192
+      ],
+      "HIP 9236": [
+        24.0672,
+        -51.1722,
+        -13.7229
+      ]
+    },
+    "description": "the Lesser Water Snake.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Hydrus_(constellation)"
+  },
+  "Indus": {
+    "iau": "Ind",
+    "description": "The Indian, a faint constellation near the south celestial pole.",
+    "lines": [
+      [
+        "HIP 103227",
+        "HIP 102333"
+      ],
+      [
+        "HIP 102333",
+        "HIP 101772"
+      ],
+      [
+        "HIP 101772",
+        "HIP 105319"
+      ],
+      [
+        "HIP 105319",
+        "HIP 108431"
+      ],
+      [
+        "HIP 108431",
+        "HIP 103227"
+      ]
+    ],
+    "stars": {
+      "HIP 103227": [
+        203.4557,
+        -479.6746,
+        212.8855
+      ],
+      "HIP 102333": [
+        29.3475,
+        -57.082,
+        33.7488
+      ],
+      "HIP 101772": [
+        38.9306,
+        -66.4588,
+        47.4087
+      ],
+      "HIP 105319": [
+        41.4276,
+        -72.9856,
+        34.803
+      ],
+      "HIP 108431": [
+        85.5014,
+        -141.7092,
+        50.4054
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Indus_(constellation)"
+  },
+  "Leo Minor": {
+    "iau": "LMi",
+    "lines": [
+      [
+        "HIP 46952",
+        "HIP 49593"
+      ],
+      [
+        "HIP 49593",
+        "HIP 51233"
+      ],
+      [
+        "HIP 51233",
+        "Praecipua"
+      ],
+      [
+        "Praecipua",
+        "HIP 51056"
+      ],
+      [
+        "HIP 51056",
+        "HIP 49593"
+      ]
+    ],
+    "stars": {
+      "HIP 46952": [
+        -113.772,
+        104.262,
+        -84.015
+      ],
+      "HIP 49593": [
+        -59.481,
+        47.664,
+        -31.815
+      ],
+      "HIP 51233": [
+        -104.457,
+        84.624,
+        -44.403
+      ],
+      "Praecipua": [
+        -72.1896,
+        51.2394,
+        -21.6204
+      ],
+      "HIP 51056": [
+        -169.767,
+        123.93,
+        -73.893
+      ]
+    },
+    "description": "the Lesser Lion.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Leo_Minor"
+  },
+  "Lacerta": {
+    "iau": "Lac",
+    "description": "The Lizard, a faint zigzag of stars between Cygnus and Andromeda.",
+    "lines": [
+      [
+        "HIP 111022",
+        "HIP 111169"
+      ],
+      [
+        "HIP 111169",
+        "HIP 110538"
+      ],
+      [
+        "HIP 110538",
+        "HIP 110609"
+      ],
+      [
+        "HIP 110609",
+        "HIP 111022"
+      ],
+      [
+        "HIP 111022",
+        "HIP 110351"
+      ],
+      [
+        "HIP 110351",
+        "HIP 111104"
+      ],
+      [
+        "HIP 111104",
+        "HIP 111944"
+      ],
+      [
+        "HIP 111944",
+        "HIP 111022"
+      ],
+      [
+        "HIP 111104",
+        "HIP 109754"
+      ],
+      [
+        "HIP 109754",
+        "HIP 109937"
+      ]
+    ],
+    "stars": {
+      "HIP 111022": [
+        941.1686,
+        1120.7756,
+        392.1062
+      ],
+      "HIP 111169": [
+        55.8411,
+        72.5891,
+        22.7623
+      ],
+      "HIP 110538": [
+        87.4007,
+        123.5745,
+        39.1143
+      ],
+      "HIP 110609": [
+        1229.3388,
+        1572.6995,
+        544.0204
+      ],
+      "HIP 110351": [
+        318.7428,
+        370.3128,
+        146.899
+      ],
+      "HIP 111104": [
+        1065.6586,
+        1079.3235,
+        438.756
+      ],
+      "HIP 111944": [
+        206.1275,
+        213.7097,
+        74.5008
+      ],
+      "HIP 109754": [
+        305.428,
+        283.5656,
+        152.4825
+      ],
+      "HIP 109937": [
+        406.076,
+        349.8284,
+        198.1232
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Lacerta_(constellation)"
+  },
+  "Leo": {
+    "iau": "Leo",
+    "description": "The Lion, with the curved 'Sickle' asterism marking the lion's mane and head, and a triangle of stars (Denebola, Zosma, Chertan) marking the hindquarters and tail.",
+    "lines": [
+      [
+        "Regulus",
+        "HIP 49583"
+      ],
+      [
+        "HIP 49583",
+        "Algieba"
+      ],
+      [
+        "Algieba",
+        "Adhafera"
+      ],
+      [
+        "Adhafera",
+        "Rasalas"
+      ],
+      [
+        "Rasalas",
+        "Ras Elased Australis"
+      ],
+      [
+        "Algieba",
+        "Zosma"
+      ],
+      [
+        "Zosma",
+        "Denebola"
+      ],
+      [
+        "Denebola",
+        "Chertan"
+      ],
+      [
+        "Chertan",
+        "Zosma"
+      ],
+      [
+        "Chertan",
+        "HIP 49583"
+      ],
+      [
+        "Rasalas",
+        "HIP 46146"
+      ],
+      [
+        "HIP 46146",
+        "Alterf"
+      ],
+      [
+        "Alterf",
+        "Ras Elased Australis"
+      ],
+      [
+        "Ras Elased Australis",
+        "HIP 49583"
+      ],
+      [
+        "Chertan",
+        "HIP 55642"
+      ],
+      [
+        "HIP 55642",
+        "HIP 55434"
+      ]
+    ],
+    "stars": {
+      "Regulus": [
+        -63.057,
+        15.123,
+        -33.396
+      ],
+      "HIP 49583": [
+        -1409.586,
+        481.611,
+        -754.764
+      ],
+      "Algieba": [
+        -102.009,
+        40.617,
+        -47.583
+      ],
+      "Adhafera": [
+        -176.5176,
+        84.9336,
+        -85.4373
+      ],
+      "Rasalas": [
+        -87.7968,
+        50.4057,
+        -54.4569
+      ],
+      "Ras Elased Australis": [
+        -159.588,
+        84.342,
+        -105.777
+      ],
+      "Zosma": [
+        -49.326,
+        18.843,
+        -10.011
+      ],
+      "Denebola": [
+        -31.902,
+        8.304,
+        -1.524
+      ],
+      "Chertan": [
+        -139.518,
+        39.288,
+        -28.233
+      ],
+      "HIP 46146": [
+        -128.556,
+        81.147,
+        -103.497
+      ],
+      "Alterf": [
+        -251.721,
+        133.704,
+        -190.167
+      ],
+      "HIP 55642": [
+        -68.7771,
+        12.9429,
+        -10.9173
+      ],
+      "HIP 55434": [
+        -216.939,
+        23.247,
+        -37.143
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Leo_(constellation)"
+  },
+  "Lepus": {
+    "iau": "Lep",
+    "description": "The Hare, crouching at the feet of Orion.",
+    "lines": [
+      [
+        "HIP 23685",
+        "HIP 24305"
+      ],
+      [
+        "HIP 24305",
+        "Arneb"
+      ],
+      [
+        "Arneb",
+        "Nihal"
+      ],
+      [
+        "Nihal",
+        "HIP 23685"
+      ],
+      [
+        "HIP 24845",
+        "HIP 24305"
+      ],
+      [
+        "HIP 24305",
+        "HIP 24327"
+      ],
+      [
+        "Nihal",
+        "HIP 27072"
+      ],
+      [
+        "HIP 27072",
+        "HIP 27654"
+      ],
+      [
+        "HIP 27654",
+        "HIP 28910"
+      ],
+      [
+        "HIP 28910",
+        "HIP 28103"
+      ],
+      [
+        "HIP 28103",
+        "HIP 27288"
+      ],
+      [
+        "HIP 27288",
+        "Arneb"
+      ]
+    ],
+    "stars": {
+      "HIP 23685": [
+        41.9214,
+        -73.1925,
+        -172.8252
+      ],
+      "HIP 24305": [
+        30.6351,
+        -43.6572,
+        -147.0618
+      ],
+      "Arneb": [
+        201.597,
+        -545.988,
+        -1686.273
+      ],
+      "Nihal": [
+        18.5637,
+        -50.9511,
+        -133.1289
+      ],
+      "HIP 24845": [
+        153.561,
+        -204.885,
+        -861.549
+      ],
+      "HIP 24327": [
+        84.855,
+        -96.216,
+        -410.025
+      ],
+      "HIP 27072": [
+        1.671,
+        -10.2,
+        -24.633
+      ],
+      "HIP 27654": [
+        3.7323,
+        -37.6176,
+        -98.5467
+      ],
+      "HIP 28910": [
+        -3.993,
+        -39.651,
+        -148.602
+      ],
+      "HIP 28103": [
+        0.681,
+        -10.983,
+        -43.5
+      ],
+      "HIP 27288": [
+        3.684,
+        -17.133,
+        -64.641
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Lepus_(constellation)"
+  },
+  "Libra": {
+    "iau": "Lib",
+    "description": "The Scales, the only zodiac constellation named for an object rather than a creature. Zubenelgenubi ('southern claw') and Zubeneschamali ('northern claw') recall its former role as part of Scorpius.",
+    "lines": [
+      [
+        "Zubenelgenubi",
+        "Zubeneschamali"
+      ],
+      [
+        "Zubenelgenubi",
+        "Brachium"
+      ],
+      [
+        "Zubeneschamali",
+        "Zubenelhakrabi"
+      ],
+      [
+        "Zubenelhakrabi",
+        "Zubenelgenubi"
+      ],
+      [
+        "Zubenelhakrabi",
+        "HIP 76470"
+      ],
+      [
+        "HIP 76470",
+        "HIP 76600"
+      ]
+    ],
+    "stars": {
+      "Zubenelgenubi": [
+        -49.2257,
+        -19.2656,
+        45.4555
+      ],
+      "Zubeneschamali": [
+        -109.6482,
+        -27.7578,
+        127.2608
+      ],
+      "Brachium": [
+        -166.5576,
+        -113.2819,
+        172.5813
+      ],
+      "Zubenelhakrabi": [
+        -85.5314,
+        -38.3093,
+        117.2137
+      ],
+      "HIP 76470": [
+        -105.9952,
+        -97.0268,
+        147.2693
+      ],
+      "HIP 76600": [
+        -169.4041,
+        -167.594,
+        238.9399
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Libra_(constellation)"
+  },
+  "Lupus": {
+    "iau": "Lup",
+    "description": "The Wolf, a constellation south of Libra and Scorpius in a rich area of the Milky Way.",
+    "lines": [
+      [
+        "HIP 71860",
+        "HIP 74395"
+      ],
+      [
+        "HIP 74395",
+        "HIP 75264"
+      ],
+      [
+        "HIP 75264",
+        "HIP 76297"
+      ],
+      [
+        "HIP 76297",
+        "HIP 75141"
+      ],
+      [
+        "HIP 75141",
+        "HIP 73273"
+      ],
+      [
+        "HIP 76297",
+        "HIP 78384"
+      ],
+      [
+        "HIP 78384",
+        "HIP 75177"
+      ],
+      [
+        "HIP 75177",
+        "HIP 77634"
+      ],
+      [
+        "HIP 77634",
+        "HIP 78384"
+      ],
+      [
+        "HIP 78384",
+        "HIP 74395"
+      ]
+    ],
+    "stars": {
+      "HIP 71860": [
+        -220.0647,
+        -314.5118,
+        187.8356
+      ],
+      "HIP 74395": [
+        -44.2958,
+        -85.1518,
+        49.3187
+      ],
+      "HIP 75264": [
+        -212.2008,
+        -331.2087,
+        258.9846
+      ],
+      "HIP 76297": [
+        -172.1664,
+        -254.8077,
+        235.1081
+      ],
+      "HIP 75141": [
+        -393.6706,
+        -529.5964,
+        474.9033
+      ],
+      "HIP 73273": [
+        -182.8559,
+        -240.7417,
+        180.5284
+      ],
+      "HIP 78384": [
+        -159.1476,
+        -252.481,
+        275.9913
+      ],
+      "HIP 75177": [
+        -129.868,
+        -149.6124,
+        157.2713
+      ],
+      "HIP 77634": [
+        -79.7927,
+        -99.4231,
+        126.4136
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Lupus_(constellation)"
+  },
+  "Lynx": {
+    "iau": "Lyn",
+    "description": "The Lynx, a faint constellation between Ursa Major and Auriga. Said to require the eyes of a lynx to see it.",
+    "lines": [
+      [
+        "HIP 45860",
+        "HIP 45688"
+      ],
+      [
+        "HIP 45688",
+        "HIP 44700"
+      ],
+      [
+        "HIP 44700",
+        "HIP 44248"
+      ],
+      [
+        "HIP 44248",
+        "Alsciaukat"
+      ],
+      [
+        "Alsciaukat",
+        "HIP 36145"
+      ],
+      [
+        "HIP 36145",
+        "HIP 33449"
+      ],
+      [
+        "HIP 33449",
+        "HIP 30060"
+      ]
+    ],
+    "stars": {
+      "HIP 45860": [
+        -129.4656,
+        115.245,
+        -107.6238
+      ],
+      "HIP 45688": [
+        -74.157,
+        72.735,
+        -62.865
+      ],
+      "HIP 44700": [
+        -369.252,
+        403.338,
+        -348.789
+      ],
+      "HIP 44248": [
+        -25.491,
+        32.121,
+        -25.347
+      ],
+      "Alsciaukat": [
+        -143.7255,
+        231.1419,
+        -199.9482
+      ],
+      "HIP 36145": [
+        -60.825,
+        190.839,
+        -153.015
+      ],
+      "HIP 33449": [
+        -21.243,
+        139.737,
+        -83.223
+      ],
+      "HIP 30060": [
+        -6.4539,
+        125.6448,
+        -75.1854
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Lynx_(constellation)"
+  },
+  "Lyra": {
+    "iau": "Lyr",
+    "description": "The Lyre, a small but bright constellation dominated by Vega — the brightest star in the northern celestial hemisphere and one corner of the Summer Triangle.",
+    "lines": [
+      [
+        "Vega",
+        "HIP 91919"
+      ],
+      [
+        "HIP 91919",
+        "HIP 91971"
+      ],
+      [
+        "HIP 91971",
+        "Vega"
+      ],
+      [
+        "HIP 91971",
+        "HIP 92791"
+      ],
+      [
+        "HIP 92791",
+        "Sulafat"
+      ],
+      [
+        "Sulafat",
+        "Sheliak"
+      ],
+      [
+        "Sheliak",
+        "HIP 91971"
+      ]
+    ],
+    "stars": {
+      "Vega": [
+        2.8817,
+        14.4292,
+        17.724
+      ],
+      "HIP 91919": [
+        22.0989,
+        95.3255,
+        112.7976
+      ],
+      "HIP 91971": [
+        22.0851,
+        87.6323,
+        111.6077
+      ],
+      "HIP 92791": [
+        127.5832,
+        406.5915,
+        526.3134
+      ],
+      "Sulafat": [
+        122.0962,
+        308.0341,
+        464.2168
+      ],
+      "Sheliak": [
+        160.2265,
+        486.6694,
+        721.5445
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Lyra_(constellation)"
+  },
+  "Mensa": {
+    "iau": "Men",
+    "description": "Table Mountain, the faintest of all 88 constellations, named after Table Mountain in South Africa where Lacaille observed.",
+    "lines": [
+      [
+        "Hoerikwaggo",
+        "HIP 23467"
+      ]
+    ],
+    "stars": {
+      "Hoerikwaggo": [
+        -0.36,
+        -29.559,
+        -8.049
+      ],
+      "HIP 23467": [
+        49.65,
+        -593.499,
+        -194.487
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Mensa_(constellation)"
+  },
+  "Microscopium": {
+    "iau": "Mic",
+    "description": "The Microscope, a faint southern constellation between Capricornus and Piscis Austrinus.",
+    "lines": [
+      [
+        "HIP 102831",
+        "HIP 102989"
+      ]
+    ],
+    "stars": {
+      "HIP 102831": [
+        195.4009,
+        -193.5038,
+        213.3024
+      ],
+      "HIP 102989": [
+        253.2958,
+        -242.8585,
+        271.6756
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Microscopium_(constellation)"
+  },
+  "Monoceros": {
+    "iau": "Mon",
+    "description": "The Unicorn, a large but faint constellation in the winter Milky Way between Canis Major and Gemini. Contains the Rosette Nebula.",
+    "lines": [
+      [
+        "HIP 31978",
+        "HIP 31216"
+      ],
+      [
+        "HIP 31216",
+        "HIP 30419"
+      ],
+      [
+        "HIP 30419",
+        "HIP 30419"
+      ],
+      [
+        "HIP 30419",
+        "HIP 32578"
+      ],
+      [
+        "HIP 32578",
+        "HIP 31216"
+      ],
+      [
+        "HIP 32578",
+        "HIP 34769"
+      ],
+      [
+        "HIP 34769",
+        "HIP 30867"
+      ],
+      [
+        "HIP 30867",
+        "HIP 29651"
+      ],
+      [
+        "HIP 34769",
+        "HIP 39863"
+      ],
+      [
+        "HIP 39863",
+        "HIP 37447"
+      ]
+    ],
+    "stars": {
+      "HIP 31978": [
+        -148.059,
+        145.23,
+        -819.228
+      ],
+      "HIP 31216": [
+        -350.133,
+        314.919,
+        -2421.975
+      ],
+      "HIP 30419": [
+        -12.8568,
+        9.9756,
+        -123.5289
+      ],
+      "HIP 32578": [
+        -75.1008,
+        15.2586,
+        -354.3732
+      ],
+      "HIP 34769": [
+        -117.474,
+        -3.276,
+        -362.283
+      ],
+      "HIP 30867": [
+        -77.469,
+        -76.209,
+        -612.846
+      ],
+      "HIP 29651": [
+        -37.833,
+        -64.221,
+        -582.846
+      ],
+      "HIP 39863": [
+        -491.274,
+        -48.123,
+        -781.686
+      ],
+      "HIP 37447": [
+        -56.508,
+        -22.239,
+        -119.478
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Monoceros_(constellation)"
+  },
+  "Musca": {
+    "iau": "Mus",
+    "description": "The Fly, a small constellation south of Crux.",
+    "lines": [
+      [
+        "HIP 57363",
+        "HIP 59929"
+      ],
+      [
+        "HIP 59929",
+        "HIP 61585"
+      ],
+      [
+        "HIP 61585",
+        "HIP 62322"
+      ],
+      [
+        "HIP 62322",
+        "HIP 63613"
+      ],
+      [
+        "HIP 63613",
+        "HIP 61199"
+      ],
+      [
+        "HIP 61199",
+        "HIP 61585"
+      ]
+    ],
+    "stars": {
+      "HIP 57363": [
+        -49.8528,
+        -116.1435,
+        -3.1359
+      ],
+      "HIP 59929": [
+        -112.338,
+        -278.316,
+        8.631
+      ],
+      "HIP 61585": [
+        -101.9771,
+        -271.1103,
+        16.6919
+      ],
+      "HIP 62322": [
+        -114.748,
+        -291.4844,
+        23.4918
+      ],
+      "HIP 63613": [
+        -25.4924,
+        -79.3149,
+        7.1021
+      ],
+      "HIP 61199": [
+        -90.7576,
+        -284.3939,
+        12.9438
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Musca_(constellation)"
+  },
+  "Norma": {
+    "iau": "Nor",
+    "description": "the Carpenter's Level. The Carpenter's Square, a faint constellation in a rich area of the Milky Way near Scorpius.",
+    "lines": [
+      [
+        "HIP 78639",
+        "HIP 80000"
+      ],
+      [
+        "HIP 80000",
+        "HIP 80582"
+      ],
+      [
+        "HIP 80582",
+        "HIP 78914"
+      ],
+      [
+        "HIP 78914",
+        "HIP 78639"
+      ]
+    ],
+    "stars": {
+      "HIP 78639": [
+        -64.3101,
+        -152.8938,
+        115.0869
+      ],
+      "HIP 80000": [
+        -32.1173,
+        -90.9335,
+        68.7507
+      ],
+      "HIP 80582": [
+        -129.7116,
+        -359.9621,
+        302.5812
+      ],
+      "HIP 78914": [
+        -37.7029,
+        -79.8093,
+        69.7959
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Norma_(constellation)"
+  },
+  "Octans": {
+    "iau": "Oct",
+    "description": "The Octant, the constellation containing the south celestial pole. Its stars are too faint for a prominent pattern.",
+    "lines": [
+      [
+        "HIP 70638",
+        "HIP 107089"
+      ],
+      [
+        "HIP 107089",
+        "HIP 112405"
+      ],
+      [
+        "HIP 112405",
+        "HIP 70638"
+      ]
+    ],
+    "stars": {
+      "HIP 70638": [
+        -24.3064,
+        -273.2996,
+        18.1373
+      ],
+      "HIP 107089": [
+        11.4249,
+        -62.0665,
+        7.8905
+      ],
+      "HIP 112405": [
+        19.5133,
+        -135.7501,
+        6.5235
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Octans_(constellation)"
+  },
+  "Ophiuchus": {
+    "iau": "Oph",
+    "description": "the Serpent Bearer. The Serpent-Bearer, a large constellation occasionally called the 13th zodiac sign since the ecliptic passes through it.",
+    "lines": [
+      [
+        "Rasalhague",
+        "HIP 83000"
+      ],
+      [
+        "HIP 83000",
+        "Marfik"
+      ],
+      [
+        "Marfik",
+        "Yed Prior"
+      ],
+      [
+        "Yed Prior",
+        "Yed Posterior"
+      ],
+      [
+        "Yed Posterior",
+        "HIP 80628"
+      ],
+      [
+        "HIP 80628",
+        "HIP 81377"
+      ],
+      [
+        "HIP 83000",
+        "HIP 81377"
+      ],
+      [
+        "HIP 81377",
+        "Sabik"
+      ],
+      [
+        "Sabik",
+        "Cebalrai"
+      ],
+      [
+        "Cebalrai",
+        "HIP 87108"
+      ],
+      [
+        "HIP 87108",
+        "HIP 88048"
+      ],
+      [
+        "Cebalrai",
+        "Rasalhague"
+      ],
+      [
+        "Sabik",
+        "HIP 84970"
+      ],
+      [
+        "HIP 84970",
+        "HIP 85423"
+      ],
+      [
+        "HIP 81377",
+        "HIP 80894"
+      ],
+      [
+        "HIP 80894",
+        "HIP 80569"
+      ],
+      [
+        "HIP 80569",
+        "HIP 80343"
+      ],
+      [
+        "HIP 80343",
+        "HIP 80473"
+      ]
+    ],
+    "stars": {
+      "Rasalhague": [
+        -4.7612,
+        9.7184,
+        43.3597
+      ],
+      "HIP 83000": [
+        -22.2972,
+        13.7038,
+        79.9517
+      ],
+      "Marfik": [
+        -60.3136,
+        5.5126,
+        147.2678
+      ],
+      "Yed Prior": [
+        -69.8722,
+        -10.1416,
+        140.673
+      ],
+      "Yed Posterior": [
+        -41.8869,
+        -8.0099,
+        88.1357
+      ],
+      "HIP 80628": [
+        -47.5856,
+        -17.8862,
+        111.8374
+      ],
+      "HIP 81377": [
+        -117.052,
+        -61.7463,
+        309.6013
+      ],
+      "Sabik": [
+        -16.8075,
+        -22.0281,
+        76.41
+      ],
+      "Cebalrai": [
+        -5.407,
+        5.9947,
+        74.8479
+      ],
+      "HIP 87108": [
+        -4.9869,
+        4.4658,
+        94.3102
+      ],
+      "HIP 88048": [
+        -0.5803,
+        -23.5337,
+        136.6191
+      ],
+      "HIP 84970": [
+        -59.9787,
+        -169.4963,
+        358.511
+      ],
+      "HIP 85423": [
+        -12.6351,
+        -51.1112,
+        88.1021
+      ],
+      "HIP 80894": [
+        -81.173,
+        -64.0553,
+        198.7583
+      ],
+      "HIP 80569": [
+        -180.8452,
+        -152.9374,
+        421.0496
+      ],
+      "HIP 80343": [
+        -70.0424,
+        -62.8683,
+        157.5083
+      ],
+      "HIP 80473": [
+        -122.0415,
+        -132.1938,
+        279.2931
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Ophiuchus_(constellation)"
+  },
+  "Orion": {
+    "iau": "Ori",
+    "description": "The Hunter, one of the most recognizable constellations. Anchored by the bright shoulders Betelgeuse and Bellatrix, the feet Rigel and Saiph, and the three-star Belt Mintaka–Alnilam–Alnitak.",
+    "lines": [
+      [
+        "Betelgeuse",
+        "Alnitak"
+      ],
+      [
+        "Alnitak",
+        "Saiph"
+      ],
+      [
+        "Alnitak",
+        "Alnilam"
+      ],
+      [
+        "Alnilam",
+        "Mintaka"
+      ],
+      [
+        "Mintaka",
+        "Bellatrix"
+      ],
+      [
+        "Mintaka",
+        "HIP 25281"
+      ],
+      [
+        "HIP 25281",
+        "Rigel"
+      ],
+      [
+        "Betelgeuse",
+        "Bellatrix"
+      ],
+      [
+        "Bellatrix",
+        "Meissa"
+      ],
+      [
+        "Meissa",
+        "Meissa"
+      ],
+      [
+        "Meissa",
+        "Betelgeuse"
+      ],
+      [
+        "HIP 23607",
+        "HIP 22957"
+      ],
+      [
+        "HIP 22957",
+        "HIP 22845"
+      ],
+      [
+        "HIP 22845",
+        "HIP 22509"
+      ],
+      [
+        "HIP 22509",
+        "Tabit"
+      ],
+      [
+        "Tabit",
+        "Bellatrix"
+      ],
+      [
+        "Tabit",
+        "HIP 22549"
+      ],
+      [
+        "HIP 22549",
+        "HIP 22797"
+      ],
+      [
+        "HIP 22797",
+        "HIP 23123"
+      ],
+      [
+        "Betelgeuse",
+        "HIP 28614"
+      ],
+      [
+        "HIP 28614",
+        "HIP 29038"
+      ],
+      [
+        "HIP 29426",
+        "HIP 28716"
+      ],
+      [
+        "HIP 28716",
+        "HIP 27913"
+      ],
+      [
+        "HIP 27913",
+        "HIP 29038"
+      ]
+    ],
+    "stars": {
+      "Betelgeuse": [
+        9.567,
+        59.046,
+        -454.092
+      ],
+      "Alnitak": [
+        56.754,
+        -22.956,
+        -674.427
+      ],
+      "Saiph": [
+        31.332,
+        -99.981,
+        -585.945
+      ],
+      "Alnilam": [
+        188.325,
+        -38.139,
+        -1808.001
+      ],
+      "Mintaka": [
+        77.604,
+        -3.324,
+        -632.19
+      ],
+      "Bellatrix": [
+        34.977,
+        25.68,
+        -228.108
+      ],
+      "HIP 25281": [
+        293.181,
+        -79.5,
+        -1876.344
+      ],
+      "Rigel": [
+        154.803,
+        -113.22,
+        -770.13
+      ],
+      "Meissa": [
+        107.724,
+        174.258,
+        -989.109
+      ],
+      "HIP 23607": [
+        88.734,
+        102.075,
+        -359.694
+      ],
+      "HIP 22957": [
+        44.193,
+        38.754,
+        -155.067
+      ],
+      "HIP 22845": [
+        30.6465,
+        19.5765,
+        -104.9622
+      ],
+      "HIP 22509": [
+        59.286,
+        31.137,
+        -189.795
+      ],
+      "Tabit": [
+        7.2024,
+        2.9181,
+        -22.7862
+      ],
+      "HIP 22549": [
+        228.027,
+        75.684,
+        -736.704
+      ],
+      "HIP 22797": [
+        257.436,
+        38.778,
+        -872.604
+      ],
+      "HIP 23123": [
+        188.736,
+        21.318,
+        -686.934
+      ],
+      "HIP 28614": [
+        -1.461,
+        23.883,
+        -140.496
+      ],
+      "HIP 29038": [
+        -17.736,
+        141.531,
+        -536.577
+      ],
+      "HIP 29426": [
+        -33.48,
+        162.789,
+        -642.048
+      ],
+      "HIP 28716": [
+        -63.087,
+        1352.712,
+        -3688.251
+      ],
+      "HIP 27913": [
+        0.597,
+        9.006,
+        -24.372
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Orion_(constellation)"
+  },
+  "Pavo": {
+    "iau": "Pav",
+    "description": "The Peacock, a southern constellation named by Dutch navigators. Its brightest star is simply called Peacock.",
+    "lines": [
+      [
+        "Peacock",
+        "HIP 99240"
+      ],
+      [
+        "HIP 99240",
+        "HIP 102395"
+      ],
+      [
+        "Peacock",
+        "HIP 105858"
+      ],
+      [
+        "HIP 105858",
+        "HIP 102395"
+      ],
+      [
+        "HIP 91792",
+        "HIP 99240"
+      ],
+      [
+        "HIP 99240",
+        "HIP 98495"
+      ],
+      [
+        "HIP 99240",
+        "HIP 93015"
+      ],
+      [
+        "HIP 93015",
+        "HIP 88866"
+      ],
+      [
+        "HIP 88866",
+        "HIP 86929"
+      ],
+      [
+        "HIP 88866",
+        "HIP 90098"
+      ],
+      [
+        "HIP 90098",
+        "HIP 92609"
+      ],
+      [
+        "HIP 92609",
+        "HIP 99240"
+      ]
+    ],
+    "stars": {
+      "Peacock": [
+        53.5508,
+        -137.5237,
+        72.6029
+      ],
+      "HIP 99240": [
+        3.9413,
+        -16.764,
+        6.2631
+      ],
+      "HIP 102395": [
+        33.0556,
+        -113.7097,
+        37.7065
+      ],
+      "HIP 105858": [
+        9.0774,
+        -25.2559,
+        7.1919
+      ],
+      "HIP 91792": [
+        11.9468,
+        -190.4733,
+        62.8723
+      ],
+      "HIP 98495": [
+        14.2645,
+        -92.3821,
+        24.56
+      ],
+      "HIP 93015": [
+        43.792,
+        -424.2752,
+        172.5879
+      ],
+      "HIP 88866": [
+        1.9851,
+        -107.163,
+        52.9993
+      ],
+      "HIP 86929": [
+        -8.6057,
+        -292.9569,
+        138.0628
+      ],
+      "HIP 90098": [
+        20.8127,
+        -378.779,
+        204.6569
+      ],
+      "HIP 92609": [
+        138.6686,
+        -1163.7897,
+        598.0529
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Pavo_(constellation)"
+  },
+  "Pegasus": {
+    "iau": "Peg",
+    "description": "The Winged Horse, marked by the Great Square (Markab, Scheat, Alpheratz, Algenib) forming the body. Enif marks the horse's nose.",
+    "lines": [
+      [
+        "HIP 109410",
+        "Matar"
+      ],
+      [
+        "Matar",
+        "Scheat"
+      ],
+      [
+        "Scheat",
+        "Sadalbari"
+      ],
+      [
+        "Sadalbari",
+        "HIP 112440"
+      ],
+      [
+        "HIP 112440",
+        "HIP 109176"
+      ],
+      [
+        "HIP 109176",
+        "HIP 107354"
+      ],
+      [
+        "Alpheratz",
+        "Scheat"
+      ],
+      [
+        "Scheat",
+        "Markab"
+      ],
+      [
+        "Markab",
+        "Algenib"
+      ],
+      [
+        "Algenib",
+        "Alpheratz"
+      ],
+      [
+        "Enif",
+        "Biham"
+      ],
+      [
+        "Biham",
+        "Homam"
+      ],
+      [
+        "Homam",
+        "Markab"
+      ]
+    ],
+    "stars": {
+      "HIP 109410": [
+        179.6087,
+        132.3981,
+        93.5109
+      ],
+      "Matar": [
+        160.7975,
+        99.213,
+        56.1512
+      ],
+      "Scheat": [
+        154.3003,
+        84.8704,
+        38.6328
+      ],
+      "Sadalbari": [
+        84.6275,
+        40.6286,
+        26.6817
+      ],
+      "HIP 112440": [
+        292.2422,
+        134.3112,
+        97.0301
+      ],
+      "HIP 109176": [
+        28.0061,
+        15.0587,
+        15.0465
+      ],
+      "HIP 107354": [
+        76.8774,
+        44.4346,
+        51.54
+      ],
+      "Alpheratz": [
+        77.925,
+        43.383,
+        -2.853
+      ],
+      "Markab": [
+        114.9343,
+        32.1682,
+        28.2514
+      ],
+      "Algenib": [
+        416.046,
+        113.097,
+        -24.054
+      ],
+      "Enif": [
+        518.3097,
+        108.7735,
+        348.9928
+      ],
+      "Biham": [
+        74.8915,
+        9.1648,
+        38.9031
+      ],
+      "Homam": [
+        173.8865,
+        35.3231,
+        62.0362
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Pegasus_(constellation)"
+  },
+  "Perseus": {
+    "iau": "Per",
+    "description": "The Hero, holding the severed head of Medusa (Algol, the 'Demon Star', a famous eclipsing binary). Mirfak anchors the central curve.",
+    "lines": [
+      [
+        "Atik",
+        "HIP 18246"
+      ],
+      [
+        "HIP 18246",
+        "Menkib"
+      ],
+      [
+        "Menkib",
+        "HIP 18532"
+      ],
+      [
+        "HIP 18532",
+        "HIP 17358"
+      ],
+      [
+        "HIP 17358",
+        "Mirfak"
+      ],
+      [
+        "Mirfak",
+        "HIP 14328"
+      ],
+      [
+        "HIP 14328",
+        "Miram"
+      ],
+      [
+        "Miram",
+        "HIP 13531"
+      ],
+      [
+        "HIP 13531",
+        "HIP 14328"
+      ],
+      [
+        "HIP 13531",
+        "HIP 14632"
+      ],
+      [
+        "HIP 14632",
+        "Mirfak"
+      ],
+      [
+        "HIP 14632",
+        "Misam"
+      ],
+      [
+        "Misam",
+        "Algol"
+      ],
+      [
+        "Algol",
+        "HIP 18532"
+      ],
+      [
+        "Algol",
+        "HIP 14354"
+      ],
+      [
+        "HIP 17358",
+        "HIP 19343"
+      ],
+      [
+        "HIP 19343",
+        "HIP 19812"
+      ],
+      [
+        "HIP 19812",
+        "HIP 20070"
+      ],
+      [
+        "HIP 20070",
+        "HIP 19167"
+      ],
+      [
+        "HIP 14632",
+        "HIP 12777"
+      ],
+      [
+        "HIP 12777",
+        "HIP 8068"
+      ]
+    ],
+    "stars": {
+      "Atik": [
+        468.261,
+        530.229,
+        -696.315
+      ],
+      "HIP 18246": [
+        344.892,
+        410.988,
+        -563.538
+      ],
+      "Menkib": [
+        501.384,
+        717.378,
+        -859.437
+      ],
+      "HIP 18532": [
+        218.9721,
+        361.7628,
+        -371.2026
+      ],
+      "HIP 17358": [
+        181.7835,
+        355.887,
+        -266.7945
+      ],
+      "Mirfak": [
+        188.655,
+        356.127,
+        -233.643
+      ],
+      "HIP 14328": [
+        87.4281,
+        170.7438,
+        -91.1676
+      ],
+      "Miram": [
+        378.696,
+        760.638,
+        -349.134
+      ],
+      "HIP 13531": [
+        106.3152,
+        193.041,
+        -101.1168
+      ],
+      "HIP 14632": [
+        13.9533,
+        24.171,
+        -15.1035
+      ],
+      "Misam": [
+        50.1261,
+        73.6485,
+        -54.4608
+      ],
+      "Algol": [
+        42.567,
+        54.216,
+        -45.717
+      ],
+      "HIP 14354": [
+        152.316,
+        177.495,
+        -159.357
+      ],
+      "HIP 19343": [
+        147.831,
+        348.102,
+        -279.975
+      ],
+      "HIP 19812": [
+        223.779,
+        569.547,
+        -453.27
+      ],
+      "HIP 20070": [
+        96.3231,
+        270.0519,
+        -202.4952
+      ],
+      "HIP 19167": [
+        120.798,
+        306.927,
+        -223.839
+      ],
+      "HIP 12777": [
+        16.473,
+        25.332,
+        -14.346
+      ],
+      "HIP 8068": [
+        316.287,
+        429.459,
+        -153.684
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Perseus_(constellation)"
+  },
+  "Phoenix": {
+    "iau": "Phe",
+    "description": "The Phoenix, a southern constellation representing the mythological bird that rises from its own ashes.",
+    "lines": [
+      [
+        "Ankaa",
+        "HIP 5165"
+      ],
+      [
+        "HIP 5165",
+        "HIP 6867"
+      ],
+      [
+        "Ankaa",
+        "HIP 765"
+      ],
+      [
+        "HIP 765",
+        "HIP 5165"
+      ],
+      [
+        "HIP 5165",
+        "Wurren"
+      ],
+      [
+        "Wurren",
+        "HIP 7083"
+      ],
+      [
+        "HIP 7083",
+        "HIP 6867"
+      ]
+    ],
+    "stars": {
+      "Ankaa": [
+        57.252,
+        -52.449,
+        -6.594
+      ],
+      "HIP 5165": [
+        197184.1116,
+        -218397.9379,
+        -58487.3223
+      ],
+      "HIP 6867": [
+        151.365,
+        -154.041,
+        -61.437
+      ],
+      "HIP 765": [
+        92.52,
+        -95.046,
+        -3.801
+      ],
+      "Wurren": [
+        145.842,
+        -219.915,
+        -44.856
+      ],
+      "HIP 7083": [
+        79.476,
+        -99.441,
+        -33.429
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Phoenix_(constellation)"
+  },
+  "Pictor": {
+    "iau": "Pic",
+    "lines": [
+      [
+        "HIP 32607",
+        "HIP 27530"
+      ],
+      [
+        "HIP 27530",
+        "HIP 27321"
+      ]
+    ],
+    "stars": {
+      "HIP 32607": [
+        -8.718,
+        -78.372,
+        -40.854
+      ],
+      "HIP 27530": [
+        4.218,
+        -141.78,
+        -94.941
+      ],
+      "HIP 27321": [
+        2.052,
+        -45.819,
+        -36.96
+      ]
+    },
+    "description": "the Painter's Easel.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Pictor_(constellation)"
+  },
+  "Piscis Austrinus": {
+    "iau": "PsA",
+    "description": "The Southern Fish, a small constellation whose lone bright star Fomalhaut is one of the brightest in the sky and hosts a famous debris disk.",
+    "lines": [
+      [
+        "Fomalhaut",
+        "HIP 113246"
+      ],
+      [
+        "HIP 113246",
+        "HIP 112948"
+      ],
+      [
+        "HIP 112948",
+        "HIP 111188"
+      ],
+      [
+        "HIP 111188",
+        "HIP 109285"
+      ],
+      [
+        "HIP 109285",
+        "HIP 107380"
+      ],
+      [
+        "HIP 107380",
+        "HIP 107608"
+      ],
+      [
+        "HIP 107608",
+        "HIP 109285"
+      ],
+      [
+        "HIP 109285",
+        "HIP 111954"
+      ],
+      [
+        "HIP 111954",
+        "Fomalhaut"
+      ]
+    ],
+    "stars": {
+      "Fomalhaut": [
+        19.3516,
+        -11.4233,
+        5.3984
+      ],
+      "HIP 113246": [
+        114.8831,
+        -76.2592,
+        32.9702
+      ],
+      "HIP 112948": [
+        159.2571,
+        -107.5594,
+        48.2907
+      ],
+      "HIP 111188": [
+        102.7973,
+        -70.2757,
+        41.791
+      ],
+      "HIP 109285": [
+        92.6187,
+        -68.0306,
+        49.0476
+      ],
+      "HIP 107380": [
+        130.9362,
+        -102.3826,
+        87.5327
+      ],
+      "HIP 107608": [
+        212.3351,
+        -151.6289,
+        138.2403
+      ],
+      "HIP 111954": [
+        375.1412,
+        -203.583,
+        135.3261
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Piscis_Austrinus"
+  },
+  "Pisces": {
+    "iau": "Psc",
+    "description": "The Fishes, a large but faint zodiacal constellation. The two fish are connected by a 'cord' meeting at the knot star Alrescha.",
+    "lines": [
+      [
+        "HIP 5742",
+        "HIP 6193"
+      ],
+      [
+        "HIP 6193",
+        "HIP 5586"
+      ],
+      [
+        "HIP 5586",
+        "HIP 5742"
+      ],
+      [
+        "HIP 5742",
+        "Alpherg"
+      ],
+      [
+        "Alpherg",
+        "Torcular"
+      ],
+      [
+        "Torcular",
+        "Alrescha"
+      ],
+      [
+        "Alrescha",
+        "HIP 7884"
+      ],
+      [
+        "HIP 7884",
+        "HIP 4906"
+      ],
+      [
+        "HIP 4906",
+        "HIP 3786"
+      ],
+      [
+        "HIP 3786",
+        "HIP 118268"
+      ],
+      [
+        "HIP 118268",
+        "HIP 116771"
+      ],
+      [
+        "HIP 116771",
+        "HIP 115830"
+      ],
+      [
+        "HIP 115830",
+        "HIP 114971"
+      ],
+      [
+        "HIP 114971",
+        "HIP 115738"
+      ],
+      [
+        "HIP 115738",
+        "HIP 116928"
+      ],
+      [
+        "HIP 116928",
+        "HIP 116771"
+      ]
+    ],
+    "stars": {
+      "HIP 5742": [
+        316.362,
+        152.565,
+        -105.468
+      ],
+      "HIP 6193": [
+        247.089,
+        135.393,
+        -89.283
+      ],
+      "HIP 5586": [
+        130.23,
+        79.305,
+        -42.102
+      ],
+      "Alpherg": [
+        305.214,
+        90.906,
+        -128.745
+      ],
+      "Torcular": [
+        211.8243,
+        38.1072,
+        -104.9133
+      ],
+      "Alrescha": [
+        119.187,
+        6.678,
+        -70.239
+      ],
+      "HIP 7884": [
+        302.271,
+        32.136,
+        -143.256
+      ],
+      "HIP 4906": [
+        160.62,
+        23.127,
+        -45.258
+      ],
+      "HIP 3786": [
+        267.729,
+        36.471,
+        -57.741
+      ],
+      "HIP 118268": [
+        95.2813,
+        11.4685,
+        0.2862
+      ],
+      "HIP 116771": [
+        40.7865,
+        4.0335,
+        3.5772
+      ],
+      "HIP 115830": [
+        134.4424,
+        15.1782,
+        18.9136
+      ],
+      "HIP 114971": [
+        124.4886,
+        7.2659,
+        23.5417
+      ],
+      "HIP 115738": [
+        139.6758,
+        3.0936,
+        20.294
+      ],
+      "HIP 116928": [
+        97.7236,
+        3.0464,
+        7.6709
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Pisces_(constellation)"
+  },
+  "Puppis": {
+    "iau": "Pup",
+    "description": "the Poop Deck. The Stern (or Poop Deck) of the ship Argo, rich in clusters and nestled in the Milky Way.",
+    "lines": [
+      [
+        "HIP 39953",
+        "Naos"
+      ],
+      [
+        "Naos",
+        "Tureis"
+      ],
+      [
+        "Tureis",
+        "Azmidi"
+      ],
+      [
+        "Azmidi",
+        "HIP 37229"
+      ],
+      [
+        "HIP 37229",
+        "HIP 36917"
+      ],
+      [
+        "HIP 36917",
+        "HIP 35264"
+      ],
+      [
+        "HIP 35264",
+        "Pipit"
+      ],
+      [
+        "Pipit",
+        "Canopus"
+      ],
+      [
+        "HIP 36917",
+        "HIP 37677"
+      ],
+      [
+        "HIP 37677",
+        "HIP 38070"
+      ],
+      [
+        "HIP 38070",
+        "Azmidi"
+      ]
+    ],
+    "stars": {
+      "HIP 39953": [
+        -372.9,
+        -755.496,
+        -587.979
+      ],
+      "Naos": [
+        -392.025,
+        -640.695,
+        -655.128
+      ],
+      "Tureis": [
+        -28.0986,
+        -24.0243,
+        -45.1665
+      ],
+      "Azmidi": [
+        -415.6662,
+        -419.5752,
+        -804.525
+      ],
+      "HIP 37229": [
+        -118.941,
+        -143.763,
+        -258.504
+      ],
+      "HIP 36917": [
+        -78.3618,
+        -104.6694,
+        -177.2886
+      ],
+      "HIP 35264": [
+        -137.157,
+        -314.04,
+        -391.971
+      ],
+      "Pipit": [
+        -40.674,
+        -232.839,
+        -244.623
+      ],
+      "Canopus": [
+        -17.979,
+        -226.188,
+        -171.396
+      ],
+      "HIP 37677": [
+        -1180.416,
+        -1492.398,
+        -2425.368
+      ],
+      "HIP 38070": [
+        -407.076,
+        -435.795,
+        -798.189
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Puppis_(constellation)"
+  },
+  "Pyxis": {
+    "iau": "Pyx",
+    "lines": [
+      [
+        "Naos",
+        "HIP 42515"
+      ],
+      [
+        "HIP 42515",
+        "HIP 42828"
+      ],
+      [
+        "HIP 42828",
+        "HIP 43409"
+      ]
+    ],
+    "stars": {
+      "Naos": [
+        -392.025,
+        -640.695,
+        -655.128
+      ],
+      "HIP 42515": [
+        -186.1128,
+        -204.9597,
+        -221.5992
+      ],
+      "HIP 42828": [
+        -400.05,
+        -399.639,
+        -461.862
+      ],
+      "HIP 43409": [
+        -115.9506,
+        -89.9166,
+        -125.949
+      ]
+    },
+    "description": "the Mariner's Compass.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Pyxis_(constellation)"
+  },
+  "Reticulum": {
+    "iau": "Ret",
+    "description": "The Reticle (telescope crosshairs), a small faint constellation near the Large Magellanic Cloud.",
+    "lines": [
+      [
+        "Rhombus",
+        "HIP 17440"
+      ],
+      [
+        "HIP 17440",
+        "HIP 18597"
+      ],
+      [
+        "HIP 18597",
+        "HIP 19921"
+      ],
+      [
+        "HIP 19921",
+        "Rhombus"
+      ]
+    ],
+    "stars": {
+      "Rhombus": [
+        30.2982,
+        -130.7781,
+        -61.0485
+      ],
+      "HIP 17440": [
+        23.4273,
+        -89.1807,
+        -34.8009
+      ],
+      "HIP 18597": [
+        120.042,
+        -436.218,
+        -205.314
+      ],
+      "HIP 19921": [
+        12.327,
+        -47.568,
+        -25.41
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Reticulum_(constellation)"
+  },
+  "Sculptor": {
+    "iau": "Scl",
+    "description": "The Sculptor, a faint constellation south of Aquarius. Contains the Sculptor Galaxy (NGC 253) and the south galactic pole.",
+    "lines": [
+      [
+        "HIP 4577",
+        "HIP 117452"
+      ],
+      [
+        "HIP 117452",
+        "HIP 115102"
+      ],
+      [
+        "HIP 115102",
+        "HIP 116231"
+      ]
+    ],
+    "stars": {
+      "HIP 4577": [
+        547.272,
+        -318.183,
+        -143.079
+      ],
+      "HIP 117452": [
+        111.3593,
+        -59.6055,
+        5.3851
+      ],
+      "HIP 115102": [
+        139.0261,
+        -90.1294,
+        25.2503
+      ],
+      "HIP 116231": [
+        125.5826,
+        -98.1578,
+        14.8798
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Sculptor_(constellation)"
+  },
+  "Scorpius": {
+    "iau": "Sco",
+    "description": "The Scorpion, with red supergiant Antares at its heart and a long curving tail ending in the stinger stars Shaula and Lesath. One of the few constellations that genuinely resembles its namesake.",
+    "lines": [
+      [
+        "Acrab",
+        "Dschubba"
+      ],
+      [
+        "Dschubba",
+        "Fang"
+      ],
+      [
+        "Dschubba",
+        "Alniyat"
+      ],
+      [
+        "Alniyat",
+        "Antares"
+      ],
+      [
+        "Antares",
+        "Paikauhale"
+      ],
+      [
+        "Paikauhale",
+        "Larawag"
+      ],
+      [
+        "Larawag",
+        "Xamidimura"
+      ],
+      [
+        "Xamidimura",
+        "HIP 82729"
+      ],
+      [
+        "HIP 82729",
+        "HIP 84143"
+      ],
+      [
+        "HIP 84143",
+        "Sargas"
+      ],
+      [
+        "Sargas",
+        "HIP 87073"
+      ],
+      [
+        "HIP 87073",
+        "HIP 86670"
+      ],
+      [
+        "HIP 86670",
+        "Lesath"
+      ],
+      [
+        "Lesath",
+        "Shaula"
+      ],
+      [
+        "Shaula",
+        "Fuyue"
+      ],
+      [
+        "Acrab",
+        "Jabbah"
+      ],
+      [
+        "Fang",
+        "Iklil"
+      ]
+    ],
+    "stars": {
+      "Acrab": [
+        -167.6443,
+        -125.9581,
+        306.9623
+      ],
+      "Dschubba": [
+        -207.9978,
+        -173.7854,
+        361.4763
+      ],
+      "Fang": [
+        -243.9046,
+        -237.0701,
+        417.6096
+      ],
+      "Alniyat": [
+        -241.6087,
+        -276.9054,
+        525.2262
+      ],
+      "Antares": [
+        -175.6278,
+        -226.7243,
+        420.9228
+      ],
+      "Paikauhale": [
+        -137.8801,
+        -206.1615,
+        358.6405
+      ],
+      "Larawag": [
+        -14.5265,
+        -33.0198,
+        46.187
+      ],
+      "Xamidimura": [
+        -106.2987,
+        -284.0147,
+        346.9861
+      ],
+      "HIP 82729": [
+        -25.3213,
+        -82.0042,
+        86.2895
+      ],
+      "HIP 84143": [
+        -10.204,
+        -46.2968,
+        48.1645
+      ],
+      "Sargas": [
+        -19.9622,
+        -188.3896,
+        201.0499
+      ],
+      "HIP 87073": [
+        -73.4922,
+        -1144.054,
+        1355.3181
+      ],
+      "HIP 86670": [
+        -26.3553,
+        -279.8783,
+        344.244
+      ],
+      "Lesath": [
+        -53.643,
+        -321.1645,
+        418.2264
+      ],
+      "Shaula": [
+        -48.1457,
+        -316.9497,
+        416.2494
+      ],
+      "Fuyue": [
+        -4.0868,
+        -69.7247,
+        92.292
+      ],
+      "Jabbah": [
+        -186.6585,
+        -145.2734,
+        366.3205
+      ],
+      "Iklil": [
+        -193.9083,
+        -211.8991,
+        325.5574
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Scorpius_(constellation)"
+  },
+  "Scutum": {
+    "iau": "Sct",
+    "description": "The Shield, a small constellation in the Milky Way south of Aquila, containing the dense Wild Duck Cluster (M11).",
+    "lines": [
+      [
+        "HIP 92175",
+        "HIP 91117"
+      ],
+      [
+        "HIP 91117",
+        "HIP 90595"
+      ],
+      [
+        "HIP 90595",
+        "HIP 91726"
+      ],
+      [
+        "HIP 91726",
+        "HIP 92175"
+      ]
+    ],
+    "stars": {
+      "HIP 92175": [
+        171.6454,
+        -69.7509,
+        822.0763
+      ],
+      "HIP 91117": [
+        27.7356,
+        -26.2621,
+        179.1241
+      ],
+      "HIP 90595": [
+        36.1322,
+        -73.8955,
+        282.08
+      ],
+      "HIP 91726": [
+        33.7289,
+        -29.2996,
+        180.7794
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Scutum_(constellation)"
+  },
+  "Serpens": {
+    "iau": "Ser",
+    "description": "The Serpent, the only constellation split into two parts: Serpens Caput (head) and Serpens Cauda (tail), separated by Ophiuchus.",
+    "lines": [
+      [
+        "HIP 77233",
+        "HIP 78072"
+      ],
+      [
+        "HIP 78072",
+        "Gudja"
+      ],
+      [
+        "Gudja",
+        "HIP 76852"
+      ],
+      [
+        "HIP 76852",
+        "HIP 77233"
+      ],
+      [
+        "HIP 77233",
+        "HIP 76276"
+      ],
+      [
+        "HIP 76276",
+        "Unukalhai"
+      ],
+      [
+        "Unukalhai",
+        "HIP 77622"
+      ],
+      [
+        "HIP 77622",
+        "HIP 77516"
+      ],
+      [
+        "HIP 77516",
+        "Yed Prior"
+      ],
+      [
+        "Sabik",
+        "HIP 86263"
+      ],
+      [
+        "HIP 86263",
+        "HIP 88048"
+      ],
+      [
+        "HIP 88048",
+        "HIP 89962"
+      ],
+      [
+        "HIP 89962",
+        "Alya"
+      ]
+    ],
+    "stars": {
+      "HIP 77233": [
+        -75.8068,
+        37.9348,
+        114.7355
+      ],
+      "HIP 78072": [
+        -16.6876,
+        9.114,
+        27.8977
+      ],
+      "Gudja": [
+        -180.9094,
+        109.3788,
+        280.5541
+      ],
+      "HIP 76852": [
+        -93.5091,
+        58.8476,
+        135.487
+      ],
+      "HIP 76276": [
+        -122.1012,
+        38.371,
+        166.2243
+      ],
+      "Unukalhai": [
+        -37.7358,
+        7.6132,
+        56.0869
+      ],
+      "HIP 77622": [
+        -34.5137,
+        5.0586,
+        54.6037
+      ],
+      "HIP 77516": [
+        -83.8894,
+        -9.3343,
+        131.1996
+      ],
+      "Yed Prior": [
+        -69.8722,
+        -10.1416,
+        140.673
+      ],
+      "Sabik": [
+        -16.8075,
+        -22.0281,
+        76.41
+      ],
+      "HIP 86263": [
+        -9.1157,
+        -25.7129,
+        92.9133
+      ],
+      "HIP 88048": [
+        -0.5803,
+        -23.5337,
+        136.6191
+      ],
+      "HIP 89962": [
+        5.1584,
+        -2.8132,
+        55.3168
+      ],
+      "Alya": [
+        34.4518,
+        10.4268,
+        137.6166
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Serpens_(constellation)"
+  },
+  "Sextans": {
+    "iau": "Sex",
+    "description": "The Sextant, a faint constellation on the celestial equator between Leo and Hydra.",
+    "lines": [
+      [
+        "HIP 48437",
+        "HIP 49641"
+      ],
+      [
+        "HIP 49641",
+        "HIP 51437"
+      ],
+      [
+        "HIP 51437",
+        "HIP 51362"
+      ]
+    ],
+    "stars": {
+      "HIP 48437": [
+        -214.656,
+        -35.997,
+        -133.473
+      ],
+      "HIP 49641": [
+        -345.825,
+        -2.541,
+        -183.999
+      ],
+      "HIP 51437": [
+        -311.919,
+        -3.753,
+        -128.736
+      ],
+      "HIP 51362": [
+        -293.739,
+        -15.225,
+        -122.454
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Sextans_(constellation)"
+  },
+  "Sagitta": {
+    "iau": "Sge",
+    "description": "The Arrow, the third-smallest constellation, sitting in the Milky Way between Vulpecula and Aquila.",
+    "lines": [
+      [
+        "HIP 98337",
+        "HIP 97365"
+      ],
+      [
+        "HIP 97365",
+        "Sham"
+      ],
+      [
+        "HIP 97365",
+        "HIP 96837"
+      ]
+    ],
+    "stars": {
+      "HIP 98337": [
+        110.9923,
+        79.3209,
+        194.6748
+      ],
+      "HIP 97365": [
+        233.981,
+        173.7007,
+        462.2626
+      ],
+      "Sham": [
+        157.3397,
+        120.9573,
+        337.0454
+      ],
+      "HIP 96837": [
+        164.5808,
+        121.4177,
+        348.7681
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Sagitta_(constellation)"
+  },
+  "Sagittarius": {
+    "iau": "Sgr",
+    "description": "The Archer, whose brightest stars form the famous 'Teapot' asterism pointed toward the center of the Milky Way.",
+    "lines": [
+      [
+        "Kaus Australis",
+        "Alnasl"
+      ],
+      [
+        "Alnasl",
+        "Kaus Media"
+      ],
+      [
+        "Kaus Media",
+        "Kaus Australis"
+      ],
+      [
+        "Kaus Media",
+        "Kaus Borealis"
+      ],
+      [
+        "Kaus Borealis",
+        "HIP 92041"
+      ],
+      [
+        "HIP 92041",
+        "Kaus Media"
+      ],
+      [
+        "HIP 92041",
+        "Nunki"
+      ],
+      [
+        "Nunki",
+        "HIP 93864"
+      ],
+      [
+        "HIP 93864",
+        "Ascella"
+      ],
+      [
+        "Ascella",
+        "HIP 92041"
+      ],
+      [
+        "Ascella",
+        "Kaus Australis"
+      ],
+      [
+        "Kaus Australis",
+        "HIP 89642"
+      ],
+      [
+        "Kaus Borealis",
+        "Polis"
+      ],
+      [
+        "HIP 95168",
+        "Albaldah"
+      ],
+      [
+        "Albaldah",
+        "HIP 93683"
+      ],
+      [
+        "HIP 93683",
+        "HIP 93085"
+      ],
+      [
+        "HIP 93085",
+        "Albaldah"
+      ]
+    ],
+    "stars": {
+      "Kaus Australis": [
+        11.4516,
+        -74.4389,
+        108.1735
+      ],
+      "Alnasl": [
+        1.9469,
+        -45.1202,
+        76.8068
+      ],
+      "Kaus Media": [
+        25.3807,
+        -159.0827,
+        276.2951
+      ],
+      "Kaus Borealis": [
+        7.9065,
+        -30.8679,
+        64.4611
+      ],
+      "HIP 92041": [
+        38.8138,
+        -99.8933,
+        192.2507
+      ],
+      "Nunki": [
+        44.8526,
+        -92.8113,
+        182.3822
+      ],
+      "HIP 93864": [
+        28.5254,
+        -51.9452,
+        94.8695
+      ],
+      "Ascella": [
+        18.9788,
+        -40.4156,
+        67.7327
+      ],
+      "HIP 89642": [
+        8.2627,
+        -80.3339,
+        107.2165
+      ],
+      "Polis": [
+        16802.9893,
+        -107797.9197,
+        279458.8842
+      ],
+      "HIP 95168": [
+        38.7794,
+        -35.7898,
+        104.1736
+      ],
+      "Albaldah": [
+        131.1427,
+        -168.1652,
+        417.4307
+      ],
+      "HIP 93683": [
+        33.8011,
+        -48.4,
+        116.5662
+      ],
+      "HIP 93085": [
+        78.1135,
+        -120.9758,
+        303.5172
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Sagittarius_(constellation)"
+  },
+  "Taurus": {
+    "iau": "Tau",
+    "description": "The Bull, with the V-shaped Hyades cluster forming the face, red giant Aldebaran as the glaring eye, and two long horns ending at Elnath and Tianguan.",
+    "lines": [
+      [
+        "Tianguan",
+        "Aldebaran"
+      ],
+      [
+        "Aldebaran",
+        "Chamukuy"
+      ],
+      [
+        "Chamukuy",
+        "Prima Hyadum"
+      ],
+      [
+        "Prima Hyadum",
+        "Secunda Hyadum"
+      ],
+      [
+        "Secunda Hyadum",
+        "Ain"
+      ],
+      [
+        "Ain",
+        "Elnath"
+      ],
+      [
+        "HIP 16083",
+        "HIP 18907"
+      ],
+      [
+        "HIP 15900",
+        "HIP 16852"
+      ],
+      [
+        "Prima Hyadum",
+        "HIP 18724"
+      ],
+      [
+        "HIP 18724",
+        "HIP 16083"
+      ]
+    ],
+    "stars": {
+      "Tianguan": [
+        37.176,
+        147.621,
+        -379.914
+      ],
+      "Aldebaran": [
+        21.081,
+        17.421,
+        -54.864
+      ],
+      "Chamukuy": [
+        51.3399,
+        37.6116,
+        -121.9275
+      ],
+      "Prima Hyadum": [
+        56.469,
+        37.302,
+        -120.81
+      ],
+      "Secunda Hyadum": [
+        57.885,
+        44.523,
+        -128.403
+      ],
+      "Ain": [
+        49.188,
+        44.07,
+        -116.751
+      ],
+      "Elnath": [
+        15.846,
+        58.965,
+        -106.95
+      ],
+      "HIP 16083": [
+        108.9159,
+        30.2043,
+        -138.3675
+      ],
+      "HIP 18907": [
+        55.095,
+        11.844,
+        -98.535
+      ],
+      "HIP 15900": [
+        123.1116,
+        31.2216,
+        -153.138
+      ],
+      "HIP 16852": [
+        24.4179,
+        0.2931,
+        -33.8784
+      ],
+      "HIP 18724": [
+        181.221,
+        80.703,
+        -316.047
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Taurus_(constellation)"
+  },
+  "Telescopium": {
+    "iau": "Tel",
+    "description": "The Telescope, a faint constellation between Sagittarius and Pavo.",
+    "lines": [
+      [
+        "HIP 89112",
+        "HIP 90422"
+      ],
+      [
+        "HIP 90422",
+        "HIP 90568"
+      ]
+    ],
+    "stars": {
+      "HIP 89112": [
+        13.0965,
+        -276.4559,
+        267.0749
+      ],
+      "HIP 90422": [
+        20.8557,
+        -183.72,
+        176.3831
+      ],
+      "HIP 90568": [
+        9.543,
+        -87.7142,
+        75.4583
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Telescopium_(constellation)"
+  },
+  "Triangulum Australe": {
+    "iau": "TrA",
+    "description": "The Southern Triangle, a small bright constellation near Alpha Centauri, easily visible in the southern sky.",
+    "lines": [
+      [
+        "Atria",
+        "HIP 77952"
+      ],
+      [
+        "HIP 77952",
+        "HIP 76440"
+      ],
+      [
+        "HIP 76440",
+        "HIP 74946"
+      ],
+      [
+        "HIP 74946",
+        "Atria"
+      ]
+    ],
+    "stars": {
+      "Atria": [
+        -39.3823,
+        -335.4803,
+        122.4137
+      ],
+      "HIP 77952": [
+        -8.6075,
+        -33.2119,
+        14.2046
+      ],
+      "HIP 76440": [
+        -43.6133,
+        -169.9035,
+        60.4271
+      ],
+      "HIP 74946": [
+        -39.7457,
+        -157.5357,
+        46.912
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Triangulum_Australe"
+  },
+  "Triangulum": {
+    "iau": "Tri",
+    "description": "The Triangle, a small northern constellation. Contains the Triangulum Galaxy (M33), the third-largest galaxy in the Local Group.",
+    "lines": [
+      [
+        "Mothallah",
+        "HIP 10064"
+      ],
+      [
+        "HIP 10064",
+        "HIP 10670"
+      ],
+      [
+        "HIP 10670",
+        "Mothallah"
+      ]
+    ],
+    "stars": {
+      "Mothallah": [
+        44.7657,
+        28.8495,
+        -24.0729
+      ],
+      "HIP 10064": [
+        80.73,
+        66.906,
+        -51.204
+      ],
+      "HIP 10670": [
+        73.539,
+        59.721,
+        -50.22
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Triangulum_(constellation)"
+  },
+  "Tucana": {
+    "iau": "Tuc",
+    "description": "The Toucan, a southern constellation containing the Small Magellanic Cloud and the globular cluster 47 Tucanae.",
+    "lines": [
+      [
+        "HIP 2484",
+        "HIP 1599"
+      ],
+      [
+        "HIP 1599",
+        "HIP 118322"
+      ],
+      [
+        "HIP 118322",
+        "HIP 110838"
+      ],
+      [
+        "HIP 110838",
+        "HIP 110130"
+      ],
+      [
+        "HIP 110130",
+        "HIP 114996"
+      ],
+      [
+        "HIP 114996",
+        "HIP 2484"
+      ]
+    ],
+    "stars": {
+      "HIP 2484": [
+        59.157,
+        -116.997,
+        -8.193
+      ],
+      "HIP 1599": [
+        10.923,
+        -23.379,
+        -0.96
+      ],
+      "HIP 118322": [
+        141.9228,
+        -312.5354,
+        0.0518
+      ],
+      "HIP 110838": [
+        89.7761,
+        -209.091,
+        38.4165
+      ],
+      "HIP 110130": [
+        82.3421,
+        -159.5139,
+        39.0542
+      ],
+      "HIP 114996": [
+        35.7879,
+        -58.8121,
+        6.7251
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Tucana_(constellation)"
+  },
+  "Ursa Major": {
+    "iau": "UMa",
+    "description": "The Great Bear, one of the largest constellations. Contains the Big Dipper asterism and extends south with the bear's legs and body.",
+    "lines": [
+      [
+        "Phecda",
+        "Taiyangshou"
+      ],
+      [
+        "Taiyangshou",
+        "HIP 54539"
+      ],
+      [
+        "HIP 54539",
+        "Tania Australis"
+      ],
+      [
+        "Tania Australis",
+        "Tania Borealis"
+      ],
+      [
+        "Taiyangshou",
+        "Alula Borealis"
+      ],
+      [
+        "Megrez",
+        "Dubhe"
+      ],
+      [
+        "Dubhe",
+        "Merak"
+      ],
+      [
+        "Merak",
+        "Phecda"
+      ],
+      [
+        "Phecda",
+        "Megrez"
+      ],
+      [
+        "Megrez",
+        "Alioth"
+      ],
+      [
+        "Alioth",
+        "Mizar"
+      ],
+      [
+        "Mizar",
+        "Alkaid"
+      ],
+      [
+        "Dubhe",
+        "HIP 46733"
+      ],
+      [
+        "HIP 46733",
+        "HIP 48319"
+      ],
+      [
+        "HIP 46733",
+        "Muscida"
+      ],
+      [
+        "Muscida",
+        "HIP 48319"
+      ],
+      [
+        "HIP 48319",
+        "Merak"
+      ],
+      [
+        "HIP 48319",
+        "HIP 46853"
+      ],
+      [
+        "HIP 46853",
+        "Alkaphrah"
+      ],
+      [
+        "Alkaphrah",
+        "Talitha"
+      ]
+    ],
+    "stars": {
+      "Phecda": [
+        -45.285,
+        61.659,
+        -1.218
+      ],
+      "Taiyangshou": [
+        -122.412,
+        135.153,
+        -7.461
+      ],
+      "HIP 54539": [
+        -89.913,
+        90.525,
+        -20.073
+      ],
+      "Tania Australis": [
+        -114.9477,
+        111.6852,
+        -52.185
+      ],
+      "Tania Borealis": [
+        -136.8879,
+        141.2727,
+        -65.9562
+      ],
+      "Alula Borealis": [
+        -309.708,
+        205.212,
+        -56.733
+      ],
+      "Megrez": [
+        -40.389,
+        62.412,
+        2.721
+      ],
+      "Dubhe": [
+        -51.897,
+        99.573,
+        -13.005
+      ],
+      "Merak": [
+        -41.6478,
+        64.7175,
+        -10.8006
+      ],
+      "Alioth": [
+        -41.3279,
+        62.9188,
+        9.9275
+      ],
+      "Mizar": [
+        -42.3474,
+        64.5938,
+        16.2399
+      ],
+      "Alkaid": [
+        -55.5886,
+        72.4935,
+        28.1836
+      ],
+      "HIP 46733": [
+        -25.749,
+        63.543,
+        -19.485
+      ],
+      "HIP 48319": [
+        -45.9933,
+        90.6516,
+        -29.0229
+      ],
+      "Muscida": [
+        -49.884,
+        145.911,
+        -64.854
+      ],
+      "HIP 46853": [
+        -20.1804,
+        31.8804,
+        -15.0885
+      ],
+      "Alkaphrah": [
+        -161.004,
+        241.719,
+        -155.988
+      ],
+      "Talitha": [
+        -20.784,
+        32.808,
+        -20.928
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Ursa_Major"
+  },
+  "Ursa Minor": {
+    "iau": "UMi",
+    "lines": [
+      [
+        "Polaris",
+        "Yildun"
+      ],
+      [
+        "Yildun",
+        "HIP 82080"
+      ],
+      [
+        "HIP 82080",
+        "HIP 77055"
+      ],
+      [
+        "HIP 77055",
+        "HIP 79822"
+      ],
+      [
+        "HIP 79822",
+        "Pherkad"
+      ],
+      [
+        "Pherkad",
+        "Kochab"
+      ],
+      [
+        "Kochab",
+        "HIP 77055"
+      ]
+    ],
+    "stars": {
+      "Polaris": [
+        4.029,
+        397.845,
+        -3.144
+      ],
+      "Yildun": [
+        -1.1399,
+        158.0301,
+        9.357
+      ],
+      "HIP 82080": [
+        -12.2943,
+        276.8938,
+        36.7282
+      ],
+      "HIP 77055": [
+        -40.106,
+        331.6951,
+        59.4924
+      ],
+      "HIP 79822": [
+        -9.4926,
+        86.4632,
+        19.7915
+      ],
+      "Pherkad": [
+        -89.392,
+        425.4434,
+        107.2236
+      ],
+      "Kochab": [
+        -24.1745,
+        115.8582,
+        22.2891
+      ]
+    },
+    "description": "the Lesser Bear.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Ursa_Minor"
+  },
+  "Vela": {
+    "iau": "Vel",
+    "description": "The Sails of the ship Argo, forming part of the 'False Cross' asterism often mistaken for the Southern Cross.",
+    "lines": [
+      [
+        "Alsephina",
+        "HIP 39953"
+      ],
+      [
+        "HIP 39953",
+        "Suhail"
+      ],
+      [
+        "Suhail",
+        "HIP 46651"
+      ],
+      [
+        "HIP 46651",
+        "HIP 50191"
+      ],
+      [
+        "HIP 50191",
+        "HIP 52727"
+      ],
+      [
+        "HIP 52727",
+        "HIP 48774"
+      ],
+      [
+        "HIP 48774",
+        "Markeb"
+      ],
+      [
+        "Markeb",
+        "Alsephina"
+      ]
+    ],
+    "stars": {
+      "Alsephina": [
+        -28.182,
+        -60.477,
+        -32.22
+      ],
+      "HIP 39953": [
+        -372.9,
+        -755.496,
+        -587.979
+      ],
+      "Suhail": [
+        -265.989,
+        -344.325,
+        -248.046
+      ],
+      "HIP 46651": [
+        -34.149,
+        -36.633,
+        -26.037
+      ],
+      "HIP 50191": [
+        -63.045,
+        -63.6,
+        -31.182
+      ],
+      "HIP 52727": [
+        -66.549,
+        -81.843,
+        -22.02
+      ],
+      "HIP 48774": [
+        -785.145,
+        -1284.474,
+        -467.751
+      ],
+      "Markeb": [
+        -232.974,
+        -431.19,
+        -191.853
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Vela_(constellation)"
+  },
+  "Virgo": {
+    "iau": "Vir",
+    "description": "The Maiden, the second-largest constellation in the sky. Anchored by the blue supergiant Spica, with Porrima and Vindemiatrix extending the wheat-sheaf the figure carries.",
+    "lines": [
+      [
+        "Zaniah",
+        "HIP 58948"
+      ],
+      [
+        "HIP 58948",
+        "HIP 57380"
+      ],
+      [
+        "HIP 57380",
+        "Zavijava"
+      ],
+      [
+        "Zavijava",
+        "Zaniah"
+      ],
+      [
+        "Zaniah",
+        "Porrima"
+      ],
+      [
+        "Porrima",
+        "Minelauva"
+      ],
+      [
+        "Minelauva",
+        "Vindemiatrix"
+      ],
+      [
+        "Porrima",
+        "HIP 64238"
+      ],
+      [
+        "HIP 64238",
+        "Spica"
+      ],
+      [
+        "Porrima",
+        "Heze"
+      ],
+      [
+        "Heze",
+        "HIP 68520"
+      ],
+      [
+        "HIP 68520",
+        "HIP 72220"
+      ],
+      [
+        "Heze",
+        "Syrma"
+      ],
+      [
+        "Syrma",
+        "HIP 71957"
+      ]
+    ],
+    "stars": {
+      "Zaniah": [
+        -226.9308,
+        -2.6514,
+        19.7604
+      ],
+      "HIP 58948": [
+        -152.073,
+        23.3658,
+        3.456
+      ],
+      "HIP 57380": [
+        -302.181,
+        34.653,
+        -18.669
+      ],
+      "Zavijava": [
+        -32.9631,
+        1.0176,
+        -1.3377
+      ],
+      "Porrima": [
+        -34.4659,
+        -0.8867,
+        6.3351
+      ],
+      "Minelauva": [
+        -176.8257,
+        10.8143,
+        43.7628
+      ],
+      "Vindemiatrix": [
+        -95.348,
+        19.1642,
+        26.5215
+      ],
+      "HIP 64238": [
+        -275.7005,
+        -28.032,
+        86.8617
+      ],
+      "Spica": [
+        -209.9726,
+        -44.4653,
+        81.8575
+      ],
+      "Heze": [
+        -62.3981,
+        -0.7085,
+        27.3562
+      ],
+      "HIP 68520": [
+        -178.3649,
+        5.5767,
+        104.6948
+      ],
+      "HIP 72220": [
+        -92.5146,
+        4.0863,
+        82.0292
+      ],
+      "Syrma": [
+        -55.0009,
+        -6.9739,
+        37.1036
+      ],
+      "HIP 71957": [
+        -41.3139,
+        -5.4044,
+        35.6173
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Virgo_(constellation)"
+  },
+  "Volans": {
+    "iau": "Vol",
+    "description": "The Flying Fish, a faint constellation between Carina and the Large Magellanic Cloud.",
+    "lines": [
+      [
+        "HIP 44382",
+        "HIP 41312"
+      ],
+      [
+        "HIP 41312",
+        "HIP 39794"
+      ],
+      [
+        "HIP 39794",
+        "HIP 35228"
+      ],
+      [
+        "HIP 35228",
+        "HIP 34481"
+      ],
+      [
+        "HIP 34481",
+        "HIP 39794"
+      ],
+      [
+        "HIP 39794",
+        "HIP 44382"
+      ]
+    ],
+    "stars": {
+      "HIP 44382": [
+        -33.051,
+        -105.846,
+        -32.355
+      ],
+      "HIP 41312": [
+        -23.856,
+        -90.807,
+        -32.319
+      ],
+      "HIP 39794": [
+        -114.501,
+        -552.102,
+        -183.363
+      ],
+      "HIP 35228": [
+        -77.946,
+        -585.147,
+        -223.734
+      ],
+      "HIP 34481": [
+        -12.09,
+        -115.53,
+        -39.087
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Volans_(constellation)"
+  },
+  "Vulpecula": {
+    "iau": "Vul",
+    "description": "The Little Fox, a faint constellation in the Milky Way between Sagitta and Cygnus. Contains the Dumbbell Nebula (M27).",
+    "lines": [
+      [
+        "Anser",
+        "HIP 97886"
+      ]
+    ],
+    "stars": {
+      "Anser": [
+        93.8063,
+        114.1222,
+        230.1364
+      ],
+      "HIP 97886": [
+        133.4612,
+        125.5399,
+        247.188
+      ]
+    },
+    "wikipedia": "https://en.wikipedia.org/wiki/Vulpecula_(constellation)"
   }
 }

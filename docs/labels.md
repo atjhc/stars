@@ -113,24 +113,30 @@ O(n) scan with n ≈ 100-300 visible labels, ~0.1 ms on mousemove only.
 ```typescript
 interface LabelTypeHandler {
   readonly type: string;
+  readonly overlay?: boolean;
   setVisible(visible: boolean): void;
   update(): void;
   selectByName(name: string): boolean;
   clearSelection(): void;
+  getSelectedName(): string | null;
+  setHoverByName(name: string | null): void;
   handleClick(div: HTMLElement): boolean;
   detailHtml(): string | null;
 }
 ```
 
-Each label type (star systems, nebulae, BH, NS) registers a handler.
+Each label type (nebulae, BH, NS, constellations) registers a handler.
 The registry coordinates cross-type concerns:
 
 - `setAllLabelsVisible(v)` — toggles all label types.
 - `clearAllSelections(except?)` — clears all types except the one being
   selected.
-- `selectByType(type, name)` — clears others, selects by name.
-- `getActiveDetailHtml()` — returns the detail panel HTML from whichever
-  type has an active selection.
+- `selectByType(type, name)` — clears others, selects by name. For
+  `overlay` handlers, keeps the star/system focus intact.
+- `getActiveDetailHtml()` — returns detail HTML; overlay handlers
+  take priority (constellation info shows on top of star selection).
+- `clearHoverExcept(type)` — clears hover on all handlers except
+  the given type.
 
 ## Star label visibility
 

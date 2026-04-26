@@ -21,6 +21,7 @@ import {
   getLastHoveredMesh, isLabelsDirty, setLabelsDirty,
 } from "./systemStore.ts";
 import { isFavorite } from "./favorites.ts";
+import { isConstellationStar } from "./constellations.ts";
 
 const collapsed = new Set<THREE.Object3D>();
 let cachedMaxNotableSolDist = 0;
@@ -345,6 +346,7 @@ export function updateLabels(
     }
 
     const favBonus = isFavorite(star.name) ? 5000 : 0;
+    const constBonus = isConstellationStar(star.name) ? 2500 : 0;
 
     if (isTier0) {
       const appMag = apparentMag(star.absmag ?? 10, Math.max(camDist, 1e-20));
@@ -364,7 +366,7 @@ export function updateLabels(
         opacityTarget: finalOpacity,
         pinned: false,
         hidden: false,
-        rank: 500 + magRank + favBonus + solBonus,
+        rank: 500 + magRank + favBonus + solBonus + constBonus,
         marginTop: margin,
         subtitles: [],
         shadowColor: "#000",
@@ -385,7 +387,7 @@ export function updateLabels(
       opacityTarget: finalOpacity,
       pinned: false,
       hidden: false,
-      rank: favBonus,
+      rank: favBonus + constBonus,
       marginTop: margin,
       subtitles: [],
       shadowColor: "#000",

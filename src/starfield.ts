@@ -143,9 +143,9 @@ export function systemCanvasLabelId(group: SystemGroup): string | undefined {
 
 const TIER1_CANVAS_FONT = `10px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const TIER1_CANVAS_COLOR = "rgba(255,255,255,0.7)";
-const SYSTEM_CLUSTER_FONT = `14px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const SYSTEM_CLUSTER_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const SYSTEM_SUBTITLE_FONT = `9px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-const SYSTEM_CLUSTER_COLOR = "rgba(180,210,255,0.85)";
+const SYSTEM_CLUSTER_COLOR = "rgba(200,215,240,0.6)";
 const SYSTEM_SUBTITLE_COLOR = "rgba(170,170,170,0.9)";
 
 // Raycast target list for star clicks/hover.

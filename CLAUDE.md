@@ -152,7 +152,7 @@ or the term "cluster".
 - `data/clusters.json` — Star cluster definitions: name, aliases, seed stars, wikipedia, notes
 - `data/cluster-members/hunt2023.json` — Gaia DR3 membership IDs from Hunt & Reffert (2023), keyed by cluster name
 - `data/cluster-members/hunt2023-astro.json` — RA/Dec/parallax/Gmag/BP-RP for each member (fetched from VizieR)
-- `data/constellations.json` — Constellation line definitions for the 37 rendered constellations
+- `data/constellations.json` — All 88 IAU constellations + 2 asterisms: line pairs, embedded star positions (HYG v38), descriptions, Wikipedia links. Sourced from Stellarium modern_iau sky culture.
 - `data/nebulae.json` — Molecular cloud definitions: positions (galactic Cartesian), metadata, wikipedia
 - `data/blackholes.json` — Stellar-mass black holes: RA/Dec, distance, mass, metadata
 - `data/neutronstars.json` — Nearby neutron stars (Magnificent Seven + notable pulsars within 1 kpc): RA/Dec, distance, mass, radius, kind (`ins`/`pulsar`), metadata
@@ -168,7 +168,7 @@ or the term "cluster".
 - `docs/blackholes.md` — Black hole rendering: gravitational lensing, selection, deep zoom
 - `docs/neutronstars.md` — Neutron star rendering: billboard shader, bloom pipeline, scene routing, lensing
 - `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown
-- `docs/constellations.md` — Constellation line rendering: data format, topological model, adding new constellations
+- `docs/constellations.md` — Constellation system: 88 IAU constellations, Stellarium data source, Sol-distance fading, overlay selection, label priority, embedded star positions
 - `docs/data-corrections.md` — Corrections applied on top of AT-HYG source data
 - `docs/data-sources.md` — External data sources, what we extract, known issues, coordinate transforms
 - `docs/profiling.md` — Perf measurement infrastructure and optimization log

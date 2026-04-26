@@ -1,8 +1,6 @@
 # Constellations
 
-Constellations in Drake are **topological**, not coordinate-based: each constellation is a list of star-pair lines, and the runtime draws line segments between the actual 3D positions of those stars in the catalog. As the camera moves through space, the visual shape of a constellation changes naturally via parallax — viewing Orion from Sol shows the familiar hunter, but jumping to Betelgeuse and looking back gives a completely different arrangement of the same stars.
-
-This is the right model because constellations are *defined by which stars belong together*, not by the angular pattern Earth observers happen to see. Storing the pattern as star pairs makes the same data correct from any viewpoint.
+Constellations in Drake are **topological**: each constellation is a list of star-pair lines, and the runtime draws line segments between the actual 3D positions of those stars. As the camera moves through space, the visual shape changes naturally via parallax — viewing Orion from Sol shows the familiar hunter, but jumping to Betelgeuse and looking back gives a completely different arrangement.
 
 ## Data file: `data/constellations.json`
 
@@ -10,89 +8,95 @@ This is the right model because constellations are *defined by which stars belon
 {
   "Orion": {
     "iau": "Ori",
-    "description": "The Hunter, anchored by Betelgeuse and Rigel.",
+    "description": "The Hunter. Anchored by Betelgeuse and Rigel.",
+    "wikipedia": "https://en.wikipedia.org/wiki/Orion_(constellation)",
     "lines": [
       ["Meissa", "Betelgeuse"],
-      ["Betelgeuse", "Bellatrix"],
-      ["Mintaka", "Alnilam"]
-    ]
+      ["Betelgeuse", "Bellatrix"]
+    ],
+    "stars": {
+      "Meissa": [107.72, 174.26, -989.11],
+      "Betelgeuse": [9.57, 59.05, -454.09]
+    }
   }
 }
 ```
 
 | Field | Required | Notes |
 |---|---|---|
-| top-level key | yes | Display name. Also the lookup key inside the runtime. |
-| `iau` | yes | 3-letter IAU constellation abbreviation (`Ori`, `UMa`, `Cas`, …). Stable identifier independent of display name; useful for cross-referencing external sources. |
-| `description` | optional | 1–3 sentences for the detail panel when the constellation is selected. Plain text. |
-| `lines` | yes | Array of `[starA, starB]` pairs. Star names must match a catalog primary `name` exactly (e.g. `"Betelgeuse"`, not `"Alpha Orionis"`). |
+| top-level key | yes | Display name (canonical IAU name, e.g. "Ursa Minor" not "Lesser Bear"). |
+| `iau` | yes | 3-letter IAU abbreviation (`Ori`, `UMa`, `Cas`, ...). |
+| `description` | optional | 1-3 sentences for the detail panel. Includes English meaning. |
+| `asterism` | optional | `true` for sub-patterns like Big Dipper and Northern Cross. |
+| `wikipedia` | optional | URL to the Wikipedia article. |
+| `lines` | yes | Array of `[starA, starB]` pairs. Names must match catalog entries or `stars` keys. |
+| `stars` | optional | Embedded `[x, y, z]` scene-space positions for stars not in the main catalog. Fallback for tier-1+ stars sourced from HYG v38 / AT-HYG. |
 
-### Star naming
+### Star resolution
 
-Lines reference stars by their **catalog primary name** — the same string that ends up in the `name` field of `notable.json` / per-tile label rows. For tier-0 stars this is the IAU proper name; for tier-1 stars it falls back to the Bayer/Flamsteed/Gliese/HIP/HD form. In practice, every star you'd want in a constellation is tier-0 and has a proper name.
+Stars are resolved in priority order:
+1. **Tier-0 notable anchors** — scene objects from `notable.json` (271 stars, precise positions)
+2. **Tier-1 named stars** — search index from `names.json` (~5k stars)
+3. **Embedded positions** — the `stars` field in the constellation entry (fallback for stars not in the catalog)
 
-If a constellation references a name that the build can't resolve, the build script should warn (TBD: add this check). Until then, keep an eye on the count when rendering.
+This three-tier approach means constellation lines can reference any star, even those too faint for the named catalog. The embedded positions were sourced from the HYG v38 database with the AT-HYG coordinate transform (`sx = x*SCALE, sy = z*SCALE, sz = -y*SCALE`).
 
-### Asterisms vs IAU constellations
+### Data source
 
-The IAU defines 88 official constellations, but the famous *visual* shapes are often asterisms — sub-patterns within (or spanning) IAU constellations. Drake treats them uniformly:
+Line patterns are from Stellarium's `modern_iau` sky culture, which uses Hipparcos (HIP) star identifiers. A generation script resolved HIP numbers to positions via HYG v38 and AT-HYG catalogs. Display names follow the canonical IAU constellation names per Wikipedia's IAU designated constellations list.
 
-- **Big Dipper** — asterism inside Ursa Major. We use the asterism rather than the full IAU constellation because the seven Dipper stars are universally recognized.
-- **Northern Cross** — asterism inside Cygnus.
-- **Summer Triangle**, **Winter Hexagon**, **Great Square of Pegasus** — could be added the same way.
+### Coverage
 
-For an asterism, set `iau` to the IAU constellation it lives inside (or the dominant one if it spans several).
+All 88 IAU constellations plus two asterisms (Big Dipper, Northern Cross). 766 unique line segments across 744 unique stars. Every constellation has at least one line.
 
-## Runtime contract (not yet implemented)
+## Runtime: `src/constellations.ts`
 
-The viewer should:
+### Architecture
 
-1. **Load eagerly** at boot via `catalog.ts`, alongside `notable.json` and `systems.json`. Constellations are small (~tens of KB), all referenced stars are tier-0, and they're a global feature.
+Each constellation gets:
+- A **separate `THREE.LineSegments` mesh** with its own material for independent hover/selection color control
+- A **canvas label** at the sky-projected centroid (unit-vector average of star directions, scaled to representative distance)
+- A **search index entry** (kind `"x"`) injected at runtime
 
-2. **Resolve star names** to the runtime targets used elsewhere (notable anchors / tier-1 billboards). For tier-0 stars, the lookup is via `notableObjects` filtered by `userData.name`. Cache this lookup once at boot.
+### Sol-distance fading
 
-3. **Render lines** as `THREE.LineSegments` (one big buffer for all constellations is fine — line counts are tiny). Use a thin, semi-transparent shader so lines don't overpower the star field. Color either uniform (e.g. dim blue-grey) or per-constellation.
+Constellations are a Sol-centric 2D projection — from far away the lines become chaotic. All lines and labels fade based on camera distance from Sol:
+- Full opacity within 5 ly
+- Linear fade to zero by 30 ly
 
-4. **Update positions** when the underlying anchor positions change. For tier-0 anchors this is never (positions are baked from `notable.json`), so the line buffer can be built once. For tier-1, lines should hide / partially-render until the tile is loaded.
+### Visual style
 
-5. **Visibility toggle**: bind a key (suggest `c`) to show/hide all constellation lines. Off by default? Or on? TBD.
+- **Base lines**: `0xaabbdd`, opacity 0.22, additive blending, no depth write
+- **Hover**: shifts to `0xddeeff`, opacity 0.5
+- **Selected**: shifts to `0xddeeff`, opacity 0.7
+- **Labels**: 14px, `rgba(180,210,255,0.85)` — bold blue to stand out
 
-6. **Selection / hover**: clicking a constellation line could select the constellation (showing its description in the detail panel and listing member stars). This is a stretch goal — the first cut should just render the lines.
+### Overlay selection
 
-7. **Per-viewer parallax**: nothing special needed. Lines connect 3D positions; perspective is automatic. The user-visible *feature* is being able to fly to another star and see the constellation shape distort or invert — but this happens for free.
+Constellation selection uses the `overlay` flag on `LabelTypeHandler`. This means:
+- Selecting a constellation **keeps the current star/system focus** — the camera stays anchored
+- The camera **rotates to face** the constellation centroid (same `lookToward` as search preview)
+- The constellation detail panel shows **on top of** the star info
+- Selecting a star or clicking empty space clears the constellation selection
 
-## Source for line patterns
+### Label priority
 
-The lines in `data/constellations.json` use a mix of conventional / textbook patterns:
+When constellations are visible:
+1. **Constellation labels** — rank 3000 (highest)
+2. **Constellation member stars** — rank boosted by +2500
+3. **Other labels** — normal rank
 
-- **H. A. Rey patterns** ("The Stars: A New Way to See Them") for Orion's body and Leo's full shape. These are more anatomically suggestive than the bare-IAU patterns.
-- **Stellarium asterism set** for the simpler patterns (Cassiopeia W, Northern Cross).
-- **Best-judgment hybrid** for Scorpius and Canis Major where multiple traditions disagree.
+Toggling constellations off removes the star rank boost and triggers collision recalculation.
 
-When adding new constellations, prefer recognizable popular patterns over esoteric historical ones — the goal is "user thinks: yes that's Cygnus", not bibliographic completeness.
+### Detail panel
 
-## Adding new constellations
+Shows: constellation name, IAU abbreviation, type (Constellation/Asterism), line and star counts, description with English meaning, Wikipedia link, and clickable member star names. Clicking a star name navigates to that star.
 
-1. Pick a constellation. Confirm its star names exist in `data/augmentations.json` or are tier-0 in `dist/tiles/notable.json`.
-2. Sketch the line pattern. Two heuristics:
-   - Use the brightest stars first.
-   - Prefer 5–15 lines per constellation. Fewer feels sparse; more clutters and obscures the underlying stars.
-3. Add an entry to `data/constellations.json` keyed by display name.
-4. (Once runtime exists) reload, toggle `c`, verify the shape looks right from Sol.
-5. (Once runtime exists) fly to a star inside the constellation and verify the lines render at the new perspective.
+### Search
 
-## Current set
+Typing "constellation" or "asterism" returns all entries. Typing a name (e.g. "orion") or IAU code (e.g. "ori") matches directly. Results show with a "Constellation" badge.
 
-Starter constellations in the file:
+### Keyboard / URL
 
-- **Orion** — Hunter
-- **Big Dipper** — Ursa Major asterism
-- **Cassiopeia** — Queen
-- **Crux** — Southern Cross
-- **Northern Cross** — Cygnus asterism
-- **Lyra** — Lyre
-- **Leo** — Lion
-- **Scorpius** — Scorpion
-- **Canis Major** — Greater Dog
-
-All reference only tier-0 stars, so they'll render reliably from any camera position once the runtime feature lands.
+- `c` key toggles constellation visibility
+- URL param: `?c=0` (hidden) or `?c=1` (shown), default on

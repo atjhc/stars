@@ -7,6 +7,13 @@ import { loadJSON, saveJSON } from "./storage.ts";
 
 const detail = document.getElementById("detail")!;
 
+// Callback for when a star name is clicked inside the detail panel
+// (e.g. constellation member stars). Set by main.ts to avoid circular deps.
+let starClickCallback: ((name: string) => void) | null = null;
+export function onDetailStarClick(cb: (name: string) => void): void {
+  starClickCallback = cb;
+}
+
 detail.addEventListener("click", (e) => {
   const bmBtn = (e.target as HTMLElement).closest(".favorite-toggle");
   if (bmBtn) {
@@ -17,6 +24,13 @@ detail.addEventListener("click", (e) => {
       setLabelsDirty(true);
       updateDetailPanel();
     }
+    return;
+  }
+  const starLink = (e.target as HTMLElement).closest("[data-star]");
+  if (starLink) {
+    e.stopPropagation();
+    const name = starLink.getAttribute("data-star");
+    if (name && starClickCallback) starClickCallback(name);
     return;
   }
   if ((e.target as HTMLElement).closest("a")) return;
