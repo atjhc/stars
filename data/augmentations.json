@@ -366,8 +366,18 @@
   "Gl 702B": {
     "wikipedia": "https://en.wikipedia.org/wiki/70_Ophiuchi",
     "name": "70 Ophiuchi B",
-    "notes": "Component B of 70 Ophiuchi (K4V). Highly elliptical 88-year orbit.",
-    "system": "70 Ophiuchi"
+    "notes": "Component B of 70 Ophiuchi (K4V). 88-year orbit with semi-major axis ~23 AU and eccentricity 0.50.",
+    "system": "70 Ophiuchi",
+    "synthetic": {
+      "parent": "70 Ophiuchi A",
+      "offset_au": [16, 16, 0],
+      "dist": 5.0834,
+      "mag": 6.07,
+      "absmag": 7.43,
+      "ci": 1.15,
+      "spect": "K4V",
+      "lum": 0.077
+    }
   },
   "Gl 873": {
     "wikipedia": "https://en.wikipedia.org/wiki/EV_Lacertae",
@@ -515,8 +525,9 @@
   },
   "Gl 663A": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Wikipedia uses '36 Ophiuchi'. Triple system of K dwarfs. Component A named Guniibuu (Kamilaroi/Euahlayi Aboriginal name for robin red-breast). All three components in one article.",
-    "system": "Guniibuu"
+    "notes": "Primary of the 36 Ophiuchi triple system (K2V). IAU proper name Guniibuu (Kamilaroi/Euahlayi Aboriginal name for robin red-breast). All three components in one Wikipedia article.",
+    "name": "36 Ophiuchi A",
+    "system": "36 Ophiuchi"
   },
   "Gl 34B": {
     "wikipedia": "https://en.wikipedia.org/wiki/Eta_Cassiopeiae",
@@ -535,8 +546,9 @@
   },
   "Gl 664": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Component C of 36 Ophiuchi (also known as 30 Scorpii). Covered in the 36 Ophiuchi system article.",
-    "system": "Guniibuu"
+    "name": "36 Ophiuchi C",
+    "notes": "Component C of 36 Ophiuchi (also known as 30 Scorpii). K5V dwarf in a wide orbit around the AB pair.",
+    "system": "36 Ophiuchi"
   },
   "Gl 661A": {
     "wikipedia": "https://en.wikipedia.org/wiki/Furuhjelm_46",
@@ -550,8 +562,19 @@
   },
   "Gl 663B": {
     "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Component B of 36 Ophiuchi. Near-identical K dwarf to component A. Covered in system article.",
-    "system": "Guniibuu"
+    "name": "36 Ophiuchi B",
+    "notes": "Component B of 36 Ophiuchi (K1V). Near-identical K dwarf to component A. 471-year orbit with semi-major axis ~82 AU.",
+    "system": "36 Ophiuchi",
+    "synthetic": {
+      "parent": "36 Ophiuchi A",
+      "offset_au": [60, 55, 0],
+      "dist": 5.9523,
+      "mag": 5.03,
+      "absmag": 6.16,
+      "ci": 0.85,
+      "spect": "K1V",
+      "lum": 0.28
+    }
   },
   "Gl 783A": {
     "wikipedia": "https://en.wikipedia.org/wiki/HR_7703",
@@ -1083,16 +1106,10 @@
     "system": "Gl 49/51"
   },
   "Gl 653": {
-    "system": "36 Ophiuchi",
-    "name": "36 Ophiuchi A",
-    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Primary of the 36 Ophiuchi triple system. K-type dwarf at 10.5 pc."
+    "notes": "Red dwarf in Ophiuchus (K5V) at 10.5 pc. Unrelated to the 36 Ophiuchi system."
   },
   "Gl 654": {
-    "system": "36 Ophiuchi",
-    "name": "36 Ophiuchi B",
-    "wikipedia": "https://en.wikipedia.org/wiki/36_Ophiuchi",
-    "notes": "Secondary of the 36 Ophiuchi triple system."
+    "notes": "Red dwarf in Ophiuchus (M0V) at 10.5 pc. Unrelated to the 36 Ophiuchi system."
   },
   "Gl 617A": {
     "system": "Gliese 617"
