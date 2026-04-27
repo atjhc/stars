@@ -94,6 +94,74 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Jupiter",
     "notes": "Largest planet \u2014 more than twice the mass of all other Solar System planets combined. Gas giant with banded clouds, the Great Red Spot, and 95+ known moons including the four Galilean satellites Io, Europa, Ganymede, and Callisto."
   },
+  "Io": {
+    "kind": "moon",
+    "parent": "Jupiter",
+    "aliases": ["Jupiter I"],
+    "radius_km": 1821.6,
+    "elements": {
+      "a_au":         [0.002819, 0.0],
+      "e":            [0.0041,   0.0],
+      "i_deg":        [3.13,     0.0],
+      "L_deg":        [63.98,    7432477.5],
+      "long_peri_deg":[93.08,    0.0],
+      "long_node_deg":[43.98,    0.0]
+    },
+    "rotation": [268.05, 64.50, 200.39, 203.4889538],
+    "wikipedia": "https://en.wikipedia.org/wiki/Io_(moon)",
+    "notes": "Most volcanically active body in the Solar System. Tidal heating from the Laplace 4:2:1 resonance with Europa and Ganymede drives sulfur and silicate volcanism, painting the surface yellow, orange, red, and white. Innermost Galilean moon."
+  },
+  "Europa": {
+    "kind": "moon",
+    "parent": "Jupiter",
+    "aliases": ["Jupiter II"],
+    "radius_km": 1560.8,
+    "elements": {
+      "a_au":         [0.004486, 0.0],
+      "e":            [0.0094,   0.0],
+      "i_deg":        [3.13,     0.0],
+      "L_deg":        [214.4,    3702711.0],
+      "long_peri_deg":[229.0,    0.0],
+      "long_node_deg":[184.0,    0.0]
+    },
+    "rotation": [268.08, 64.51, 36.022, 101.3747235],
+    "wikipedia": "https://en.wikipedia.org/wiki/Europa_(moon)",
+    "notes": "Smooth water-ice crust over a global subsurface ocean — likely twice the volume of Earth's oceans. The criss-crossing red lineae are tidally-driven cracks refilled with brine. Prime astrobiology target."
+  },
+  "Ganymede": {
+    "kind": "moon",
+    "parent": "Jupiter",
+    "aliases": ["Jupiter III"],
+    "radius_km": 2634.1,
+    "elements": {
+      "a_au":         [0.007155, 0.0],
+      "e":            [0.0011,   0.0],
+      "i_deg":        [3.13,     0.0],
+      "L_deg":        [221.6,    1837851.0],
+      "long_peri_deg":[256.8,    0.0],
+      "long_node_deg":[58.5,     0.0]
+    },
+    "rotation": [268.20, 64.57, 44.064, 50.3176081],
+    "wikipedia": "https://en.wikipedia.org/wiki/Ganymede_(moon)",
+    "notes": "Largest moon in the Solar System (bigger than Mercury) and the only one with its own intrinsic magnetic field. Two distinct terrains: dark cratered regions and lighter grooved provinces. Subsurface saltwater ocean confirmed by Hubble auroral observations."
+  },
+  "Callisto": {
+    "kind": "moon",
+    "parent": "Jupiter",
+    "aliases": ["Jupiter IV"],
+    "radius_km": 2410.3,
+    "elements": {
+      "a_au":         [0.012585, 0.0],
+      "e":            [0.0074,   0.0],
+      "i_deg":        [3.13,     0.0],
+      "L_deg":        [80.3,     787884.4],
+      "long_peri_deg":[352.9,    0.0],
+      "long_node_deg":[309.1,    0.0]
+    },
+    "rotation": [268.72, 64.83, 259.51, 21.5710715],
+    "wikipedia": "https://en.wikipedia.org/wiki/Callisto_(moon)",
+    "notes": "Outermost Galilean moon and the most heavily cratered body in the Solar System \u2014 essentially saturated. Outside the Laplace resonance, so no tidal heating, no internal differentiation, and a primordial surface ~4 Gyr old. Possible deep ocean."
+  },
   "Saturn": {
     "aliases": [],
     "radius_km": 58232,
@@ -108,6 +176,125 @@
     "rotation": [40.589, 83.537, 38.90, 810.7939024],
     "wikipedia": "https://en.wikipedia.org/wiki/Saturn",
     "notes": "Second-largest planet, famed for its bright ring system of icy particles. 145+ known moons including Titan (denser than water, Mercury-sized, with hydrocarbon lakes) and the ocean-bearing Enceladus."
+  },
+  "Mimas": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": ["Saturn I"],
+    "radius_km": 198.2,
+    "elements": {
+      "a_au":         [0.001243,  0.0],
+      "e":            [0.0202,    0.0],
+      "i_deg":        [26.73,     0.0],
+      "L_deg":        [141.9,     13953338.0],
+      "long_peri_deg":[226.6,     0.0],
+      "long_node_deg":[66.2,      0.0]
+    },
+    "rotation": [40.66, 83.52, 333.46, 381.9945550],
+    "wikipedia": "https://en.wikipedia.org/wiki/Mimas_(moon)",
+    "notes": "Innermost large moon of Saturn. Dominated by the 130 km Herschel crater whose central peak rises 6 km \u2014 nearly a third of Mimas's radius \u2014 giving it the famous 'Death Star' appearance."
+  },
+  "Enceladus": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": ["Saturn II"],
+    "radius_km": 252.1,
+    "elements": {
+      "a_au":         [0.001594,  0.0],
+      "e":            [0.0047,    0.0],
+      "i_deg":        [26.73,     0.0],
+      "L_deg":        [176.5,     9597326.0],
+      "long_peri_deg":[119.5,     0.0],
+      "long_node_deg":[0.0,       0.0]
+    },
+    "rotation": [40.66, 83.52, 6.32, 262.7318996],
+    "wikipedia": "https://en.wikipedia.org/wiki/Enceladus",
+    "notes": "Geologically active ice moon with cryovolcanic plumes erupting from south-polar 'tiger stripe' fractures. Salt-water particles vented from a subsurface ocean feed Saturn's E ring. Highest albedo of any Solar System body."
+  },
+  "Tethys": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": ["Saturn III"],
+    "radius_km": 533.0,
+    "elements": {
+      "a_au":         [0.001972,  0.0],
+      "e":            [0.0001,    0.0],
+      "i_deg":        [26.73,     0.0],
+      "L_deg":        [248.3,     6966742.0],
+      "long_peri_deg":[248.3,     0.0],
+      "long_node_deg":[273.0,     0.0]
+    },
+    "rotation": [40.66, 83.52, 8.95, 190.6979085],
+    "wikipedia": "https://en.wikipedia.org/wiki/Tethys_(moon)",
+    "notes": "Mid-sized icy moon dominated by the 450-km Odysseus impact basin and the 2000-km Ithaca Chasma rift system. Density barely above water suggests near-pure ice composition."
+  },
+  "Dione": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": ["Saturn IV"],
+    "radius_km": 561.4,
+    "elements": {
+      "a_au":         [0.002525,  0.0],
+      "e":            [0.0022,    0.0],
+      "i_deg":        [26.73,     0.0],
+      "L_deg":        [328.0,     4804789.0],
+      "long_peri_deg":[116.0,     0.0],
+      "long_node_deg":[0.0,       0.0]
+    },
+    "rotation": [40.66, 83.52, 357.6, 131.5349316],
+    "wikipedia": "https://en.wikipedia.org/wiki/Dione_(moon)",
+    "notes": "Icy moon famous for the bright wispy terrain on its trailing hemisphere \u2014 a network of tectonic ice cliffs hundreds of metres tall. Possible thin subsurface ocean inferred from Cassini gravity data."
+  },
+  "Rhea": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": ["Saturn V"],
+    "radius_km": 763.8,
+    "elements": {
+      "a_au":         [0.003524,  0.0],
+      "e":            [0.0013,    0.0],
+      "i_deg":        [26.73,     0.0],
+      "L_deg":        [209.5,     2910529.0],
+      "long_peri_deg":[178.0,     0.0],
+      "long_node_deg":[133.7,     0.0]
+    },
+    "rotation": [40.38, 83.55, 235.16, 79.6900478],
+    "wikipedia": "https://en.wikipedia.org/wiki/Rhea_(moon)",
+    "notes": "Saturn's second-largest moon. Heavily cratered ice-rock body with two bright IR/UV streaks suggesting a tenuous, transient ring \u2014 the only moon with possible rings of its own."
+  },
+  "Titan": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": ["Saturn VI"],
+    "radius_km": 2574.7,
+    "elements": {
+      "a_au":         [0.008168,  0.0],
+      "e":            [0.0288,    0.0],
+      "i_deg":        [26.73,     0.0],
+      "L_deg":        [168.6,     824624.0],
+      "long_peri_deg":[156.9,     0.0],
+      "long_node_deg":[78.6,      0.0]
+    },
+    "rotation": [39.4827, 83.4279, 186.5855, 22.5769768],
+    "wikipedia": "https://en.wikipedia.org/wiki/Titan_(moon)",
+    "notes": "Second-largest moon in the Solar System and the only one with a substantial atmosphere \u2014 ~1.45 bar of nitrogen and methane. Liquid hydrocarbon lakes (mostly methane and ethane) at the poles. Huygens probe landed in 2005."
+  },
+  "Iapetus": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": ["Saturn VIII"],
+    "radius_km": 734.5,
+    "elements": {
+      "a_au":         [0.023808,  0.0],
+      "e":            [0.0276,    0.0],
+      "i_deg":        [17.28,     0.0],
+      "L_deg":        [55.8,      165754.3],
+      "long_peri_deg":[341.0,     0.0],
+      "long_node_deg":[86.5,      0.0]
+    },
+    "rotation": [318.16, 75.03, 355.2, 4.5379572],
+    "wikipedia": "https://en.wikipedia.org/wiki/Iapetus_(moon)",
+    "notes": "Stark two-tone moon: leading hemisphere coated in dark Cassini Regio (likely Phoebe-derived dust), trailing hemisphere bright ice. A 20-km-high equatorial ridge runs ~75% of the way around \u2014 origin still debated."
   },
   "Uranus": {
     "aliases": [],
@@ -138,6 +325,23 @@
     "rotation": [299.36, 43.46, 249.978, 541.1397757],
     "wikipedia": "https://en.wikipedia.org/wiki/Neptune",
     "notes": "Outermost planet. Deep-blue ice giant with the fastest sustained winds in the Solar System (>2000 km/h). Largest moon Triton orbits retrograde and is likely a captured Kuiper-belt object."
+  },
+  "Triton": {
+    "kind": "moon",
+    "parent": "Neptune",
+    "aliases": ["Neptune I"],
+    "radius_km": 1353.4,
+    "elements": {
+      "a_au":         [0.002372,  0.0],
+      "e":            [0.000016,  0.0],
+      "i_deg":        [156.865,   0.0],
+      "L_deg":        [241.1,     2237422.0],
+      "long_peri_deg":[178.1,     0.0],
+      "long_node_deg":[178.1,     0.0]
+    },
+    "rotation": [299.36, 41.17, 296.53, -61.2572637],
+    "wikipedia": "https://en.wikipedia.org/wiki/Triton_(moon)",
+    "notes": "Largest moon of Neptune and the only large moon in retrograde orbit \u2014 strong evidence it was captured from the Kuiper belt. Geologically active with cryovolcanic nitrogen geysers seen by Voyager 2 in 1989. Cantaloupe terrain unique in the Solar System."
   },
   "Ceres": {
     "kind": "dwarf",
@@ -170,6 +374,23 @@
     "rotation": [132.993, -6.163, 302.695, 56.3625225],
     "wikipedia": "https://en.wikipedia.org/wiki/Pluto",
     "notes": "Largest known body in the Kuiper belt, reclassified as a dwarf planet in 2006. Highly eccentric (e=0.25) and inclined (17°) orbit; spends 20 of every 248 years closer to the Sun than Neptune. Five known moons; Charon (~half Pluto's diameter) makes the system effectively a binary."
+  },
+  "Charon": {
+    "kind": "moon",
+    "parent": "Pluto",
+    "aliases": ["Pluto I", "(134340) Pluto I"],
+    "radius_km": 606.0,
+    "elements": {
+      "a_au":         [0.000131,  0.0],
+      "e":            [0.000022,  0.0],
+      "i_deg":        [119.59,    0.0],
+      "L_deg":        [304.1,     2058395.0],
+      "long_peri_deg":[0.0,       0.0],
+      "long_node_deg":[0.0,       0.0]
+    },
+    "rotation": [132.993, -6.163, 122.695, 56.3625225],
+    "wikipedia": "https://en.wikipedia.org/wiki/Charon_(moon)",
+    "notes": "Half the diameter of Pluto, making the Pluto\u2013Charon system the only known dwarf-planet binary \u2014 the barycentre lies above Pluto's surface. Tidally locked: each body always shows the same face to the other. Mordor Macula \u2014 the dark reddish polar cap \u2014 is tholin frost from escaped Pluto methane."
   },
   "Eros": {
     "kind": "asteroid",

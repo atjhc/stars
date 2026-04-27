@@ -39,7 +39,7 @@ import {
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels } from "./blackholes.ts";
 import { initNeutronStarLabels, renderNeutronStars } from "./neutronstars.ts";
-import { initPlanetLabels, pickPlanetAt } from "./planets.ts";
+import { initPlanetLabels, pickPlanetAt, toggleOrbits, setOrbitsVisible, getOrbitsVisible } from "./planets.ts";
 import {
   setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType,
   registerScreenOccluder, clearFrameOccluders, onSelectionChanged, clearHoverExcept, getHandlerSelectedName,
@@ -377,6 +377,9 @@ window.addEventListener("keydown", (e) => {
     toggleDust();
     doUpdateLabelVisibility();
     scheduleUrlWrite();
+  } else if (e.key === "r") {
+    toggleOrbits();
+    scheduleUrlWrite();
   } else if (e.key === "f") {
     const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name ?? getHandlerSelectedName();
     if (name) {
@@ -496,6 +499,7 @@ onDetailStarClick((name) => {
   if (urlToggles?.grid !== undefined) gridMesh.visible = urlToggles.grid;
   if (urlToggles?.constellations !== undefined) setConstellationsVisible(urlToggles.constellations);
   if (urlToggles?.nebulae !== undefined) setDustVisible(urlToggles.nebulae);
+  if (urlToggles?.orbits !== undefined) setOrbitsVisible(urlToggles.orbits);
   if (parsed.mag !== undefined) {
     setMagLimit(parsed.mag);
     debug.mag_limit = parsed.mag;
@@ -588,6 +592,7 @@ initUrlState({
       grid: gridMesh.visible,
       constellations: constellationsVisible(),
       nebulae: isDustVisible(),
+      orbits: getOrbitsVisible(),
     },
     mag: magLimitUniform.value,
   }),

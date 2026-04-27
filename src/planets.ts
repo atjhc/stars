@@ -9,7 +9,7 @@ import {
 } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
-import { setDustOccluder } from "./dust.ts";
+import { OCCLUDER_LAYER, setOccluderActive } from "./dust.ts";
 import { pushFrameOccluder } from "./labelRegistry.ts";
 import { projectToLabelScreen } from "./scene.ts";
 import { registerLabelType, registerSearchKindAlias, type LabelTypeHandler } from "./labelRegistry.ts";
@@ -50,14 +50,29 @@ function makeFallbackTexture(color: THREE.Color): THREE.DataTexture {
 }
 const FALLBACK_TEXTURE = makeFallbackTexture(PLANET_FALLBACK_COLOR);
 
-// Bodies we have a Solar System Scope texture for. Skipping the rest
-// avoids both the network 404 (Pluto, Eros — SSS doesn't ship those)
-// and the wasted fetch attempt; those bodies stay on FALLBACK_TEXTURE.
-const TEXTURED_BODIES = new Set([
-  "Mercury", "Venus", "Earth", "Luna", "Mars",
-  "Jupiter", "Saturn", "Uranus", "Neptune",
-  "Ceres", "Pluto", "Eris", "Haumea", "Makemake",
-]);
+// Bodies that ship a surface texture and the file extension to fetch.
+// Most are 2k JPEGs from Solar System Scope or Wikimedia photo mosaics;
+// Eros uses a PNG (Stooke/Askaniy grayscale map preserved as PNG to
+// avoid JPEG ringing on the high-contrast crater terminator). Bodies
+// missing here stay on FALLBACK_TEXTURE.
+const TEXTURED_BODIES: Record<string, "jpg" | "png"> = {
+  Mercury: "jpg", Venus: "jpg", Earth: "jpg", Luna: "jpg", Mars: "jpg",
+  Jupiter: "jpg", Saturn: "jpg", Uranus: "jpg", Neptune: "jpg",
+  Ceres: "jpg", Pluto: "jpg", Eris: "jpg", Haumea: "jpg", Makemake: "jpg",
+  Eros: "png", Phobos: "png", Deimos: "png",
+  Io: "jpg", Europa: "jpg", Ganymede: "png", Callisto: "png",
+  Mimas: "jpg", Enceladus: "jpg", Tethys: "jpg", Dione: "jpg",
+  Rhea: "jpg", Titan: "jpg", Iapetus: "jpg",
+  Triton: "jpg", Charon: "jpg",
+};
+
+// Bodies with a real spacecraft-derived shape model. Loaded lazily as
+// a Drake binary mesh ('DSHP') and used in place of the triaxial
+// ellipsoid baked from `axes_km`. See scripts/fetch-planet-meshes.py
+// for sources (PDS Gaskell for Eros/Phobos, Thomas for Deimos — all
+// public domain).
+const MESHED_BODIES = new Set(["Eros", "Phobos", "Deimos"]);
+const SHAPE_MAGIC = 0x50485344; // 'DSHP'
 
 const textureLoader = new THREE.TextureLoader();
 function tryLoadTexture(url: string): Promise<THREE.Texture | null> {
@@ -67,9 +82,11 @@ function tryLoadTexture(url: string): Promise<THREE.Texture | null> {
       (tex) => {
         // SSS ships sRGB JPEGs; tag so the renderer linearises before
         // lighting and re-encodes on output. anisotropy=4 keeps grazing
-        // angles sharp at min orbit (planet fills ~70% of FOV).
+        // angles sharp at min orbit (planet fills ~70% of FOV). REPEAT
+        // wrap is needed for shape-mesh seam-fix UVs that go up to ~2.0.
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 4;
+        tex.wrapS = THREE.RepeatWrapping;
         resolve(tex);
       },
       undefined,
@@ -152,6 +169,8 @@ const KIND_LABEL: Record<PlanetKind, string> = {
   moon: "Moon",
 };
 
+interface PendingTexture { url: string; mesh: THREE.Mesh }
+
 interface Planet {
   name: string;
   entry: PlanetEntry;
@@ -165,6 +184,11 @@ interface Planet {
   qBase: THREE.Quaternion | null;
   W0_rad: number;
   W_dot_rad_per_day: number;
+  // Texture and shape-mesh loads deferred until the body is visible
+  // (fade > 0 or active). Drained on first visibility frame to spare
+  // bandwidth for users who never enter the Solar System.
+  pendingTextures: PendingTexture[];
+  pendingMeshUrl: string | null;
 }
 
 // Heliocentric ecliptic AU → scene XYZ via R_x(obliquity) then the
@@ -329,6 +353,116 @@ function bakeEllipsoid(geometry: THREE.SphereGeometry, axesNorm: THREE.Vector3):
   normals.needsUpdate = true;
 }
 
+// Load a DSHP shape model and swap it onto the planet's mesh in place
+// of the procedural sphere/ellipsoid. The binary stores body-fixed km
+// (Z = rotation pole, X = prime meridian, right-handed); we apply a
+// rigid R_x(-90°) so mesh-local +Y is the pole, matching the qBase
+// basis. The map is `(x, y, z) → (x, z, -y)` — a true rotation, so
+// handedness and winding are preserved without index reversal.
+//
+// UV is filled with a spherical mapping so an equirectangular texture
+// would wrap correctly if one is added later — for now uTexture stays
+// the 1×1 grey fallback.
+async function loadShapeMesh(url: string, mesh: THREE.Mesh, radiusKm: number): Promise<void> {
+  const resp = await fetch(url);
+  if (!resp.ok) return;
+  const buf = await resp.arrayBuffer();
+  if (buf.byteLength < 16) return;
+  const header = new Uint32Array(buf, 0, 4);
+  if (header[0] !== SHAPE_MAGIC) {
+    console.warn(`[planets] bad shape mesh magic for ${url}: ${header[0]?.toString(16)}`);
+    return;
+  }
+  const nv = header[2]!;
+  const ni = header[3]!;
+  const srcPositions = new Float32Array(buf, 16, nv * 3);
+  const srcIndices = new Uint32Array(buf, 16 + nv * 12, ni);
+
+  // Step 1: positions in mesh-local frame, per-vertex spherical UVs.
+  const positions: number[] = new Array(nv * 3);
+  const uvs: number[] = new Array(nv * 2);
+  const inv = 1 / radiusKm;
+  for (let i = 0; i < nv; i++) {
+    const xBody = srcPositions[i * 3 + 0]! * inv;
+    const yBody = srcPositions[i * 3 + 1]! * inv;
+    const zBody = srcPositions[i * 3 + 2]! * inv;
+    const x = xBody;
+    const y = zBody;
+    const z = -yBody;
+    positions[i * 3 + 0] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+    const r = Math.hypot(x, y, z);
+    uvs[i * 2 + 0] = 0.5 + Math.atan2(z, x) / (2 * Math.PI);
+    uvs[i * 2 + 1] = 0.5 + Math.asin(y / Math.max(r, 1e-30)) / Math.PI;
+  }
+
+  // Step 2: per-triangle UV repair. Linearly-interpolated equirectangular
+  // UVs smear across the longitude seam (lon=180°, u jumps ~1↔0) and
+  // at poles (u is undefined; atan2(0,0) collapses to 0.5). Duplicate
+  // vertices on demand, only for triangles that would smear.
+  const POLE_THRESH = 0.999;
+  const isPole = new Uint8Array(nv);
+  for (let i = 0; i < nv; i++) {
+    const x = positions[i * 3 + 0]!;
+    const y = positions[i * 3 + 1]!;
+    const z = positions[i * 3 + 2]!;
+    if (Math.abs(y) / Math.hypot(x, y, z) > POLE_THRESH) isPole[i] = 1;
+  }
+
+  const newIndices = new Uint32Array(ni);
+  const dupVertex = (origIdx: number, newU: number): number => {
+    const idx = positions.length / 3;
+    positions.push(
+      positions[origIdx * 3 + 0]!,
+      positions[origIdx * 3 + 1]!,
+      positions[origIdx * 3 + 2]!,
+    );
+    uvs.push(newU, uvs[origIdx * 2 + 1]!);
+    return idx;
+  };
+
+  for (let t = 0; t < ni; t += 3) {
+    let ia = srcIndices[t + 0]!;
+    let ib = srcIndices[t + 1]!;
+    let ic = srcIndices[t + 2]!;
+
+    // Seam fix on non-pole vertices first (poles are at u=0.5 and don't
+    // signal the seam). Shifting low-u vertices up by 1 keeps the
+    // triangle's u range continuous; texture wrap REPEAT handles u > 1.
+    let minU = Infinity, maxU = -Infinity;
+    if (!isPole[ia]) { const u = uvs[ia * 2]!; if (u < minU) minU = u; if (u > maxU) maxU = u; }
+    if (!isPole[ib]) { const u = uvs[ib * 2]!; if (u < minU) minU = u; if (u > maxU) maxU = u; }
+    if (!isPole[ic]) { const u = uvs[ic * 2]!; if (u < minU) minU = u; if (u > maxU) maxU = u; }
+    if (maxU - minU > 0.5) {
+      if (!isPole[ia] && uvs[ia * 2]! < 0.5) ia = dupVertex(ia, uvs[ia * 2]! + 1);
+      if (!isPole[ib] && uvs[ib * 2]! < 0.5) ib = dupVertex(ib, uvs[ib * 2]! + 1);
+      if (!isPole[ic] && uvs[ic * 2]! < 0.5) ic = dupVertex(ic, uvs[ic * 2]! + 1);
+    }
+
+    // Pole fix: each pole vertex gets its own duplicate with u set to the
+    // midpoint of the other two vertices' (already seam-corrected) u.
+    if (isPole[ia]) ia = dupVertex(ia, (uvs[ib * 2]! + uvs[ic * 2]!) * 0.5);
+    if (isPole[ib]) ib = dupVertex(ib, (uvs[ia * 2]! + uvs[ic * 2]!) * 0.5);
+    if (isPole[ic]) ic = dupVertex(ic, (uvs[ia * 2]! + uvs[ib * 2]!) * 0.5);
+
+    newIndices[t + 0] = ia;
+    newIndices[t + 1] = ib;
+    newIndices[t + 2] = ic;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
+  geometry.setIndex(new THREE.BufferAttribute(newIndices, 1));
+  geometry.computeVertexNormals();
+
+  const old = mesh.geometry;
+  mesh.geometry = geometry;
+  old.dispose();
+  kick();
+}
+
 function createPlanetMesh(
   sceneRadius: number,
   sunDir: THREE.Vector3,
@@ -355,6 +489,14 @@ const planets: Planet[] = [];
 const planetByName = new Map<string, Planet>();
 let selectedPlanet: Planet | null = null;
 let hoveredPlanet: Planet | null = null;
+let orbitsVisible = true;
+
+export function setOrbitsVisible(v: boolean): void {
+  orbitsVisible = v;
+  kick();
+}
+export function getOrbitsVisible(): boolean { return orbitsVisible; }
+export function toggleOrbits(): void { setOrbitsVisible(!orbitsVisible); }
 
 // Search-index kinds that route to the planet handler. Keep in sync
 // with the registerSearchKindAlias calls at end of initPlanetLabels.
@@ -439,25 +581,30 @@ const planetHandler: LabelTypeHandler = {
 
   update() {
     const fade = solarSystemFade(camera.position.length());
+    setOccluderActive(fade > 0 || selectedPlanet !== null || hoveredPlanet !== null);
     const halfTan = Math.tan((camera.fov * Math.PI) / 360);
     const halfHeight = window.innerHeight / 2;
     const days = julianDaysSinceJ2000();
-    const focusForDust = selectedPlanet ?? hoveredPlanet;
-    if (focusForDust) {
-      setDustOccluder(focusForDust.anchor.position, focusForDust.sceneRadius);
-    } else {
-      setDustOccluder(null, 0);
-    }
     planetPicks.length = 0;
     for (const p of planets) {
       const orbitMat = p.orbitLine.material as THREE.LineBasicMaterial;
       orbitMat.opacity = ORBIT_BASE_OPACITY * fade;
-      p.orbitLine.visible = fade > 0;
+      p.orbitLine.visible = orbitsVisible && fade > 0;
 
       const isActive = p === selectedPlanet || p === hoveredPlanet;
       if (fade <= 0 && !isActive) {
         updateCanvasLabel(canvasIdFor(p.name), { hidden: true });
         continue;
+      }
+      // First-visibility texture and shape-mesh loads — defers
+      // ~10 MB of bandwidth for users who never enter the Solar System.
+      if (p.pendingTextures.length > 0) {
+        for (const t of p.pendingTextures) enqueueTexture(t.url, t.mesh);
+        p.pendingTextures.length = 0;
+      }
+      if (p.pendingMeshUrl) {
+        loadShapeMesh(p.pendingMeshUrl, p.mesh, p.entry.radius_km);
+        p.pendingMeshUrl = null;
       }
       if (p.qBase) {
         // Wrap W into [0, 2π) — Earth's raw W_rad would otherwise
@@ -619,8 +766,11 @@ function attachSaturnRings(saturn: Planet, illumination: number): void {
   ring.frustumCulled = false;
   scene.add(ring);
 
-  enqueueTexture(`${TILE_BASE_URL}planets/saturn_ring.png`, ring);
   ring.userData.onTextureLoaded = () => { ring.visible = true; };
+  saturn.pendingTextures.push({
+    url: `${TILE_BASE_URL}planets/saturn_ring.png`,
+    mesh: ring,
+  });
 }
 
 export async function initPlanetLabels(): Promise<void> {
@@ -657,6 +807,9 @@ export async function initPlanetLabels(): Promise<void> {
       : null;
     const mesh = createPlanetMesh(sceneRadius, sunDir, illumination, axesNorm);
     mesh.position.copy(anchor.position);
+    // Add to OCCLUDER_LAYER so the dust pre-pass rasterises this body's
+    // silhouette into halfResRT's depth, blocking dust through it.
+    mesh.layers.enable(OCCLUDER_LAYER);
     scene.add(mesh);
 
     // For heliocentric bodies the orbit focus is Sol (origin); for
@@ -677,16 +830,24 @@ export async function initPlanetLabels(): Promise<void> {
       W_dot_rad_per_day = Wdot * Math.PI / 180;
     }
 
+    const pendingTextures: PendingTexture[] = [];
+    const ext = TEXTURED_BODIES[name];
+    if (ext) {
+      pendingTextures.push({
+        url: `${TILE_BASE_URL}planets/${name.toLowerCase()}.${ext}`,
+        mesh,
+      });
+    }
+    const pendingMeshUrl = MESHED_BODIES.has(name)
+      ? `${TILE_BASE_URL}planets/${name.toLowerCase()}.bin`
+      : null;
+
     const planet: Planet = {
       name, entry, anchor, mesh, orbitLine, sceneRadius,
-      qBase, W0_rad, W_dot_rad_per_day,
+      qBase, W0_rad, W_dot_rad_per_day, pendingTextures, pendingMeshUrl,
     };
     planets.push(planet);
     planetByName.set(name, planet);
-
-    if (TEXTURED_BODIES.has(name)) {
-      enqueueTexture(`${TILE_BASE_URL}planets/${name.toLowerCase()}.jpg`, mesh);
-    }
 
     // Push the live position back into the search index — build-catalog
     // bakes a build-time approximation, but URL focus restore via

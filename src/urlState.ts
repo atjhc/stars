@@ -5,7 +5,7 @@
 export interface UrlState {
   orbit?: { radius: number; phi: number; theta: number };
   focus?: string;
-  toggles?: { labels?: boolean; grid?: boolean; constellations?: boolean; nebulae?: boolean };
+  toggles?: { labels?: boolean; grid?: boolean; constellations?: boolean; nebulae?: boolean; orbits?: boolean };
   mag?: number;
 }
 
@@ -17,7 +17,7 @@ function fmt(n: number): string {
 
 // Defaults: only write toggles that differ to keep URLs clean
 const TOGGLE_DEFAULTS: Record<string, boolean> = {
-  labels: true, grid: false, constellations: true, nebulae: true,
+  labels: true, grid: false, constellations: true, nebulae: true, orbits: true,
 };
 // Matches stars.ts::DEFAULT_MAG_LIMIT — hardcoded here to keep
 // urlState.ts import-free of scene modules.
@@ -27,7 +27,7 @@ const DEFAULT_MAG = 7.5;
 // the long form is still accepted on parse for back-compat with old
 // shareable URLs.
 const TOGGLE_SHORT: Record<string, string> = {
-  labels: "l", grid: "g", constellations: "c", nebulae: "n",
+  labels: "l", grid: "g", constellations: "c", nebulae: "n", orbits: "r",
 };
 
 export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLSearchParams {
