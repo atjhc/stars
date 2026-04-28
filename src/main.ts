@@ -473,14 +473,17 @@ setupSearch(handleSearchSelect, (entry) => {
 // Canvas label layer (see docs/canvas-labels-plan.md). Sole label path.
 initLabelCanvas();
 
-// Boot the catalog + starfield, then select Sol once notables are loaded.
+// Dust is the only big asset (~22 MB gzip); stream it in alongside its
+// labels so the render loop can paint stars while it loads.
 await initStarfield();
 await initConstellations();
-await initDust();
-await initNebulaeLabels();
 await initBlackHoleLabels();
 await initNeutronStarLabels();
 await initPlanetLabels();
+const dustInit = initDust();
+const nebulaeInit = initNebulaeLabels();
+dustInit.catch((e) => console.error("initDust failed:", e));
+nebulaeInit.catch((e) => console.error("initNebulaeLabels failed:", e));
 registerScreenOccluder(getLensingOccluder);
 onSelectionChanged(updateDetailPanel);
 
@@ -562,6 +565,9 @@ doUpdateLabelVisibility();
   // Ensure collision runs after any startup animation clears.
   setTimeout(() => setLabelsDirty(true), ANIM_DURATION + 100);
 }
+
+// Re-push label visibility once the nebula handler registers.
+nebulaeInit.then(() => doUpdateLabelVisibility()).catch(() => {});
 
 function currentFocusName(): string | undefined {
   // Star systems and individual stars are managed outside the handler

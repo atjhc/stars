@@ -25,9 +25,10 @@ const DEFAULT_MAG = 7.5;
 
 // Short aliases for toggle params. We always write the short form;
 // the long form is still accepted on parse for back-compat with old
-// shareable URLs.
+// shareable URLs. `r` is reserved for the camera-orbit radius — orbits
+// (orbit-line visibility) uses `o` to avoid the collision.
 const TOGGLE_SHORT: Record<string, string> = {
-  labels: "l", grid: "g", constellations: "c", nebulae: "n", orbits: "r",
+  labels: "l", grid: "g", constellations: "c", nebulae: "n", orbits: "o",
 };
 
 export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLSearchParams {

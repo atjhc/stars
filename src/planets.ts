@@ -127,11 +127,19 @@ const SCENE_PER_AU = SCALE / AU_PER_PC;
 // on Sol's pixel during interstellar views.
 const SOLAR_SYSTEM_LABEL_DIST = 1000 * SCENE_PER_AU;
 const SOLAR_SYSTEM_FADE_START = 900 * SCENE_PER_AU;
+// Orbit lines fade more gradually than labels — labels pile up on Sol's
+// pixel past ~1000 AU, but rings can stay faintly visible to preserve
+// Solar-System scale cues during the transition to interstellar views.
+const ORBIT_FADE_END = 3000 * SCENE_PER_AU;
 const ECLIPTIC_OBLIQUITY = (23.4393 * Math.PI) / 180;
 const ORBIT_BASE_OPACITY = 0.7;
 
 function solarSystemFade(camDistFromSol: number): number {
   return 1 - THREE.MathUtils.smoothstep(camDistFromSol, SOLAR_SYSTEM_FADE_START, SOLAR_SYSTEM_LABEL_DIST);
+}
+
+function orbitFade(camDistFromSol: number): number {
+  return 1 - THREE.MathUtils.smoothstep(camDistFromSol, SOLAR_SYSTEM_FADE_START, ORBIT_FADE_END);
 }
 
 type PlanetKind = "planet" | "dwarf" | "asteroid" | "moon";
@@ -580,7 +588,9 @@ const planetHandler: LabelTypeHandler = {
   },
 
   update() {
-    const fade = solarSystemFade(camera.position.length());
+    const camDist = camera.position.length();
+    const fade = solarSystemFade(camDist);
+    const orbitOpacity = orbitFade(camDist);
     setOccluderActive(fade > 0 || selectedPlanet !== null || hoveredPlanet !== null);
     const halfTan = Math.tan((camera.fov * Math.PI) / 360);
     const halfHeight = window.innerHeight / 2;
@@ -588,8 +598,8 @@ const planetHandler: LabelTypeHandler = {
     planetPicks.length = 0;
     for (const p of planets) {
       const orbitMat = p.orbitLine.material as THREE.LineBasicMaterial;
-      orbitMat.opacity = ORBIT_BASE_OPACITY * fade;
-      p.orbitLine.visible = orbitsVisible && fade > 0;
+      orbitMat.opacity = ORBIT_BASE_OPACITY * orbitOpacity;
+      p.orbitLine.visible = orbitsVisible && orbitOpacity > 0;
 
       const isActive = p === selectedPlanet || p === hoveredPlanet;
       if (fade <= 0 && !isActive) {

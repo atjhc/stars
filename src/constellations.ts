@@ -331,6 +331,8 @@ export async function initConstellations(): Promise<void> {
     console.warn(`[constellations] unresolved stars: ${[...unresolved].join(", ")}`);
   }
 
+  // featureEnabled may already be `false`; apply it now that instances exist.
+  applyVisibility();
   registerLabelType(constellationHandler);
   console.log(
     `Constellations: ${instances.length} loaded, ` +

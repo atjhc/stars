@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { camera, scene } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
+import { registerKeepFrame } from "./renderLoop.ts";
 // Float32 precision is adequate — dust spans ~6000 scene units.
 const dustCamPosUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
 
@@ -38,6 +39,11 @@ interface DustMeta {
 const emissionScene = new THREE.Scene();
 let emissionMesh: THREE.Mesh | null = null;
 let wantVisible = true;
+
+const TARGET_OPACITY = 0.04;
+const FADE_DURATION_MS = 1200;
+let fadeStartMs = -1;
+registerKeepFrame(() => fadeStartMs >= 0);
 
 // Half-resolution render target for the emission pass. Volumetric glow
 // is inherently smooth, so half-res + bilinear upscale is nearly
@@ -134,7 +140,7 @@ function createEmissionMaterial(
       uVolumeSize: { value: volSize },
       uSceneToGal: { value: new THREE.Matrix3().copy(GAL_TO_SCENE).invert() },
       uCamWorldPos: dustCamPosUniform,
-      uOpacity: { value: 0.04 },
+      uOpacity: { value: 0 },
       uMagLimit: magLimitUniform,
     },
     vertexShader: SHARED_VERTEX,
@@ -229,10 +235,18 @@ export async function initDust(): Promise<void> {
   blitScene.add(blitQuad);
 
   console.log(`Dust volume: ${xSize}×${ySize}×${zSize} @ ${meta.resolution_pc} pc/voxel, bbox ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}`);
+  fadeStartMs = performance.now();
 }
 
 export function updateDust(): void {
   dustCamPosUniform.value.copy(camera.position);
+  if (fadeStartMs >= 0 && emissionMesh) {
+    const elapsed = performance.now() - fadeStartMs;
+    const t = Math.min(1, elapsed / FADE_DURATION_MS);
+    const eased = 1 - Math.pow(1 - t, 3);
+    (emissionMesh.material as THREE.ShaderMaterial).uniforms.uOpacity.value = TARGET_OPACITY * eased;
+    if (t >= 1) fadeStartMs = -1;
+  }
 }
 
 // Ray march to the half-res RT. Run every frame — the target-relative
