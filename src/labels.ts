@@ -22,6 +22,7 @@ import {
 } from "./systemStore.ts";
 import { isFavorite } from "./favorites.ts";
 import { isConstellationStar } from "./constellations.ts";
+import { statsPhase } from "./statsPhase.ts";
 
 // When far away the star is just a corona glow, so the label sits
 // close. As the disc grows the gap widens to the full buffer.
@@ -36,6 +37,16 @@ export function starLabelMargin(discPx: number, halfBillPx: number): number {
 const collapsed = new Set<THREE.Object3D>();
 let cachedMaxNotableSolDist = 0;
 let cachedMaxClusterSolDist = 0;
+
+// Tier-1 anchors whose last slow-path processing ended in the
+// "far away — hide" branch. Used by processLabel's fast-path: if the
+// anchor is in this set and the cheap selection / system / distance
+// / collapse checks still pass, this frame's full processing would
+// just rewrite the same {hidden:true,pinned:false} state. Maintained
+// via add in the far-branch and delete at the top of every other
+// updateCanvasStarLabel call. WeakSet so a tile-unload doesn't pin
+// anchors past their natural GC.
+const idleHiddenTier1 = new WeakSet<THREE.Object3D>();
 
 const screenBuf = { x: 0, y: 0, behind: false };
 function projectToScreen(pos: THREE.Vector3): typeof screenBuf {
@@ -111,6 +122,7 @@ export function updateLabels(
   }
   const maxClusterSolDist = cachedMaxClusterSolDist;
 
+  statsPhase("ul.systems", () => {
   for (const group of systemGroups) {
     if (group.kind === "cluster") {
       const isHighlighted = hoveredSystem === group || selectedSystem === group;
@@ -257,6 +269,7 @@ export function updateLabels(
       if (canvasId) updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
     }
   }
+  });
 
   // Per-anchor star label pass. Pushes a screen-space occluder for
   // every rendered disc so labels behind bright stars hide; routes
@@ -264,6 +277,25 @@ export function updateLabels(
   function processLabel(target: THREE.Object3D) {
     const camDist = distanceFromCamera(target.position);
     const star = target.userData as Star;
+
+    // Fast-path: tier-1 anchor whose last slow-path call ended in the
+    // far-hide branch (membership in idleHiddenTier1) AND none of the
+    // cheap conditions that could flip it back to visible have changed.
+    // Skips ~240 ns of metrics + Map lookups + Object.assign per call —
+    // most of the 4k+ tier-1 anchors during a typical view. The disc
+    // occluder push is also skipped, which is safe because at
+    // camDist > LABEL_HIDE_DIST (~180 ly) no catalogued star has a
+    // disc that would reach the 2 px occluder threshold.
+    if (idleHiddenTier1.has(target)
+      && star.tier !== 0
+      && camDist > LABEL_HIDE_DIST
+      && target !== selectedMesh
+      && target !== lastHoveredMesh
+      && !collapsed.has(target)) {
+      const owning = meshToSystem.get(target) ?? clusterOf.get(target);
+      if (owning !== hoveredSystem && owning !== selectedSystem) return;
+    }
+
     const radius = starRadiusScene(star.lum, star.ci);
     const metrics = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
 
@@ -299,6 +331,12 @@ export function updateLabels(
     sys: SystemGroup | undefined,
     isTier0: boolean,
   ) {
+    // Optimistic clear; the tier-1 far-hide branch re-adds. Keeping
+    // every non-far branch out of the set ensures the fast-path's
+    // membership check actually means "last full processing ended in
+    // the far-hide branch", so its skip is safe.
+    idleHiddenTier1.delete(target);
+
     const star = target.userData as Star;
 
     if (collapsed.has(target)) {
@@ -366,6 +404,7 @@ export function updateLabels(
     if (camDist > LABEL_HIDE_DIST) {
       target.visible = false;
       updateCanvasLabel(canvasId, { hidden: true, pinned: false });
+      idleHiddenTier1.add(target);
       return;
     }
     target.visible = true;
@@ -383,8 +422,12 @@ export function updateLabels(
     });
   }
 
-  for (const anchor of notableAnchors) processLabel(anchor);
-  for (const mesh of interactiveStars) processLabel(mesh);
+  statsPhase("ul.notables", () => {
+    for (const anchor of notableAnchors) processLabel(anchor);
+  });
+  statsPhase("ul.interactive", () => {
+    for (const mesh of interactiveStars) processLabel(mesh);
+  });
 
   setLabelsDirty(false);
   prevCamPos.copy(camera.position);

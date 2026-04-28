@@ -88,25 +88,34 @@ on sample stop. **When sampling is off, the wrapper is a passthrough**
 — single branch, no timing overhead. It's safe to leave in the hot
 path permanently.
 
-Current phase breakdown on a typical 15s trajectory (post project-skip
-optimization — see `docs/labels.md`):
+Current phase breakdown on a typical 15s trajectory (post idle-hidden
+fast-path — see `docs/labels.md`):
 
 | phase             | per-frame ms | notes                                    |
 | ----------------- | ------------ | ---------------------------------------- |
-| updateLabels      | 1.97         | processLabel × ~500 labeled anchors      |
-| sceneRender       | 1.52         | composer (bloom + scene pass + lensing)  |
-| labelCanvas       | 1.25         | project + measure + collide + paint      |
-| ↳ lc.paint        | 0.77         | fillText + glow per visible label        |
-| ↳ lc.project      | 0.25         | inlined view·proj per non-faded label    |
-| ↳ lc.collide      | 0.20         | sort + spatial-grid overlap (when dirty) |
-| ↳ lc.fade         | 0.02         | step visibleFactor toward target         |
+| sceneRender       | 1.46         | composer (bloom + scene pass + lensing)  |
+| labelCanvas       | 1.23         | project + measure + collide + paint      |
+| ↳ lc.paint        | 0.75         | fillText + glow per visible label        |
+| ↳ lc.project      | 0.27         | inlined view·proj per non-faded label    |
+| ↳ lc.collide      | 0.19         | sort + spatial-grid overlap (when dirty) |
+| ↳ lc.fade         | 0.01         | step visibleFactor toward target         |
+| updateLabels      | 1.22         | processLabel × ~5k anchors (bench: dirty every frame; production: ~3 Hz) |
+| ↳ ul.interactive  | 0.87         | tier-1 anchors (~4.6k); fast-path skips idle-hidden |
+| ↳ ul.notables     | 0.20         | tier-0 anchors (~270)                    |
+| ↳ ul.systems      | 0.14         | binary collapse + cluster centroids      |
 | updateAllLabels   | 0.08         | registered handlers (nebula / BH / NS)   |
 | updateStarfield   | 0.02         | tile stream (throttled to 500ms)         |
-| updateDust        | 0.000        | dust uniform updates                     |
+| updateDust        | 0.001        | dust uniform updates                     |
 
-Total mean: ~4.8 ms p50. Pre-migration baseline was ~13.3 ms p50 — the
+Total mean: ~4.0 ms p50. Pre-migration baseline was ~13.3 ms p50 — the
 `labelRenderer` (CSS2DRenderer) and `flushCollisions` (DOM rect reads
 + collision grid) phases were ~5 ms together and are both gone now.
+
+Note: `updateLabels` is bench-inflated. The bench (`src/bench.ts`)
+calls `setLabelsDirty(true)` every frame to exercise the path; in
+production `checkCameraMoved` throttles dirties to ~3 Hz, and the
+function early-returns on the other ~57 frames. The 1.22 ms figure is
+peak (dirty-frame) cost, not the every-frame cost.
 
 ### Architecture
 
@@ -149,6 +158,27 @@ speculative optimizations turn out to be regressions. Measure first,
 always.
 
 ### Landed
+
+**Fast-path for idle-hidden tier-1 labels** (`processLabel` in
+`src/labels.ts`). With ~4.6k tier-1 anchors active and most far beyond
+`LABEL_HIDE_DIST` (~180 ly) at any given camera position, every dirty
+frame paid ~340 ns × 4.6k = 1.6 ms re-rewriting `{hidden:true,pinned:false}`
+on labels whose state hadn't actually changed. Track a `WeakSet`
+`idleHiddenTier1` that an anchor enters when its slow-path call took
+the far-hide branch and exits at the top of every other branch
+(optimistic clear; the far branch re-adds). `processLabel`'s fast
+path: if the anchor is in the set AND the cheap selection / system /
+distance / collapse checks still pass, the slow path would just
+rewrite the same hidden state — skip the metrics + Map lookups +
+canvas write. Skipping the disc-occluder push along with it is safe
+because at `camDist > LABEL_HIDE_DIST` no catalogued star has a disc
+that reaches the 2 px threshold (`R_SUN_SCENE` × max real radius is
+several orders of magnitude below the cutoff). Bench: p50 4.8 → 4.0
+ms (-17%); `updateLabels` 1.95 → 1.22 ms (-38%); `ul.interactive`
+1.60 → 0.87 ms (-45%). In production, the `300ms` throttle on
+`checkCameraMoved` means this path runs on ~3 frames/sec — the
+optimization mainly improves spike control during tile-stream
+events that re-dirty.
 
 **Skip projection for steady-state-invisible labels** (`renderLabelCanvas`
 in `src/labelCanvas.ts`). Phase-1 used to project + measure every entry
