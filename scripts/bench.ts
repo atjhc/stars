@@ -80,9 +80,17 @@ async function benchOnce(browser: Browser, label: string): Promise<Summary> {
     await page.goto(URL, { waitUntil: "networkidle2", timeout: 60_000 });
     await page.waitForFunction("window.__benchDone === true", { timeout: 60_000 });
     const summary = (await page.evaluate("window.__benchResults")) as Summary;
+    const gpuEnabled = (await page.evaluate("window.__gpuTimerEnabled")) as boolean | undefined;
+    const gpuPhases = (await page.evaluate("window.__gpuPhases")) as Record<string, PhaseStat> | undefined;
     const { phases, ...top } = summary;
     console.log(`[${label}] ${JSON.stringify(top)}`);
     printPhases(label, phases);
+    if (gpuEnabled && gpuPhases && Object.keys(gpuPhases).length > 0) {
+      console.log(`[${label}] GPU phases (per-frame ms):`);
+      printPhases(label, gpuPhases);
+    } else {
+      console.log(`[${label}] GPU timer: ${gpuEnabled ? "enabled, no samples" : "extension unavailable"}`);
+    }
     return summary;
   } finally {
     await page.close();

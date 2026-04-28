@@ -264,6 +264,48 @@ is dominated by the collision *algorithm* (sort + grid + overlap
 checks), not DOM reads. The extra per-label work in `updateLabels` far
 outweighed the savings.
 
+## GPU phase timing
+
+`src/gpuTimer.ts` wraps render calls in `EXT_disjoint_timer_query_webgl2`
+queries so the bench can attribute GPU work between passes (composer
+scene render, bloom, dust ray-march, dust composite, NS post-pass).
+CPU `statsPhase` only sees JS time — the GPU runs asynchronously after
+the JS side queues commands, so even a heavy pass shows ~0 in CPU
+profiling. `wrapComposerPasses(composer, prefix)` monkey-patches each
+pass's `render` so the breakdown comes free without touching Three.js.
+
+The bench surfaces results via `window.__gpuPhases` and prints them
+beside the CPU phases. No-op fallback when the extension isn't
+available (Safari without developer extensions, some headless
+contexts).
+
+**Caveat — measurement overhead on macOS.** Each `beginQuery /
+endQuery` pair adds roughly **0.9 ms** of apparent cost per query in
+headless Chrome on Apple Silicon. We measured this by comparing a
+single `composer.render` query (6.86 ms) against the sum of its four
+per-pass queries (10.33 ms): the 3.5 ms gap divided by 4 extra
+queries gives ~0.87 ms each. Practical implications:
+- Use the timer to find the *heaviest* pass — RenderPass at >3 ms is
+  unambiguously the largest real-cost contributor.
+- Don't read absolute numbers as the ground truth. A pass reporting
+  2.5 ms might really be 1.5 ms once overhead is netted out.
+- Don't compare two similarly-sized passes to each other — overhead
+  swamps the difference.
+- The timer itself stalls the GPU pipeline, so leaving wrappers on
+  costs ~5 ms/frame of bench-only time. Wrappers stay live in
+  prod (zero-cost when the extension isn't available there) but the
+  numbers are most useful with sampling on.
+
+Initial GPU breakdown (15s bench, post-overhead-aware reading):
+- `gpu.composer.RenderPass` — heaviest, real scene rendering (stars
+  / planets / orbit lines / billboards); the obvious target if GPU
+  ever bottlenecks
+- `gpu.composer.UnrealBloomPass` — 5-level mip chain; not currently
+  hot but scales with viewport
+- Other passes (`OutputPass`, `cropPass`, `dustComposite`,
+  `dustRT`) — small and similar; any further drill-down needs a
+  different timing technique to escape per-query overhead
+
 ### On the shelf
 
 **Canvas-rendered labels.**
@@ -274,12 +316,6 @@ reimplementing. Estimated ~4-5ms potential win, but uncertain until
 prototyped, and high regression surface. Not worth the effort at
 current 13ms p50 with 3ms of headroom at 60fps; revisit if the app
 starts dropping frames on target hardware.
-
-**GPU timing via `EXT_disjoint_timer_query_webgl2`.**
-Would let us attribute the ~1.8ms `sceneRender` between composer
-passes (bloom vs scene vs dust vs lensing). Not instrumented because
-the scene phase is already small; would matter more if the composer
-started dominating.
 
 ## Rules learned
 

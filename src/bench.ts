@@ -10,6 +10,7 @@ import {
 } from "./scene.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { statsToggleSampling, getLastSampleSummary } from "./debug.ts";
+import { getGpuPhases, resetGpuPhases, isGpuTimerEnabled, drainGpuQueries } from "./gpuTimer.ts";
 
 const DURATION_MS = 15_000;
 const SETTLE_MS = 2000;
@@ -30,6 +31,8 @@ declare global {
   interface Window {
     __benchDone?: boolean;
     __benchResults?: BenchResult;
+    __gpuPhases?: Record<string, { per_frame_ms: number; total_ms: number; calls: number }>;
+    __gpuTimerEnabled?: boolean;
   }
 }
 
@@ -41,13 +44,20 @@ export function runBench(): void {
     const baseRadius = orbitRadius;
 
     statsToggleSampling();
+    resetGpuPhases();
 
     function tick() {
       const t = (performance.now() - start) / DURATION_MS;
       if (t >= 1) {
         statsToggleSampling();
+        // Drain a few times to give in-flight queries a chance to
+        // resolve before snapshotting. Each drain runs after a frame
+        // boundary so the GPU has had time to finish.
+        drainGpuQueries();
         const summary = getLastSampleSummary();
         if (summary) window.__benchResults = summary;
+        window.__gpuPhases = getGpuPhases();
+        window.__gpuTimerEnabled = isGpuTimerEnabled();
         window.__benchDone = true;
         return;
       }

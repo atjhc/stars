@@ -62,6 +62,7 @@ import {
 } from "./starfield.ts";
 import { animateTo } from "./scene.ts";
 import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
+import { initGpuTimer, gpuPhase, drainGpuQueries, wrapComposerPasses } from "./gpuTimer.ts";
 
 // Wait for DOM
 await new Promise<void>((resolve) => {
@@ -621,6 +622,8 @@ if (debugEnabled) {
   });
 }
 
+initGpuTimer(renderer);
+wrapComposerPasses(composer, "gpu.composer");
 if (benchEnabled) runBench();
 
 // Bench + debug need continuous frames for sampling / live stats graphs.
@@ -648,7 +651,8 @@ function animate(now: number) {
   // UV so the nebula warps with the scene. Otherwise it's blitted onto
   // the screen additively after the composer.
   statsPhase("sceneRender", () => {
-    renderDustToRT(renderer);
+    drainGpuQueries();
+    gpuPhase("gpu.dustRT", () => renderDustToRT(renderer));
     if (lensingPass.enabled) {
       const dustTex = getDustTexture();
       lensingPass.uniforms.tDust!.value = dustTex;
@@ -657,11 +661,11 @@ function animate(now: number) {
     beginBloomRender();
     composer.render();
     endBloomRender();
-    if (!lensingPass.enabled) compositeDustToScreen(renderer);
+    if (!lensingPass.enabled) gpuPhase("gpu.dustComposite", () => compositeDustToScreen(renderer));
     // Render NS markers after the composer so the lensing pass
     // never sees the body in tDiffuse and can't bend it into an
     // Einstein ring around itself.
-    renderNeutronStars(renderer);
+    gpuPhase("gpu.neutronStars", () => renderNeutronStars(renderer));
   });
 
   statsPhase("labelCanvas", renderLabelCanvas);
