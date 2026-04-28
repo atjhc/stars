@@ -11,6 +11,7 @@ import { DEFAULT_MAG_LIMIT, setMagLimit } from "./starfield.ts";
 import { makeCollapsible } from "./collapse.ts";
 import { getSelectedSystem, getSelectedMesh } from "./systemStore.ts";
 import type { Star } from "./types.ts";
+import { setStatsPhaseImpl } from "./statsPhase.ts";
 
 type ToggleKey =
   | "textureGlow"   // sample glow from a mipmapped texture instead of math
@@ -517,6 +518,7 @@ export function initDebug() {
   // Click cycles which panel is showing; its own handlers stopPropagation
   // so the debug panel's collapse click doesn't also fire.
   statsKit = createStatsKit();
+  setStatsPhaseImpl((name, fn) => statsKit!.phase(name, fn));
   bodyEl.appendChild(statsKit.container);
 
   makeCollapsible(panel, "debug");

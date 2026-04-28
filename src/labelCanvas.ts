@@ -19,6 +19,7 @@ import { computeStarScreenMetrics } from "./stars.ts";
 import { starRadiusScene } from "./color.ts";
 import type { Star } from "./types.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
+import { statsPhase } from "./statsPhase.ts";
 
 // Hit-target debug overlay (Shift+5 via debug.ts) — kept local so the
 // labelCanvas → debug import doesn't cycle through starfield. main.ts
@@ -396,38 +397,48 @@ export function renderLabelCanvas(): void {
   if (labels.size === 0) return;
 
   // Phase 1: project + measure.
-  frameBuf.length = 0;
-  for (const label of labels.values()) {
-    project(label.anchor, scratchProj);
-    label.screenX = scratchProj.x;
-    label.screenY = scratchProj.y;
-    label.behind = scratchProj.behind;
-    if (scratchProj.behind) {
-      // Behind camera — snap off, no fade.
-      label.collisionVisible = false;
-      label.visibleFactor = 0;
-      continue;
+  statsPhase("lc.project", () => {
+    frameBuf.length = 0;
+    for (const label of labels.values()) {
+      // Steady-state invisible: paint alpha is 0 *and* the next collide
+      // pass will keep it invisible (opacityTarget below collision
+      // cutoff). Mid-fade labels (visibleFactor > 0) still project so
+      // the fade-out renders at the correct position; freshly-registered
+      // labels (visibleFactor = 0 but opacityTarget = 1) project so they
+      // can fade in.
+      if (label.visibleFactor === 0 && label.opacityTarget < COLLISION_ALPHA_CUTOFF) continue;
+      project(label.anchor, scratchProj);
+      label.screenX = scratchProj.x;
+      label.screenY = scratchProj.y;
+      label.behind = scratchProj.behind;
+      if (scratchProj.behind) {
+        // Behind camera — snap off, no fade.
+        label.collisionVisible = false;
+        label.visibleFactor = 0;
+        continue;
+      }
+      if (label.width === 0) {
+        const m = measureText(label.font, label.text);
+        label.width = m.width;
+        label.height = m.height;
+      }
+      frameBuf.push(label);
     }
-    if (label.width === 0) {
-      const m = measureText(label.font, label.text);
-      label.width = m.width;
-      label.height = m.height;
-    }
-    frameBuf.push(label);
-  }
+  });
 
   // Screen-space occluders for the frame — used both by the (batched)
   // label collision pass below and by phase 4 to gate star-pick
   // publishing. Collected every frame so star-pick occlusion updates
   // with the camera even when the label collision pass is skipped.
-  const occluders = collectScreenOccluders();
+  const occluders = statsPhase("lc.occluders", () => collectScreenOccluders());
 
   // Phase 2: collision — only on dirty. All overlap / occlusion /
   // visibility decisions flip together in the same frame, so the
   // subsequent fade reads as a single batched transition instead of
   // labels blinking in and out one by one as camera jitter makes
   // transient overlaps come and go.
-  if (collisionDirty) {
+  statsPhase("lc.collide", () => {
+    if (!collisionDirty) return;
     frameBuf.sort(compareLabels);
     const grid = new Map<number, CanvasRect[]>();
     for (const label of frameBuf) {
@@ -459,50 +470,54 @@ export function renderLabelCanvas(): void {
       if (visible) insertPlaced(textRect, grid);
     }
     collisionDirty = false;
-  }
+  });
 
   // Phase 3: step visibleFactor toward collision decision. This is the
   // ONLY axis that fades over FADE_MS — opacityTarget is applied
   // directly in phase 4 so distance-based fading tracks the camera
   // every frame instead of lagging behind the collision animation.
-  fadesInFlight = 0;
-  for (const label of frameBuf) {
-    const target = label.collisionVisible ? 1 : 0;
-    stepVisibleFactor(label, target, fadeStep);
-    if (label.visibleFactor !== target) fadesInFlight++;
-  }
+  statsPhase("lc.fade", () => {
+    fadesInFlight = 0;
+    for (const label of frameBuf) {
+      const target = label.collisionVisible ? 1 : 0;
+      stepVisibleFactor(label, target, fadeStep);
+      if (label.visibleFactor !== target) fadesInFlight++;
+    }
+  });
 
   // Phase 4: paint + publish hit regions + star picks. Painted alpha
   // combines the distance-modulated opacityTarget (set by updateLabels)
   // with the smoothly animated visibleFactor.
-  for (const label of frameBuf) {
-    const alpha = label.opacityTarget * label.visibleFactor;
-    if (alpha < 0.01) continue;
-    paintLabel(ctx, label, alpha);
-    if (label.collisionVisible) {
-      hitRegions.push({ id: label.id, rect: hitRect(label) });
-      // Publish a star-disc pick entry too — lets main.ts pick the
-      // closest star to the cursor in pure screen space instead of a
-      // 3D hit sphere raycast that skews with deep-zoom clamping and
-      // can pick the wrong binary member when two hit spheres overlap
-      // in 3D but not on screen.
-      if (label.kind === "star" && label.payload) {
-        const anchor = label.payload as { userData?: Star; position: THREE.Vector3 } | undefined;
-        const star = anchor?.userData;
-        if (star) {
-          const camDist = distanceFromCamera(anchor!.position);
-          const radius = starRadiusScene(star.lum, star.ci);
-          const { discPx, halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
-          const rPx = halfBillPx + HIT_PX_PADDING;
-          // Skip if a strictly larger foreground disc intersects this
-          // hit circle — matches what we do for labels, so the click-
-          // target tracks what's visually reachable.
-          if (starOccludedByForegroundDisc(label.screenX, label.screenY, discPx, rPx, occluders)) continue;
-          starPicks.push({ mesh: anchor, x: label.screenX, y: label.screenY, rSq: rPx * rPx });
+  statsPhase("lc.paint", () => {
+    for (const label of frameBuf) {
+      const alpha = label.opacityTarget * label.visibleFactor;
+      if (alpha < 0.01) continue;
+      paintLabel(ctx!, label, alpha);
+      if (label.collisionVisible) {
+        hitRegions.push({ id: label.id, rect: hitRect(label) });
+        // Publish a star-disc pick entry too — lets main.ts pick the
+        // closest star to the cursor in pure screen space instead of a
+        // 3D hit sphere raycast that skews with deep-zoom clamping and
+        // can pick the wrong binary member when two hit spheres overlap
+        // in 3D but not on screen.
+        if (label.kind === "star" && label.payload) {
+          const anchor = label.payload as { userData?: Star; position: THREE.Vector3 } | undefined;
+          const star = anchor?.userData;
+          if (star) {
+            const camDist = distanceFromCamera(anchor!.position);
+            const radius = starRadiusScene(star.lum, star.ci);
+            const { discPx, halfBillPx } = computeStarScreenMetrics(radius, star.absmag ?? 10, Math.max(camDist, 1e-20));
+            const rPx = halfBillPx + HIT_PX_PADDING;
+            // Skip if a strictly larger foreground disc intersects this
+            // hit circle — matches what we do for labels, so the click-
+            // target tracks what's visually reachable.
+            if (starOccludedByForegroundDisc(label.screenX, label.screenY, discPx, rPx, occluders)) continue;
+            starPicks.push({ mesh: anchor, x: label.screenX, y: label.screenY, rSq: rPx * rPx });
+          }
         }
       }
     }
-  }
+  });
 
   // Debug overlay — Shift+5 toggles `debug.hitTargets`. Draws the exact
   // rects pickLabelAt scans against and the disc occluders that drive

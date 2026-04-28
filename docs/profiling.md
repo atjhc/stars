@@ -88,19 +88,23 @@ on sample stop. **When sampling is off, the wrapper is a passthrough**
 — single branch, no timing overhead. It's safe to leave in the hot
 path permanently.
 
-Current phase breakdown on a typical 15s trajectory (post canvas-label
-migration — see `docs/labels.md`):
+Current phase breakdown on a typical 15s trajectory (post project-skip
+optimization — see `docs/labels.md`):
 
 | phase             | per-frame ms | notes                                    |
 | ----------------- | ------------ | ---------------------------------------- |
-| updateLabels      | 1.99         | processLabel × ~500 labeled anchors      |
-| labelCanvas       | 1.63         | project + measure + collide + paint      |
-| sceneRender       | 1.03         | composer (bloom + scene pass + lensing)  |
-| updateAllLabels   | 0.03         | registered handlers (nebula / BH)        |
-| updateStarfield   | 0.03         | tile stream (throttled to 500ms)         |
-| updateDust        | 0.001        | dust uniform updates                     |
+| updateLabels      | 1.97         | processLabel × ~500 labeled anchors      |
+| sceneRender       | 1.52         | composer (bloom + scene pass + lensing)  |
+| labelCanvas       | 1.25         | project + measure + collide + paint      |
+| ↳ lc.paint        | 0.77         | fillText + glow per visible label        |
+| ↳ lc.project      | 0.25         | inlined view·proj per non-faded label    |
+| ↳ lc.collide      | 0.20         | sort + spatial-grid overlap (when dirty) |
+| ↳ lc.fade         | 0.02         | step visibleFactor toward target         |
+| updateAllLabels   | 0.08         | registered handlers (nebula / BH / NS)   |
+| updateStarfield   | 0.02         | tile stream (throttled to 500ms)         |
+| updateDust        | 0.000        | dust uniform updates                     |
 
-Total mean: ~4.7 ms. Pre-migration baseline was ~13.3 ms p50 — the
+Total mean: ~4.8 ms p50. Pre-migration baseline was ~13.3 ms p50 — the
 `labelRenderer` (CSS2DRenderer) and `flushCollisions` (DOM rect reads
 + collision grid) phases were ~5 ms together and are both gone now.
 
@@ -145,6 +149,31 @@ speculative optimizations turn out to be regressions. Measure first,
 always.
 
 ### Landed
+
+**Skip projection for steady-state-invisible labels** (`renderLabelCanvas`
+in `src/labelCanvas.ts`). Phase-1 used to project + measure every entry
+in the `labels` map every frame — ~500 anchors × ~3 µs = ~1.5 ms,
+regardless of how few were actually visible. Most labels are
+distance-faded out at any given camera position (orbit lines past 3000
+AU, far constellations, distant clusters). Add a guard that skips
+projection when `visibleFactor === 0 && opacityTarget < COLLISION_ALPHA_CUTOFF`
+— meaning paint alpha is already 0 *and* the next collide pass would
+keep it at 0. Mid-fade labels (visibleFactor > 0) still project so
+their fade-out renders at the correct screen position; freshly-
+registered labels (visibleFactor 0 but opacityTarget 1) still project
+so they can fade in. p50 6.4 → 4.8 ms (-25%); `labelCanvas` 2.83 →
+1.25 ms (-56%); `lc.project` itself 1.47 → 0.25 ms (-82%). `collide`
+and `paint` also drop because frameBuf is smaller. Inner `lc.*` phase
+markers retained for future regression-spotting (zero cost when
+sampling is off).
+
+**Sub-phase timing inside `renderLabelCanvas`** (instrumentation, not
+an optimization). Wrapped each of the four phases (project, occluders,
+collide, fade, paint) with `statsPhase("lc.<name>", ...)` so the bench
+attributes labelCanvas's cost. Required extracting `statsPhase` from
+`debug.ts` into a tiny `src/statsPhase.ts` shim — `labelCanvas → debug
+→ starfield → labelCanvas` would otherwise reintroduce the import
+cycle that the file's existing comments already call out.
 
 **Skip tile-stream sweep when camera is still** (`updateStarfield`
 in `src/starfield.ts`). The 500 ms tile-streaming check ran the full
