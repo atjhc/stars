@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { camera, scene, getRenderPixelRatio } from "./scene.ts";
+import { camera, scene, getRenderPixelRatio, isMobileQuality } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
@@ -211,8 +211,14 @@ export async function initDust(): Promise<void> {
   emissionMesh.frustumCulled = false;
   emissionScene.add(emissionMesh);
 
-  const hw = Math.round(window.innerWidth * getRenderPixelRatio() / 2);
-  const hh = Math.round(window.innerHeight * getRenderPixelRatio() / 2);
+  // Quarter-res on mobile (divisor 4) instead of half-res. The dust
+  // volume is baked at 6 pc/voxel — low enough frequency that the
+  // bilinear upsample doesn't show aliasing at typical viewing
+  // distances. On a mobile GPU this is one of the largest bandwidth
+  // savings available since dust ray-marching is texture-fetch heavy.
+  const dustDiv = isMobileQuality() ? 4 : 2;
+  const hw = Math.round(window.innerWidth * getRenderPixelRatio() / dustDiv);
+  const hh = Math.round(window.innerHeight * getRenderPixelRatio() / dustDiv);
   halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
 
   // Fullscreen blit quad to upscale the half-res result. The RT was
@@ -304,8 +310,9 @@ export function getDustTexture(): THREE.Texture | null {
 
 export function handleDustResize(): void {
   if (!halfResRT) return;
-  const hw = Math.round(window.innerWidth * getRenderPixelRatio() / 2);
-  const hh = Math.round(window.innerHeight * getRenderPixelRatio() / 2);
+  const dustDiv = isMobileQuality() ? 4 : 2;
+  const hw = Math.round(window.innerWidth * getRenderPixelRatio() / dustDiv);
+  const hh = Math.round(window.innerHeight * getRenderPixelRatio() / dustDiv);
   halfResRT.setSize(hw, hh);
 }
 

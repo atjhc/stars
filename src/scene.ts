@@ -89,6 +89,16 @@ export function getRenderPixelRatio(): number {
   return Math.min(window.devicePixelRatio, _dprCap);
 }
 
+// True when the DPR cap actually reduced the render resolution — a
+// proxy for "high-DPR mobile device". Used to gate further mobile-
+// specific quality reductions (MSAA samples, dust RT resolution).
+// `?dprCap=99` disables the cap, which also disables this gate, so
+// a single URL toggle is enough to A/B the full mobile-quality
+// pathway against full-quality rendering on the same device.
+export function isMobileQuality(): boolean {
+  return getRenderPixelRatio() < window.devicePixelRatio;
+}
+
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(getRenderPixelRatio());
@@ -543,10 +553,15 @@ export const BLOOM_OVERSCAN = 1.2;
 const OVERSCAN_MARGIN = (BLOOM_OVERSCAN - 1) / (2 * BLOOM_OVERSCAN);
 
 function makeComposerRT() {
+  // 8x MSAA + HalfFloat is 64 bytes/pixel inside tile memory. On a
+  // tile-based mobile GPU that splits rendering into very small tiles
+  // (~64x64) and pays binning overhead at every boundary. 4x halves
+  // the per-pixel storage and is the natural sweet spot on mobile.
+  const samples = isMobileQuality() ? 4 : 8;
   return new THREE.WebGLRenderTarget(
     Math.round(window.innerWidth * BLOOM_OVERSCAN * getRenderPixelRatio()),
     Math.round(window.innerHeight * BLOOM_OVERSCAN * getRenderPixelRatio()),
-    { samples: 8, type: THREE.HalfFloatType },
+    { samples, type: THREE.HalfFloatType },
   );
 }
 let composerRT = makeComposerRT();
