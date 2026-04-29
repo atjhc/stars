@@ -159,6 +159,22 @@ always.
 
 ### Landed
 
+**Cap WebGL pixel ratio at 2** (`getRenderPixelRatio` in
+`src/scene.ts`). iPhone 15 reports `devicePixelRatio = 3`, which
+combined with `BLOOM_OVERSCAN = 1.2` and 8× MSAA pushed the composer
+RT to ~4.3 megapixels — and we run a 5-pass composer chain plus dust
+RT and dust composite over it. That's roughly 25 megapixels of
+fragment shading per frame on a mobile GPU; the same scene on a
+desktop bench at DPR 1 shades 6× fewer pixels. Capping the WebGL DPR
+to 2 keeps render quality above the human-eye "retina" threshold
+(~307 effective DPI on iPhone 15 vs. ~460 native) while cutting
+fragment work by ~55% on 3×-DPR devices. `?dprCap=<n>` URL override
+for A/B testing on-device. Label canvas (text crispness) and the
+debug stats panel keep native DPR — different cost profile, no
+fullscreen GPU passes. Mac bench unchanged (headless Chrome runs at
+DPR 1, so the cap is already a no-op there); validation is done on
+target hardware.
+
 **Fast-path for idle-hidden tier-1 labels** (`processLabel` in
 `src/labels.ts`). With ~4.6k tier-1 anchors active and most far beyond
 `LABEL_HIDE_DIST` (~180 ly) at any given camera position, every dirty

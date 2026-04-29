@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { camera, scene } from "./scene.ts";
+import { camera, scene, getRenderPixelRatio } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
@@ -211,8 +211,8 @@ export async function initDust(): Promise<void> {
   emissionMesh.frustumCulled = false;
   emissionScene.add(emissionMesh);
 
-  const hw = Math.round(window.innerWidth * window.devicePixelRatio / 2);
-  const hh = Math.round(window.innerHeight * window.devicePixelRatio / 2);
+  const hw = Math.round(window.innerWidth * getRenderPixelRatio() / 2);
+  const hh = Math.round(window.innerHeight * getRenderPixelRatio() / 2);
   halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
 
   // Fullscreen blit quad to upscale the half-res result. The RT was
@@ -304,8 +304,8 @@ export function getDustTexture(): THREE.Texture | null {
 
 export function handleDustResize(): void {
   if (!halfResRT) return;
-  const hw = Math.round(window.innerWidth * window.devicePixelRatio / 2);
-  const hh = Math.round(window.innerHeight * window.devicePixelRatio / 2);
+  const hw = Math.round(window.innerWidth * getRenderPixelRatio() / 2);
+  const hh = Math.round(window.innerHeight * getRenderPixelRatio() / 2);
   halfResRT.setSize(hw, hh);
 }
 

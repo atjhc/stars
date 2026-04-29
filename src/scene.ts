@@ -73,9 +73,25 @@ export function distanceFromCamera(pos: THREE.Vector3): number {
 
 const viewport = document.getElementById("viewport")!;
 
+// Cap the WebGL pixel ratio. iPhones report 3, which means every
+// fullscreen pass shades 9× the pixels of a logical 1x render — and
+// we have a 5-pass composer chain. The 2x cap keeps rendering above
+// the human-eye "retina" threshold (~300 DPI at typical viewing
+// distance) while cutting fragment work by ~55% on 3x-DPR devices.
+// Override via ?dprCap=<number> for A/B testing; ?dprCap=99 effectively
+// disables the cap.
+const RENDER_DPR_CAP_DEFAULT = 2;
+const _dprCapQuery = new URLSearchParams(window.location.search).get("dprCap");
+const _dprCap = _dprCapQuery === null
+  ? RENDER_DPR_CAP_DEFAULT
+  : Math.max(1, parseFloat(_dprCapQuery) || RENDER_DPR_CAP_DEFAULT);
+export function getRenderPixelRatio(): number {
+  return Math.min(window.devicePixelRatio, _dprCap);
+}
+
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(getRenderPixelRatio());
 viewport.appendChild(renderer.domElement);
 
 // Galactic basis. galUp is the IAU galactic north pole in equatorial-XYZ.
@@ -528,8 +544,8 @@ const OVERSCAN_MARGIN = (BLOOM_OVERSCAN - 1) / (2 * BLOOM_OVERSCAN);
 
 function makeComposerRT() {
   return new THREE.WebGLRenderTarget(
-    Math.round(window.innerWidth * BLOOM_OVERSCAN * window.devicePixelRatio),
-    Math.round(window.innerHeight * BLOOM_OVERSCAN * window.devicePixelRatio),
+    Math.round(window.innerWidth * BLOOM_OVERSCAN * getRenderPixelRatio()),
+    Math.round(window.innerHeight * BLOOM_OVERSCAN * getRenderPixelRatio()),
     { samples: 8, type: THREE.HalfFloatType },
   );
 }
@@ -794,15 +810,15 @@ export function endBloomRender() {
   camera.updateProjectionMatrix();
 }
 
-let lastDPR = window.devicePixelRatio;
+let lastDPR = getRenderPixelRatio();
 export function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(getRenderPixelRatio());
   renderer.setSize(window.innerWidth, window.innerHeight);
   halfViewportPxUniform.value = window.innerHeight / 2;
-  if (window.devicePixelRatio !== lastDPR) {
-    lastDPR = window.devicePixelRatio;
+  if (getRenderPixelRatio() !== lastDPR) {
+    lastDPR = getRenderPixelRatio();
     composerRT.dispose();
     composerRT = makeComposerRT();
     composer.reset(composerRT);

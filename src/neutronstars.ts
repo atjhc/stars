@@ -5,7 +5,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import {
   scene, camera, target, animateTo, setMinOrbitOverride,
   isDeepZoom, orbitRadius, requestLensing,
-  distanceFromCamera, animation,
+  distanceFromCamera, animation, getRenderPixelRatio,
 } from "./scene.ts";
 import {
   SCALE, TILE_BASE_URL, KM_PER_PC,
@@ -107,8 +107,8 @@ const nsBlitCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
 function ensureBloomPipeline(renderer: THREE.WebGLRenderer): void {
   if (nsComposer) return;
-  const w = Math.round(window.innerWidth * window.devicePixelRatio);
-  const h = Math.round(window.innerHeight * window.devicePixelRatio);
+  const w = Math.round(window.innerWidth * getRenderPixelRatio());
+  const h = Math.round(window.innerHeight * getRenderPixelRatio());
   const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType });
   nsComposer = new EffectComposer(renderer, rt);
   nsComposer.setSize(window.innerWidth, window.innerHeight);
