@@ -41,18 +41,20 @@ const TILE_FADE_MS = 400;
 const TIER1_LOAD_DIST_MULT = isMobileQuality() ? 0.8 : 1.0;
 let tier1LoadDist = 150 * TIER1_LOAD_DIST_MULT;
 
-// Mobile: don't register canvas labels for tier-1 stars whose
-// intrinsic dimness means they'd only render at very close camera
-// distance. The billboard mesh still spawns (the magLimit shader
-// uniform gates whether it actually paints); we just skip the
-// canvas label, which cuts ~half the per-frame label iteration on
-// the typical mobile sky. Stars at absMag ≤ 7 still get labels —
-// that covers everything brighter than the apparent-magnitude limit
-// (7.5) seen at 10 pc, which is most of what users actually navigate
-// to. Beyond that threshold are the dimmer red dwarfs and
-// late-K/M dwarfs whose labels would be too crowded on a small
-// screen anyway.
-const MOBILE_LABEL_MAX_ABSMAG = 7.0;
+// Mobile: skip canvas label registration for tier-1 stars whose
+// apparent magnitude from Sol is below the threshold. Filtering by
+// `mag` (apparent from Sun) rather than `absmag` because the catalog
+// is already apparent-mag-bounded (tier-1 stars all have mag ≤ ~7.5),
+// so most tier-1 stars have absMag ≤ 7 and an absmag filter barely
+// cuts anything. Apparent-mag is the actual "would the user notice
+// this from Earth" signal. Stars dimmer than this from Sol's vantage
+// will only become visible at close approach to that star — addressable
+// later with better proximity-aware heuristics if needed; for now,
+// fewer crowded labels is the win the user asked for.
+//
+// At 5.5: keeps stars brighter than dark-sky naked-eye limit, cuts
+// the long tail of dim catalog entries that pad the label count.
+const MOBILE_LABEL_MAX_MAG = 5.5;
 
 interface LoadedTile {
   mesh: THREE.Mesh;
@@ -225,11 +227,11 @@ function spawnTier1Anchor(row: LabelRow, path: string, sx: number, sy: number, s
   const star: Star = { ...row, tile: path };
   const anchor = createStarAnchor(star, sx, sy, sz);
   anchorsGroup.add(anchor);
-  // Mobile filter: skip canvas label for intrinsically dim stars.
+  // Mobile filter: skip canvas label for stars apparently-dim from Sol.
   // Anchor still goes into allInteractiveStars / tier1Meshes so
   // selection / hover by anchor mesh still work; the billboard still
   // renders (gated by the magLimit shader uniform).
-  if (isMobileQuality() && (star.absmag ?? 10) > MOBILE_LABEL_MAX_ABSMAG) {
+  if (isMobileQuality() && (star.mag ?? 99) > MOBILE_LABEL_MAX_MAG) {
     return anchor;
   }
   const id = `tier1:${path}/${row.i}`;
