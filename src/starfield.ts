@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Star, SystemGroup, BinarySystem, ClusterGroup } from "./types.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
-import { scene, camera, target } from "./scene.ts";
+import { scene, camera, target, isMobileQuality } from "./scene.ts";
 import { createStarAnchor } from "./billboard.ts";
 import { showSystemMembers } from "./interaction.ts";
 import { setLabelsDirty, relinkAfterRebuild, getPinnedTile, getSelectedMesh } from "./systemStore.ts";
@@ -25,9 +25,21 @@ import { kick, registerKeepFrame } from "./renderLoop.ts";
 
 export { magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag, getHoveredWorldPos };
 
-const MAX_LOADED_TILES = 80;
+// Mobile gets half the tile cap and a tighter label-load radius.
+// Each tile carries geometry buffers, materials, tier-1 anchors, and
+// their canvas labels — 80 tiles is a substantial GPU memory working
+// set on iPhone and Safari's tile cache thrashes well below desktop's
+// limit, manifesting as fps degradation as the user pans. 40 keeps the
+// working set in line with mobile texture cache budgets.
+const MAX_LOADED_TILES = isMobileQuality() ? 40 : 80;
 const TILE_FADE_MS = 400;
-let tier1LoadDist = 150;
+// Tightened to 0.8 of the meta-driven value on mobile so distant tiles
+// drop their labels (and the tier-1 anchors / canvas labels they own)
+// sooner — a meaningful working-set cut without much visible
+// difference, since labels for tiles 80%+ of the cull radius away are
+// faded to near-zero already.
+const TIER1_LOAD_DIST_MULT = isMobileQuality() ? 0.8 : 1.0;
+let tier1LoadDist = 150 * TIER1_LOAD_DIST_MULT;
 
 interface LoadedTile {
   mesh: THREE.Mesh;
@@ -553,7 +565,7 @@ export async function initStarfield() {
       `renderer expects ${BYTES_PER_STAR}. Rebuild tiles via build-catalog.py.`,
     );
   }
-  tier1LoadDist = meta.labelTierVisibility["1"] ?? tier1LoadDist;
+  tier1LoadDist = (meta.labelTierVisibility["1"] ?? tier1LoadDist) * TIER1_LOAD_DIST_MULT;
   precomputeTileSpheres();
 
   onTileLabelsLoaded((path, labels) => spawnTileLabels(path, labels));
@@ -657,7 +669,7 @@ export function updateStarfield() {
   evictOldTiles();
 }
 
-export const tier1LabelMeshFromDiv = (div: HTMLElement): THREE.Object3D | undefined =>
-  tier1DivToAnchor.get(div);
-export const tier1LabelDivFromMesh = (mesh: THREE.Object3D): HTMLElement | undefined =>
-  streamedLabelMap.get(mesh);
+// Lightweight readouts for the debug panel — useful for confirming on
+// mobile that tile / anchor counts are stable rather than growing.
+export function getLoadedTileCount(): number { return loadedTiles.size; }
+export function getMaxLoadedTiles(): number { return MAX_LOADED_TILES; }

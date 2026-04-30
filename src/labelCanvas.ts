@@ -156,6 +156,8 @@ export function updateCanvasLabel(id: string, patch: Partial<CanvasLabelDescript
   Object.assign(label, patch);
 }
 
+export function getCanvasLabelCount(): number { return labels.size; }
+
 export function hasCanvasLabel(id: string): boolean {
   return labels.has(id);
 }

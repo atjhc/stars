@@ -7,7 +7,8 @@
 
 import { camera, target, orbitRadius, orbitPhi, orbitTheta, bloomPass } from "./scene.ts";
 import { BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD } from "./constants.ts";
-import { DEFAULT_MAG_LIMIT, setMagLimit } from "./starfield.ts";
+import { DEFAULT_MAG_LIMIT, setMagLimit, getLoadedTileCount, getMaxLoadedTiles } from "./starfield.ts";
+import { getCanvasLabelCount } from "./labelCanvas.ts";
 import { makeCollapsible } from "./collapse.ts";
 import { getSelectedSystem, getSelectedMesh } from "./systemStore.ts";
 import type { Star } from "./types.ts";
@@ -106,9 +107,14 @@ let cameraEl: HTMLDivElement | null = null;
 let camLine: HTMLDivElement | null = null;
 let tgtLine: HTMLDivElement | null = null;
 let orbLine: HTMLDivElement | null = null;
+let stateLine: HTMLDivElement | null = null;
 let lastCamText = "";
 let lastTgtText = "";
 let lastOrbText = "";
+let lastStateText = "";
+// Throttle state-counter refresh — these change on tile-stream
+// boundaries, not per-frame. ~2 Hz is plenty for spotting growth.
+let lastStateUpdate = 0;
 
 // Stats panels — FPS / MS / MB. One visible at a time; click cycles.
 // Adapted from stats.js (mrdoob) but draws bars from a history buffer
@@ -429,6 +435,20 @@ function renderCamera() {
   if (ct !== lastCamText) { camLine.textContent = ct; lastCamText = ct; }
   if (tt !== lastTgtText) { tgtLine.textContent = tt; lastTgtText = tt; }
   if (ot !== lastOrbText) { orbLine.textContent = ot; lastOrbText = ot; }
+
+  // State counters — change on tile-stream boundaries, not per frame.
+  // ~2 Hz is plenty for spotting whether they're stable or growing,
+  // and avoids per-frame DOM writes. If these three numbers climb
+  // monotonically while you pan, we have a leak; if they oscillate
+  // around a steady mean, eviction is doing its job.
+  if (stateLine) {
+    const now = performance.now();
+    if (now - lastStateUpdate >= 500) {
+      lastStateUpdate = now;
+      const st = `tiles ${getLoadedTileCount()}/${getMaxLoadedTiles()}  labels ${getCanvasLabelCount()}`;
+      if (st !== lastStateText) { stateLine.textContent = st; lastStateText = st; }
+    }
+  }
 }
 
 // Bracket the frame's JS work — the MS panel reads ms spent between
@@ -479,9 +499,11 @@ export function initDebug() {
   camLine = document.createElement("div");
   tgtLine = document.createElement("div");
   orbLine = document.createElement("div");
+  stateLine = document.createElement("div");
   cameraEl.appendChild(camLine);
   cameraEl.appendChild(tgtLine);
   cameraEl.appendChild(orbLine);
+  cameraEl.appendChild(stateLine);
 
   const copyBtn = document.createElement("span");
   copyBtn.className = "debug-copy";
