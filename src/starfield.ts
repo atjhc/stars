@@ -52,9 +52,11 @@ let tier1LoadDist = 150 * TIER1_LOAD_DIST_MULT;
 // later with better proximity-aware heuristics if needed; for now,
 // fewer crowded labels is the win the user asked for.
 //
-// At 5.5: keeps stars brighter than dark-sky naked-eye limit, cuts
-// the long tail of dim catalog entries that pad the label count.
-const MOBILE_LABEL_MAX_MAG = 5.5;
+// At 5.0: roughly suburban naked-eye visibility from Sol's vantage.
+// The mag 5-5.5 band has many stars and was still padding the label
+// count + the busy-region paint set; cutting it reduces both label
+// crowding and per-frame paint cost in dense parts of the sky.
+const MOBILE_LABEL_MAX_MAG = 5.0;
 
 interface LoadedTile {
   mesh: THREE.Mesh;
