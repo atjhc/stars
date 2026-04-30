@@ -88,9 +88,16 @@ interface CanvasLabel extends CanvasLabelDescriptor {
   // collision pass; between passes, visibleFactor continues fading
   // toward (collisionVisible ? 1 : 0).
   collisionVisible: boolean;
+  // Index into labelList for O(1) swap-and-pop unregister. The Map
+  // is the source of truth for id → label lookups (selection, hit
+  // testing, updateCanvasLabel). The list exists so the per-frame
+  // project pass can iterate an array (~2× faster than Map.values()
+  // on V8/JSC at this collection size).
+  _listIdx: number;
 }
 
 const labels = new Map<string, CanvasLabel>();
+const labelList: CanvasLabel[] = [];
 
 // Flag the collision pass to re-decide on the next frame. Collision is
 // batched — not re-run every frame — so the linear fade animations can
@@ -127,7 +134,7 @@ export function registerCanvasLabel(desc: CanvasLabelDescriptor): void {
   // stream event. Measurements are still invalidated so a text change
   // is re-measured.
   const prev = labels.get(desc.id);
-  labels.set(desc.id, {
+  const next: CanvasLabel = {
     ...desc,
     pinned: desc.pinned ?? false,
     hidden: desc.hidden ?? false,
@@ -138,12 +145,28 @@ export function registerCanvasLabel(desc: CanvasLabelDescriptor): void {
     height: 0,
     visibleFactor: prev?.visibleFactor ?? 0,
     collisionVisible: prev?.collisionVisible ?? false,
-  });
+    _listIdx: prev?._listIdx ?? labelList.length,
+  };
+  labels.set(desc.id, next);
+  if (prev) labelList[prev._listIdx] = next;
+  else labelList.push(next);
   collisionDirty = true;
 }
 
 export function unregisterCanvasLabel(id: string): void {
+  const label = labels.get(id);
+  if (!label) return;
   labels.delete(id);
+  // Swap-and-pop: O(1) removal. Move the last entry into this slot
+  // (unless it *is* this slot) and update its _listIdx so the next
+  // unregister can find it.
+  const idx = label._listIdx;
+  const last = labelList[labelList.length - 1]!;
+  if (last !== label) {
+    labelList[idx] = last;
+    last._listIdx = idx;
+  }
+  labelList.pop();
   collisionDirty = true;
 }
 
@@ -398,17 +421,26 @@ export function renderLabelCanvas(): void {
 
   if (labels.size === 0) return;
 
-  // Phase 1: project + measure.
+  // Phase 1: project + measure. Iterates labelList (a parallel array
+  // to the labels Map) — array iteration is meaningfully faster than
+  // Map.values() at this collection size.
   statsPhase("lc.project", () => {
     frameBuf.length = 0;
-    for (const label of labels.values()) {
+    for (let i = 0; i < labelList.length; i++) {
+      const label = labelList[i]!;
       // Steady-state invisible: paint alpha is 0 *and* the next collide
-      // pass will keep it invisible (opacityTarget below collision
-      // cutoff). Mid-fade labels (visibleFactor > 0) still project so
-      // the fade-out renders at the correct position; freshly-registered
-      // labels (visibleFactor = 0 but opacityTarget = 1) project so they
-      // can fade in.
-      if (label.visibleFactor === 0 && label.opacityTarget < COLLISION_ALPHA_CUTOFF) continue;
+      // pass will keep it invisible. Mid-fade labels (visibleFactor > 0)
+      // still project so the fade-out renders at the correct position;
+      // freshly-registered labels (visibleFactor = 0 but opacityTarget = 1)
+      // project so they can fade in.
+      //
+      // Three reasons the next collide would keep it invisible:
+      //  1. opacityTarget is below the collision cutoff (distance fade)
+      //  2. label is explicitly hidden (handler set hidden: true)
+      // Either keeps target = 0 in the collide pass, so visibleFactor
+      // stays at 0 too — safe to skip projection entirely.
+      if (label.visibleFactor === 0
+        && (label.hidden || label.opacityTarget < COLLISION_ALPHA_CUTOFF)) continue;
       project(label.anchor, scratchProj);
       label.screenX = scratchProj.x;
       label.screenY = scratchProj.y;
