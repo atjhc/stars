@@ -577,10 +577,28 @@ composer.setSize(
   Math.round(window.innerHeight * BLOOM_OVERSCAN),
 );
 composer.addPass(new RenderPass(scene, camera));
+// Half-resolution bloom on mobile. Bloom RTs internally halve again
+// per mip level, so passing half here makes level-0 a quarter of the
+// linear viewport (1/16 the pixel area). The composite step bilinearly
+// upsamples back to full res when blending over the scene; bloom is
+// already low-frequency, so the softening is essentially invisible.
+// Cuts bloom shading by ~75% on mobile.
+const BLOOM_DIVISOR = isMobileQuality() ? 2 : 1;
 export const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth * BLOOM_OVERSCAN, window.innerHeight * BLOOM_OVERSCAN),
+  new THREE.Vector2(
+    Math.round(window.innerWidth * BLOOM_OVERSCAN / BLOOM_DIVISOR),
+    Math.round(window.innerHeight * BLOOM_OVERSCAN / BLOOM_DIVISOR),
+  ),
   BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD,
 );
+if (BLOOM_DIVISOR !== 1) {
+  // composer.setSize() forwards through to every pass — intercept so
+  // resize events keep the halved resolution.
+  const origSetSize = bloomPass.setSize.bind(bloomPass);
+  bloomPass.setSize = function (w: number, h: number): void {
+    origSetSize(Math.round(w / BLOOM_DIVISOR), Math.round(h / BLOOM_DIVISOR));
+  };
+}
 for (const rt of bloomPass.renderTargetsHorizontal) rt.texture.type = THREE.HalfFloatType;
 for (const rt of bloomPass.renderTargetsVertical) rt.texture.type = THREE.HalfFloatType;
 bloomPass.renderTargetBright.texture.type = THREE.HalfFloatType;

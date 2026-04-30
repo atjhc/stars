@@ -477,7 +477,10 @@ function createPlanetMesh(
   illumination: number,
   axesNorm: THREE.Vector3 | null,
 ): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(1, 128, 64);
+  // 64x32 segments cuts vertex count 4x vs 128x64. Round bodies still
+  // look round; the silhouette has ~5.6° polygon edges that may be
+  // visible only at extreme close zoom on the largest body in view.
+  const geometry = new THREE.SphereGeometry(1, 64, 32);
   if (axesNorm) bakeEllipsoid(geometry, axesNorm);
   const material = new THREE.ShaderMaterial({
     uniforms: {
