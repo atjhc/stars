@@ -549,7 +549,13 @@ export function onWheel(e: WheelEvent) {
 //   blur samples near the *visible* edge always have real data to read
 //   from the gutter. A final CropPass samples the center region and
 //   writes it to the screen at viewport resolution.
-export const BLOOM_OVERSCAN = 1.2;
+// Margin around the visible viewport that the bloom kernel can read
+// into without hitting edge-clamp / black. Sized so the deepest bloom
+// mip level's blur reach fits inside the cropped-out region. 1.1 was
+// tested empirically to keep the edge-vignette artifact out of the
+// visible region with our BLOOM_RADIUS = 0.4. Reduces every composer
+// pass's pixel area by ~16% vs the previous 1.2.
+export const BLOOM_OVERSCAN = 1.1;
 const OVERSCAN_MARGIN = (BLOOM_OVERSCAN - 1) / (2 * BLOOM_OVERSCAN);
 
 function makeComposerRT() {
