@@ -282,6 +282,23 @@ honest — only brightness bumps.
   anchors / canvas labels) are despawned. Driven by
   `meta.labelTierVisibility["1"]`, multiplied by
   `qualityProfile.tier1LoadDistMult` (1.0 desktop / 0.8 mobile).
+- `requestTileFocus(tile, i, onResolved)` flags a tile as `forced`
+  (immune from frustum / distance culling and LRU eviction) and
+  immediately kicks off `loadTile` + `loadTileLabels`. The callback
+  fires once the target anchor exists. Used by `?focus=` URL restore
+  and by search-panel selection of off-screen targets — the URL
+  restore path awaits the callback before `startRenderLoop`, so the
+  first painted frame already shows the focused star rather than a
+  default-Sol view followed by a flyby.
+
+## Startup / search index
+
+`initCatalog` fetches `meta.json`, `notable.json`, `systems.json` in
+parallel via `Promise.all`. `names.json` (~307 KB gzip — the global
+search index) kicks off in the same tick but is *not* awaited, so
+it doesn't gate first paint. Downstream consumers — constellation
+init, planet position fixup, URL `?focus=` restore — call
+`whenSearchIndexReady()` to await it.
 
 ## Star naming (in build-catalog.py)
 

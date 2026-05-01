@@ -14,6 +14,13 @@ bun run build   # builds static site to dist/
 
 Configured for Vercel static deployment via `vercel.json`. Run `vercel` to deploy.
 
+`/tiles/*` ships with a 24h `Cache-Control: public, max-age=86400`
+header. To iterate against the deployed site without serving stale
+artifacts, append `?debug=1` to the page URL — `src/constants.ts`
+switches `TILE_BASE_URL` to `/tiles-debug/`, which Vercel rewrites
+back to `/tiles/` but with `Cache-Control: no-store`. The dev server
+mirrors the rewrite (`server.ts`) so the same flag works locally.
+
 ### Updating star data
 
 AT-HYG v3.3 is vendored as a git submodule at `vendor/athyg/`. The full

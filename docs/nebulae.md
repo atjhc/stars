@@ -144,15 +144,17 @@ The script downloads the source FITS automatically on first run.
    equatorial Cartesian to galactic Cartesian via the IAU rotation
    matrix.
 
-4. **Bake** into RGBA uint8 binary (~60 MB, ~22 MB gzipped):
+4. **Bake** into RGB uint8 binary (~44 MB, ~21 MB gzipped):
    - R = dust density (0-255, thresholded + normalized)
    - G = ionizing flux (0-255, log-scaled)
    - B = scattering flux (0-255, log-scaled)
-   - A = 255 (padding)
 
 ### Runtime (`src/dust.ts`)
 
-1. Load RGBA `Data3DTexture` (333×333×133, ~60 MB GPU).
+1. Load RGB `Data3DTexture` (333×333×133, ~44 MB GPU). Sized
+   internalFormat `RGB8` is required for WebGL2 3D textures, and
+   `unpackAlignment = 1` because 333 × 3 = 999 bytes/row isn't a
+   multiple of the default 4.
 
 2. Render emission at **half resolution** into an offscreen
    `WebGLRenderTarget` via a ray-marching fragment shader on a
@@ -189,7 +191,7 @@ The script downloads the source FITS automatically on first run.
 
 | Component | Cost | Notes |
 |---|---|---|
-| 3D texture | ~60 MB VRAM | Loaded once at boot |
+| 3D texture | ~44 MB VRAM | Loaded once at boot |
 | Emission ray march | 128 steps/pixel at half-res | Half-resolution reduces fragment count 4× |
 | Upscale blit | Fullscreen quad, bilinear | Volumetric glow is smooth enough for half-res |
 | Labels (12 CSS2D) | DOM update per frame | Distance text only updated when hovered |
@@ -226,10 +228,12 @@ actually renders.
 
 ### Finer downsample
 
-The Edenhofer source is 2 pc native; we bake at 6 pc to keep the RGBA
-texture under ~25 MB gzipped. Dropping to 4 pc (~200 MB) or 2 pc (~1.6 GB)
+The Edenhofer source is 2 pc native; we bake at 6 pc to keep the RGB
+texture under ~25 MB gzipped. Dropping to 4 pc (~150 MB) or 2 pc (~1.2 GB)
 would resolve more filament and cloud-edge structure at real bandwidth /
-VRAM cost. 4 pc is the realistic next step.
+VRAM cost. 4 pc is the realistic next step. Going the other direction —
+8 pc (~19 MB) — is the cheap mobile-bandwidth lever flagged in
+`docs/perf-candidates.md`.
 
 ### Dark cloud rendering
 

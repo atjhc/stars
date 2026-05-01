@@ -241,7 +241,7 @@ calls to external data sources.
 | `meta.json` | 49 KB | Eager |
 | `notable.json` | 131 KB | Eager |
 | `systems.json` | 19 KB | Eager |
-| `names.json` | 752 KB | Eager |
+| `names.json` | 752 KB | Eager (off critical path — see `whenSearchIndexReady` in `src/catalog.ts`) |
 | `nebulae.json` | 3.8 KB | Eager |
 | `constellations.json` | 11 KB | Eager |
 | `dust_meta.json` | 436 B | Eager |
