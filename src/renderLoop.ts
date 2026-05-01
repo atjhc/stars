@@ -5,12 +5,27 @@
 // setLabelsDirty, tile-load completion), setAlwaysOn(true) for
 // debug / bench modes that need continuous frames.
 
+import { isMobileQuality } from "./scene.ts";
+
 type StepFn = (now: number) => void;
 
 let step: StepFn | null = null;
 let rafHandle: number | null = null;
 let alwaysOn = false;
 let inputBumpUntil = 0;
+
+// Mobile fps cap. Counter-intuitively reduces thermal load relative
+// to running uncapped: a sustained 30 fps with 33 ms frames finishes
+// each frame well inside its budget and lets the GPU spend real time
+// idle, vs uncapped which races to 60 → throttles → drops to 20.
+// Steady > oscillating for thermals. 0 = no cap (desktop).
+//
+// Lazily resolved at first tick — renderLoop ↔ scene is a module
+// cycle, and reading isMobileQuality at module load can hit the TDZ
+// on the scene side. By first tick, both modules have finished
+// initializing.
+let fpsCapMs = -1;
+let lastFrameTime = 0;
 
 const keepFramePredicates: Array<() => boolean> = [];
 
@@ -26,6 +41,15 @@ export function kick(): void {
 
 function tick(now: number): void {
   rafHandle = null;
+  if (fpsCapMs < 0) fpsCapMs = isMobileQuality() ? 1000 / 30 : 0;
+  // Frame-rate cap: if we're inside the per-frame quantum, skip the
+  // step but reschedule so the next vsync pulls us out of the window.
+  // Wake conditions are still honored — the rAF still fires.
+  if (fpsCapMs > 0 && now - lastFrameTime < fpsCapMs) {
+    if (alwaysOn || needsAnotherFrame(now)) kick();
+    return;
+  }
+  lastFrameTime = now;
   step!(now);
   if (alwaysOn || needsAnotherFrame(now)) kick();
 }

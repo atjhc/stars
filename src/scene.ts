@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD, KM_PER_PC, RS_KM_PER_MSUN, SCALE } from "./constants.ts";
 import {
@@ -603,12 +602,16 @@ for (const rt of bloomPass.renderTargetsHorizontal) rt.texture.type = THREE.Half
 for (const rt of bloomPass.renderTargetsVertical) rt.texture.type = THREE.HalfFloatType;
 bloomPass.renderTargetBright.texture.type = THREE.HalfFloatType;
 composer.addPass(bloomPass);
-composer.addPass(new OutputPass());
 
-// Final crop pass: samples the center (1 / OVERSCAN) portion of the
-// oversized composer output and writes to the screen framebuffer at
-// the real viewport resolution. Everything past the visible viewport
-// is discarded, taking the bloom edge-bias artifact with it.
+// Combined final pass: crop margin + linear→sRGB conversion. Replaces
+// the previous OutputPass + cropPass pair, saving one full-screen pass
+// over the oversized composer RT. The fragment shader does what
+// OutputPass's color-management step did (linear → sRGB transfer) AND
+// the crop UV remap, in one texture sample. Lensing pass (added later
+// in deep-zoom code) sits before this in the chain and now operates on
+// linear-HDR scene data instead of post-tone-mapped sRGB — more
+// physically correct, but a real change for bright objects under
+// gravitational lensing.
 const cropPass = new ShaderPass({
   uniforms: {
     tDiffuse: { value: null },
@@ -625,9 +628,19 @@ const cropPass = new ShaderPass({
     uniform sampler2D tDiffuse;
     uniform float uMargin;
     varying vec2 vUv;
+    // Linear → sRGB transfer (Three.js's sRGBTransferOETF). Used to
+    // be applied by OutputPass; absorbed here so we can drop that pass.
+    vec3 linearToSRGB(vec3 v) {
+      return mix(
+        pow(v, vec3(0.41666)) * 1.055 - vec3(0.055),
+        v * 12.92,
+        vec3(lessThanEqual(v, vec3(0.0031308)))
+      );
+    }
     void main() {
       vec2 uv = uMargin + vUv * (1.0 - 2.0 * uMargin);
-      gl_FragColor = texture2D(tDiffuse, uv);
+      vec4 c = texture2D(tDiffuse, uv);
+      gl_FragColor = vec4(linearToSRGB(c.rgb), c.a);
     }
   `,
 });
