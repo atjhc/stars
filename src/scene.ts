@@ -644,19 +644,30 @@ const cropPass = new ShaderPass({
     }
   `,
 });
+// cropPass goes BEFORE lensing in the chain. Two reasons:
+//   (1) Lensing should distort gamma-encoded values (sRGB), not linear
+//       HDR — distorting linear HDR makes bright stars look wrong
+//       when bent. Putting cropPass first means lensing samples sRGB.
+//   (2) Lensing's math is now in viewport-UV space (no BLOOM_OVERSCAN
+//       scaling). When cropPass is the last enabled pass (lensing
+//       disabled), it writes 1:1 to the viewport-sized screen. When
+//       lensing is enabled, cropPass writes the cropped content
+//       *stretched* to fill the oversized intermediate buffer — so
+//       buffer-uv 0..1 corresponds to viewport-uv 0..1, which is
+//       what lensing's math expects.
+composer.addPass(cropPass);
+
 // Screen-space gravitational lensing pass (enabled during deep zoom).
 // Samples dust at the bent UV too so background nebulae warp with the
-// scene. The tDust texture is window-sized (not the composer's
-// oversized RT), so we scale the lookup UV by BLOOM_OVERSCAN — within
-// the visible crop region this maps bentUV ∈ [MARGIN, 1-MARGIN] to
-// dustUv ∈ [0, 1]; outside that range dustUv falls outside [0,1] and
-// the step() mask zeros the sample.
+// scene. The tDust texture is window-sized; no BLOOM_OVERSCAN scaling
+// is needed because lensing now operates on already-cropped content
+// in viewport-UV space.
 const lensingPass = new ShaderPass({
   uniforms: {
     tDiffuse: { value: null },
     tDust: { value: null },
     uDustActive: { value: 0 },
-    uDustScale: { value: BLOOM_OVERSCAN },
+    uDustScale: { value: 1.0 },
     uBHScreen: { value: new THREE.Vector2(0.5, 0.5) },
     uShadowRadius: { value: 0.0 },
     uSchwarzRadius: { value: 0.0 },
@@ -801,10 +812,13 @@ function applyLensing(p: LensingParams, shadowFrac: number): void {
 
   const rsScene = ((RS_KM_PER_MSUN * p.massMsun) / KM_PER_PC) * SCALE;
   const fov = camera.fov * Math.PI / 180;
-  const halfTan = Math.tan(fov / 2) * BLOOM_OVERSCAN;
+  // No BLOOM_OVERSCAN multiplier here — lensing now runs after cropPass
+  // and operates on viewport-UV-space content. The cropPass-comes-first
+  // chain change made these factors unnecessary on both platforms.
+  const halfTan = Math.tan(fov / 2);
   uniforms.uShadowRadius!.value = shadowFrac;
   uniforms.uSchwarzRadius!.value = (rsScene / dist) / (2 * halfTan);
-  uniforms.uScreenScale!.value = shadowFrac * window.innerHeight * BLOOM_OVERSCAN;
+  uniforms.uScreenScale!.value = shadowFrac * window.innerHeight;
   uniforms.uBodyEmissive!.value = p.mode === "bodyElsewhere" ? 1 : 0;
 
   lensingPass.enabled = true;
@@ -845,7 +859,9 @@ export function getLensingOccluder(): { cx: number; cy: number; radius: number }
   };
 }
 
-composer.addPass(cropPass);
+// (cropPass is added earlier in the chain — see comment near its
+// definition. It precedes lensingPass instead of following it so
+// lensing operates on sRGB-encoded viewport-UV-space content.)
 
 // Camera FOV widening helpers — called from main's animate loop so the
 // scene renders into the oversized RT with the visible viewport centered.
