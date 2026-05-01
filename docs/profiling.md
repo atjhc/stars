@@ -88,24 +88,24 @@ on sample stop. **When sampling is off, the wrapper is a passthrough**
 — single branch, no timing overhead. It's safe to leave in the hot
 path permanently.
 
-Current phase breakdown on a typical 15s trajectory (post idle-hidden
-fast-path — see `docs/labels.md`):
+Current phase breakdown on a typical 15s desktop trajectory (post
+mobile-perf arc — Mac / DPR=1, mobile-quality off):
 
 | phase             | per-frame ms | notes                                    |
 | ----------------- | ------------ | ---------------------------------------- |
-| sceneRender       | 1.46         | composer (bloom + scene pass + lensing)  |
-| labelCanvas       | 1.23         | project + measure + collide + paint      |
-| ↳ lc.paint        | 0.75         | fillText + glow per visible label        |
-| ↳ lc.project      | 0.27         | inlined view·proj per non-faded label    |
-| ↳ lc.collide      | 0.19         | sort + spatial-grid overlap (when dirty) |
-| ↳ lc.fade         | 0.01         | step visibleFactor toward target         |
-| updateLabels      | 1.22         | processLabel × ~5k anchors (bench: dirty every frame; production: ~3 Hz) |
-| ↳ ul.interactive  | 0.87         | tier-1 anchors (~4.6k); fast-path skips idle-hidden |
-| ↳ ul.notables     | 0.20         | tier-0 anchors (~270)                    |
-| ↳ ul.systems      | 0.14         | binary collapse + cluster centroids      |
-| updateAllLabels   | 0.08         | registered handlers (nebula / BH / NS)   |
-| updateStarfield   | 0.02         | tile stream (throttled to 500ms)         |
-| updateDust        | 0.001        | dust uniform updates                     |
+| sceneRender       | ~1.5         | composer chain (bloom + scene + lensing) |
+| labelCanvas       | ~1.2         | project + measure + collide + paint      |
+| ↳ lc.paint        | ~0.75        | fillText + glow per visible label        |
+| ↳ lc.project      | ~0.27        | inlined view·proj per non-faded label    |
+| ↳ lc.collide      | ~0.19        | sort + spatial-grid overlap (when dirty) |
+| ↳ lc.fade         | ~0.01        | step visibleFactor toward target         |
+| updateLabels      | ~1.2         | processLabel × ~5k anchors (bench-inflated; production ~3 Hz) |
+| ↳ ul.interactive  | ~0.87        | tier-1 anchors; fast-path skips idle-hidden |
+| ↳ ul.notables     | ~0.20        | tier-0 anchors (~270)                    |
+| ↳ ul.systems      | ~0.14        | binary collapse + cluster centroids      |
+| updateAllLabels   | ~0.08        | registered handlers (nebula / BH / NS)   |
+| updateStarfield   | ~0.02        | tile stream (throttled to 500ms)         |
+| updateDust        | ~0.001       | dust uniform updates                     |
 
 Total mean: ~4.0 ms p50. Pre-migration baseline was ~13.3 ms p50 — the
 `labelRenderer` (CSS2DRenderer) and `flushCollisions` (DOM rect reads
@@ -116,6 +116,33 @@ calls `setLabelsDirty(true)` every frame to exercise the path; in
 production `checkCameraMoved` throttles dirties to ~3 Hz, and the
 function early-returns on the other ~57 frames. The 1.22 ms figure is
 peak (dirty-frame) cost, not the every-frame cost.
+
+## Mobile quality profile
+
+iPhone-class hardware is fragment-bound and bandwidth-bound; desktop
+isn't. Drake gates mobile-specific quality reductions on
+`isMobileQuality()` (`src/quality.ts`) — true when the WebGL DPR cap
+actually shrunk the render resolution, i.e. high-DPR mobile devices.
+`?dprCap=99` disables both the cap and the gate, providing a
+single-toggle A/B between full and mobile quality on the same device.
+
+Active reductions on mobile:
+
+| knob | desktop | mobile | impact |
+|---|---|---|---|
+| WebGL pixel ratio cap | native | min(dpr, 2) | ~55% fragment reduction on iPhone (DPR 3) |
+| MSAA samples | 8× | 4× | halves tile-memory pressure on mobile TBDR |
+| Bloom input resolution | full | half | ~75% bloom shading reduction |
+| Dust RT divisor | half-res (÷2) | quarter-res (÷4) | dust ray-march bandwidth |
+| MAX_LOADED_TILES | 80 | 40 | smaller GPU memory working set |
+| tier1LoadDist | meta | × 0.8 | tighter tier-1 anchor / label working set |
+| Tier-1 label registration | all | `mag ≤ 5.0` only | fewer registered labels, less paint, less crowding |
+| Frame-rate cap | uncapped | 30 fps | thermal headroom (avoids race-throttle-drop oscillation) |
+
+Validated path: iPhone 15 went from ~10 fps in the worst orbit case
+to a steady 35-40 fps after this arc (with thermal throttling beyond
+that — mostly out of our control). Mac bench is unchanged because
+headless Chrome runs at DPR 1, leaving every gate inactive.
 
 ### Architecture
 
@@ -159,21 +186,92 @@ always.
 
 ### Landed
 
-**Cap WebGL pixel ratio at 2** (`getRenderPixelRatio` in
-`src/scene.ts`). iPhone 15 reports `devicePixelRatio = 3`, which
-combined with `BLOOM_OVERSCAN = 1.2` and 8× MSAA pushed the composer
-RT to ~4.3 megapixels — and we run a 5-pass composer chain plus dust
-RT and dust composite over it. That's roughly 25 megapixels of
-fragment shading per frame on a mobile GPU; the same scene on a
-desktop bench at DPR 1 shades 6× fewer pixels. Capping the WebGL DPR
-to 2 keeps render quality above the human-eye "retina" threshold
-(~307 effective DPI on iPhone 15 vs. ~460 native) while cutting
-fragment work by ~55% on 3×-DPR devices. `?dprCap=<n>` URL override
-for A/B testing on-device. Label canvas (text crispness) and the
-debug stats panel keep native DPR — different cost profile, no
-fullscreen GPU passes. Mac bench unchanged (headless Chrome runs at
-DPR 1, so the cap is already a no-op there); validation is done on
-target hardware.
+**Mobile fps cap at 30** (`src/renderLoop.ts`). Capping below the
+device's max refresh rate keeps thermals down: each frame finishes
+well inside its 33 ms budget, the GPU sits idle for the rest of the
+quantum, and the sustained 30 fps avoids the racing-to-60-then-
+throttling-to-20 oscillation. Implemented as a guard in `tick()` that
+skips `step()` when too soon since the last render but still
+reschedules so wake conditions are honored.
+
+**Reorder: cropPass before lensingPass + drop BLOOM_OVERSCAN factors
+from lensing math** (`src/scene.ts`). Composer chain is now
+`RenderPass → BloomPass → cropOutputPass → lensingPass(if active)`.
+cropPass (which now also does linear→sRGB transfer — see next entry)
+sits before lensing, so lensing distorts gamma-encoded sRGB samples
+(correct) and operates in viewport-UV space without overscan
+multipliers. Removes inconsistent `* BLOOM_OVERSCAN` factors from
+`requestLensing`'s `halfTan` and `MIN_SHADOW_FRAC` along the way
+(both were missed in an earlier pass). Lensing math is now
+orthogonal to BLOOM_OVERSCAN.
+
+**Merge OutputPass into cropPass** (`src/scene.ts`). The composer
+ran a separate `OutputPass` (linear→sRGB transfer) and `cropPass`
+(margin crop) — both fullscreen quads doing one texture sample each
+over the oversized composer RT. Combined into one ShaderPass that
+inlines `sRGBTransferOETF` and the crop UV remap. Saves one full-
+screen pass over the oversized RT every frame; mobile bandwidth-bound
+case benefits most.
+
+**Mobile label rendering optimizations** (`src/labelCanvas.ts`,
+`src/starfield.ts`). Three stacked changes:
+1. Tighten the `lc.project` skip to also bail on `hidden: true`
+   labels (previously only skipped on opacityTarget below cutoff).
+2. Maintain a parallel `labelList: CanvasLabel[]` next to the labels
+   Map; project pass iterates the array (faster than `Map.values()`
+   on V8/JSC at a few thousand entries). Each label carries a
+   `_listIdx` for O(1) swap-and-pop unregister.
+3. On mobile, skip canvas label registration for tier-1 stars whose
+   `mag` (apparent from Sol) exceeds 5.0. Cuts the working set
+   roughly in half on a typical mobile sky and reduces label-collision
+   crowding on the small screen.
+
+**Mobile tile budgets + state diagnostic** (`src/starfield.ts`,
+`src/debug.ts`). `MAX_LOADED_TILES` drops from 80 to 40 on mobile;
+`tier1LoadDist` gets a 0.8 multiplier. Each loaded tile carries
+geometry + materials + tier-1 anchors + their canvas labels — Safari's
+tile cache thrashes well below desktop's working-set limit. New
+`tiles N/MAX  labels M` line in the `?debug=1` panel surfaces the
+collection sizes (refreshed at 2 Hz) so monotonic growth or
+budget-exceedance is visible on-device.
+
+**Half-res bloom on mobile + planet sphere segments 64×32**
+(`src/scene.ts`, `src/planets.ts`). Mobile bloom runs at half the
+input resolution (`BLOOM_DIVISOR = 2`); UnrealBloomPass internally
+halves again per mip, so level-0 ends up at 1/16 the pixel area of
+viewport. Composite step bilinearly upsamples; bloom is low-frequency
+so the softening is essentially invisible. Cuts bloom shading by
+~75%. Planet sphere geometry drops from 128×64 to 64×32 segments
+universally (4× vertex-count reduction on every body); silhouette
+polygons are at ~5.6° intervals, only visible at extreme close zoom
+on the largest body in view.
+
+**Reduce BLOOM_OVERSCAN 1.2 → 1.1** (`src/scene.ts`). Pixel area
+scales as the square of the linear ratio: `1.2² = 1.44 → 1.1² = 1.21`,
+~16% reduction applied to every fullscreen composer pass.
+`BLOOM_RADIUS = 0.4` biases bloom toward narrower kernels, so the
+~4.5% margin per side at 1.1 is sufficient. Applied universally —
+no cost asymmetry between mobile and desktop here.
+
+**MSAA 4× and dust quarter-res on mobile** (`src/scene.ts`,
+`src/dust.ts`). 8× MSAA + HalfFloat is 64 bytes/pixel in tile
+memory; on a tile-based mobile GPU that splits rendering into very
+small tiles (~64x64) and pays binning overhead at every boundary.
+4× is the natural mobile sweet spot. Dust RT goes quarter-res
+(`dustDiv = 4`) on mobile; the dust volume is baked at 6 pc/voxel —
+low enough frequency that the bilinear upsample doesn't show
+aliasing at typical viewing distances, and dust ray-marching is
+texture-fetch heavy so the bandwidth saving is large.
+
+**Cap WebGL pixel ratio at 2** (`src/quality.ts`). iPhone 15 reports
+`devicePixelRatio = 3`; combined with overscan + MSAA + a multi-pass
+composer chain, that put the GPU under enormous fragment-shading load
+relative to a DPR-1 desktop bench. Capping at 2 keeps render quality
+above the human-eye "retina" threshold (~307 effective DPI on iPhone
+15 vs ~460 native) while cutting fragment work by ~55% on 3×-DPR
+devices. `?dprCap=<n>` URL override for A/B testing on-device. Label
+canvas and the debug stats panel keep native DPR — different cost
+profile, no fullscreen GPU passes.
 
 **Fast-path for idle-hidden tier-1 labels** (`processLabel` in
 `src/labels.ts`). With ~4.6k tier-1 anchors active and most far beyond
@@ -312,26 +410,30 @@ queries gives ~0.87 ms each. Practical implications:
   prod (zero-cost when the extension isn't available there) but the
   numbers are most useful with sampling on.
 
-Initial GPU breakdown (15s bench, post-overhead-aware reading):
+GPU breakdown after the mobile-perf arc (3-pass composer:
+RenderPass + UnrealBloomPass + cropOutputPass, plus dustRT,
+dustComposite, optional lensingPass and neutronStars):
 - `gpu.composer.RenderPass` — heaviest, real scene rendering (stars
   / planets / orbit lines / billboards); the obvious target if GPU
   ever bottlenecks
-- `gpu.composer.UnrealBloomPass` — 5-level mip chain; not currently
-  hot but scales with viewport
-- Other passes (`OutputPass`, `cropPass`, `dustComposite`,
-  `dustRT`) — small and similar; any further drill-down needs a
-  different timing technique to escape per-query overhead
+- `gpu.composer.UnrealBloomPass` — 5-level mip chain (half-res input
+  on mobile); scales with viewport
+- Other passes are small and similar in reported cost; per-query
+  overhead obscures their differences
 
 ### On the shelf
 
-**Canvas-rendered labels.**
-Replace CSS2DRenderer with a custom canvas layer. Would eliminate
-`labelRenderer` (~2.9ms) and most of `updateLabels`' DOM writes. Big
-change — hit testing, glow, fade, text measurement caching all need
-reimplementing. Estimated ~4-5ms potential win, but uncertain until
-prototyped, and high regression surface. Not worth the effort at
-current 13ms p50 with 3ms of headroom at 60fps; revisit if the app
-starts dropping frames on target hardware.
+**Unify the mobile-quality knobs into one profile object.** Currently
+seven different `isMobileQuality()` ternaries scattered across
+`scene.ts`, `dust.ts`, `starfield.ts`, `renderLoop.ts`, and
+`labelCanvas.ts` each pick their own mobile/desktop value. A single
+exported `qualityProfile = { tileBudget, bloomDiv, msaa, dustDiv,
+fpsCapMs, tier1DistMult, labelMaxMag }` would make the full mobile
+profile inspectable in one place and lets future profiles (e.g. low-
+end Android, "battery saver") swap in without touching feature code.
+Skipped when first identified — three sites at the time felt below
+the abstraction threshold; revisit if a third profile becomes
+necessary.
 
 ## Rules learned
 

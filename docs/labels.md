@@ -48,13 +48,25 @@ interface CanvasLabelDescriptor {
 Labels register/unregister through `registerCanvasLabel` and
 `unregisterCanvasLabel`. Updates flow through `updateCanvasLabel(id, patch)`.
 
+Internally the renderer keeps two parallel structures: a `Map<string,
+CanvasLabel>` for id-keyed lookups (selection, hit testing, update)
+and a `CanvasLabel[]` array iterated by the per-frame project pass.
+Each label carries a `_listIdx` field so `unregisterCanvasLabel` can
+swap-and-pop in O(1). Array iteration is meaningfully faster than
+`Map.values()` at the thousands-of-labels working set.
+
 ### Frame pipeline
 
 Every frame, inside `animate()`:
 
 1. **Project** all active labels using `projectToLabelScreen` (Float64
    two-part decomposition from the camera origin — matches the star
-   shader's precision). Skip labels where `behind === true`.
+   shader's precision). Skip labels where `behind === true`. Also
+   skip steady-state-invisible labels (`visibleFactor === 0` AND
+   either `hidden` or `opacityTarget < COLLISION_ALPHA_CUTOFF`) —
+   their next collide pass would keep them at 0, so projection is
+   wasted. Mid-fade labels still project so their fade-out renders
+   at the correct screen position.
 
 2. **Measure** text via an offscreen canvas `measureText`, cached by
    `font|text` key. Unique combinations are bounded (few hundred names
@@ -91,6 +103,23 @@ Labels are sorted by priority:
 The collision grid detects overlap between label bounding rects with
 `COLLISION_PAD_PX` padding. Labels below `COLLISION_ALPHA_CUTOFF`
 opacity are excluded from collision checks.
+
+### Mobile label filter
+
+On `isMobileQuality()` devices, `spawnTier1Anchor` skips
+`registerCanvasLabel` for tier-1 stars whose `mag` (apparent magnitude
+from Sol) exceeds `MOBILE_LABEL_MAX_MAG = 5.0`. The billboard mesh
+still spawns and the anchor still goes into `allInteractiveStars` /
+`tier1Meshes` (so selection, hover, and shader-gated rendering are
+unchanged); just no canvas label.
+
+Filtering by apparent-mag rather than absolute-mag because the streamed
+catalog is already apparent-mag-bounded — most tier-1 stars have absMag
+≤ 7, so an absMag filter barely cuts. Apparent-mag is the actual
+"would the user notice this from Earth" signal. The known limitation
+is that an intrinsically-bright distant star (high apparent mag from
+Sol but bright at close approach) won't have a label even when you
+navigate to it.
 
 ### Screen occluders
 

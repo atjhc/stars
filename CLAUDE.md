@@ -138,13 +138,14 @@ Sources and licences:
 ### Source modules
 
 - `src/main.ts` — Entry point: input wiring, render loop, system label hooks
-- `src/renderLoop.ts` — Wake-on-demand rAF scheduler: idle when nothing is changing, wake on input / animation / label fade / tile streaming
+- `src/renderLoop.ts` — Wake-on-demand rAF scheduler: idle when nothing is changing, wake on input / animation / label fade / tile streaming. Caps at 30 fps on mobile (thermal headroom).
 - `src/catalog.ts` — Eager catalog loader (meta + notable + systems) and lazy per-tile label fetch
 - `src/starfield.ts` — Octree streaming for geometry + label tiles, billboard spawning, dynamic SystemGroups
 - `src/billboard.ts` — Billboard mesh + label factories
 - `src/types.ts` — `Star` is an alias for `LabelRow`; `SystemGroup` shape
 - `src/constants.ts` — Magic numbers, thresholds, shared CSS
 - `src/scene.ts` — Three.js setup, camera orbit, galactic grid, bloom, animation
+- `src/quality.ts` — `getRenderPixelRatio` (DPR cap, default 2) and `isMobileQuality` (proxy for "high-DPR mobile device" used to gate mobile-specific quality reductions). Leaf module so modules in the renderLoop ↔ scene cycle can read these eagerly.
 - `src/interaction.ts` — Hover/select state, star/system highlighting
 - `src/labels.ts` — Per-frame label visibility, fade thresholds, system collapse clustering
 - `src/detail.ts` — Info panel rendering
@@ -161,6 +162,8 @@ Sources and licences:
 - `src/dust.ts` — 3D dust volume ray marcher (Edenhofer 2024 data + hot-star illumination)
 - `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
 - `src/systemDispatch.ts` — Polymorphic dispatch functions for SystemGroup variants
+- `src/statsPhase.ts` — Tiny phase-timing shim (no internal imports). `debug.ts` installs the real implementation; consumers in the `debug → starfield → labelCanvas` chain call through here without re-introducing the cycle.
+- `src/gpuTimer.ts` — `EXT_disjoint_timer_query_webgl2` wrapper. Attributes per-pass GPU time; CPU `statsPhase` only sees JS time. See `docs/profiling.md` for caveats (per-query overhead on macOS).
 
 ### Other files
 
