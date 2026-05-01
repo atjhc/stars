@@ -5,7 +5,7 @@
 // setLabelsDirty, tile-load completion), setAlwaysOn(true) for
 // debug / bench modes that need continuous frames.
 
-import { isMobileQuality } from "./scene.ts";
+import { isMobileQuality } from "./quality.ts";
 
 type StepFn = (now: number) => void;
 
@@ -14,17 +14,11 @@ let rafHandle: number | null = null;
 let alwaysOn = false;
 let inputBumpUntil = 0;
 
-// Mobile fps cap. Counter-intuitively reduces thermal load relative
-// to running uncapped: a sustained 30 fps with 33 ms frames finishes
-// each frame well inside its budget and lets the GPU spend real time
-// idle, vs uncapped which races to 60 → throttles → drops to 20.
-// Steady > oscillating for thermals. 0 = no cap (desktop).
-//
-// Lazily resolved at first tick — renderLoop ↔ scene is a module
-// cycle, and reading isMobileQuality at module load can hit the TDZ
-// on the scene side. By first tick, both modules have finished
-// initializing.
-let fpsCapMs = -1;
+// Mobile fps cap. Capping below the device's max keeps thermals down:
+// each frame finishes well inside its 33 ms budget, the GPU sits idle
+// for the rest, and the sustained 30 fps avoids the racing-to-60-then-
+// throttling-to-20 pattern. 0 = no cap (desktop).
+const FPS_CAP_MS = isMobileQuality() ? 1000 / 30 : 0;
 let lastFrameTime = 0;
 
 const keepFramePredicates: Array<() => boolean> = [];
@@ -41,11 +35,10 @@ export function kick(): void {
 
 function tick(now: number): void {
   rafHandle = null;
-  if (fpsCapMs < 0) fpsCapMs = isMobileQuality() ? 1000 / 30 : 0;
-  // Frame-rate cap: if we're inside the per-frame quantum, skip the
-  // step but reschedule so the next vsync pulls us out of the window.
-  // Wake conditions are still honored — the rAF still fires.
-  if (fpsCapMs > 0 && now - lastFrameTime < fpsCapMs) {
+  // Skip the step if we're still inside the per-frame quantum, but
+  // reschedule so the next vsync pulls us out. Wake conditions are
+  // honored — the rAF still fires for keep-frame predicates.
+  if (FPS_CAP_MS > 0 && now - lastFrameTime < FPS_CAP_MS) {
     if (alwaysOn || needsAnotherFrame(now)) kick();
     return;
   }

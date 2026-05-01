@@ -112,8 +112,6 @@ let lastCamText = "";
 let lastTgtText = "";
 let lastOrbText = "";
 let lastStateText = "";
-// Throttle state-counter refresh — these change on tile-stream
-// boundaries, not per-frame. ~2 Hz is plenty for spotting growth.
 let lastStateUpdate = 0;
 
 // Stats panels — FPS / MS / MB. One visible at a time; click cycles.
@@ -436,11 +434,9 @@ function renderCamera() {
   if (tt !== lastTgtText) { tgtLine.textContent = tt; lastTgtText = tt; }
   if (ot !== lastOrbText) { orbLine.textContent = ot; lastOrbText = ot; }
 
-  // State counters — change on tile-stream boundaries, not per frame.
-  // ~2 Hz is plenty for spotting whether they're stable or growing,
-  // and avoids per-frame DOM writes. If these three numbers climb
-  // monotonically while you pan, we have a leak; if they oscillate
-  // around a steady mean, eviction is doing its job.
+  // State counters change on tile-stream boundaries, not per frame —
+  // 2 Hz is plenty and avoids per-frame DOM writes. Monotonic growth
+  // here while panning means eviction isn't keeping up.
   if (stateLine) {
     const now = performance.now();
     if (now - lastStateUpdate >= 500) {

@@ -25,37 +25,25 @@ import { kick, registerKeepFrame } from "./renderLoop.ts";
 
 export { magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag, getHoveredWorldPos };
 
-// Mobile gets half the tile cap and a tighter label-load radius.
-// Each tile carries geometry buffers, materials, tier-1 anchors, and
-// their canvas labels — 80 tiles is a substantial GPU memory working
-// set on iPhone and Safari's tile cache thrashes well below desktop's
-// limit, manifesting as fps degradation as the user pans. 40 keeps the
-// working set in line with mobile texture cache budgets.
+// Mobile gets half the tile cap. Each tile carries geometry, tier-1
+// anchors, and canvas labels — 80 tiles is a substantial GPU memory
+// working set, and Safari's tile cache thrashes well below desktop's
+// limit, manifesting as fps degradation as the user pans.
 const MAX_LOADED_TILES = isMobileQuality() ? 40 : 80;
 const TILE_FADE_MS = 400;
-// Tightened to 0.8 of the meta-driven value on mobile so distant tiles
-// drop their labels (and the tier-1 anchors / canvas labels they own)
-// sooner — a meaningful working-set cut without much visible
-// difference, since labels for tiles 80%+ of the cull radius away are
-// faded to near-zero already.
+// Mobile tightens the label-load radius too, so distant tiles drop
+// their labels (and the tier-1 anchors they own) sooner.
 const TIER1_LOAD_DIST_MULT = isMobileQuality() ? 0.8 : 1.0;
-let tier1LoadDist = 150 * TIER1_LOAD_DIST_MULT;
+const TIER1_LOAD_DIST_DEFAULT = 150;
+let tier1LoadDist = TIER1_LOAD_DIST_DEFAULT * TIER1_LOAD_DIST_MULT;
 
-// Mobile: skip canvas label registration for tier-1 stars whose
-// apparent magnitude from Sol is below the threshold. Filtering by
-// `mag` (apparent from Sun) rather than `absmag` because the catalog
-// is already apparent-mag-bounded (tier-1 stars all have mag ≤ ~7.5),
-// so most tier-1 stars have absMag ≤ 7 and an absmag filter barely
-// cuts anything. Apparent-mag is the actual "would the user notice
-// this from Earth" signal. Stars dimmer than this from Sol's vantage
-// will only become visible at close approach to that star — addressable
-// later with better proximity-aware heuristics if needed; for now,
-// fewer crowded labels is the win the user asked for.
-//
-// At 5.0: roughly suburban naked-eye visibility from Sol's vantage.
-// The mag 5-5.5 band has many stars and was still padding the label
-// count + the busy-region paint set; cutting it reduces both label
-// crowding and per-frame paint cost in dense parts of the sky.
+// Mobile: skip canvas label registration for tier-1 stars apparently-
+// dim from Sol. Filtering by apparent `mag` rather than `absmag`
+// because the streamed catalog is already apparent-mag-bounded (most
+// tier-1 stars have absMag ≤ 7), so an absmag filter barely cuts.
+// Stars dimmer than this from Sol's vantage become labeled only at
+// close approach — known limitation, addressable later with a
+// proximity-aware heuristic.
 const MOBILE_LABEL_MAX_MAG = 5.0;
 
 interface LoadedTile {
@@ -229,11 +217,9 @@ function spawnTier1Anchor(row: LabelRow, path: string, sx: number, sy: number, s
   const star: Star = { ...row, tile: path };
   const anchor = createStarAnchor(star, sx, sy, sz);
   anchorsGroup.add(anchor);
-  // Mobile filter: skip canvas label for stars apparently-dim from Sol.
-  // Anchor still goes into allInteractiveStars / tier1Meshes so
-  // selection / hover by anchor mesh still work; the billboard still
-  // renders (gated by the magLimit shader uniform).
-  if (isMobileQuality() && (star.mag ?? 99) > MOBILE_LABEL_MAX_MAG) {
+  // Mobile filter: skip the canvas label but keep the anchor —
+  // selection / hover and the shader-gated billboard still work.
+  if (isMobileQuality() && star.mag > MOBILE_LABEL_MAX_MAG) {
     return anchor;
   }
   const id = `tier1:${path}/${row.i}`;
@@ -589,7 +575,7 @@ export async function initStarfield() {
       `renderer expects ${BYTES_PER_STAR}. Rebuild tiles via build-catalog.py.`,
     );
   }
-  tier1LoadDist = (meta.labelTierVisibility["1"] ?? tier1LoadDist) * TIER1_LOAD_DIST_MULT;
+  tier1LoadDist = (meta.labelTierVisibility["1"] ?? TIER1_LOAD_DIST_DEFAULT) * TIER1_LOAD_DIST_MULT;
   precomputeTileSpheres();
 
   onTileLabelsLoaded((path, labels) => spawnTileLabels(path, labels));

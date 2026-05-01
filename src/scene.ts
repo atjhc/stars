@@ -72,31 +72,12 @@ export function distanceFromCamera(pos: THREE.Vector3): number {
 
 const viewport = document.getElementById("viewport")!;
 
-// Cap the WebGL pixel ratio. iPhones report 3, which means every
-// fullscreen pass shades 9× the pixels of a logical 1x render — and
-// we have a 5-pass composer chain. The 2x cap keeps rendering above
-// the human-eye "retina" threshold (~300 DPI at typical viewing
-// distance) while cutting fragment work by ~55% on 3x-DPR devices.
-// Override via ?dprCap=<number> for A/B testing; ?dprCap=99 effectively
-// disables the cap.
-const RENDER_DPR_CAP_DEFAULT = 2;
-const _dprCapQuery = new URLSearchParams(window.location.search).get("dprCap");
-const _dprCap = _dprCapQuery === null
-  ? RENDER_DPR_CAP_DEFAULT
-  : Math.max(1, parseFloat(_dprCapQuery) || RENDER_DPR_CAP_DEFAULT);
-export function getRenderPixelRatio(): number {
-  return Math.min(window.devicePixelRatio, _dprCap);
-}
-
-// True when the DPR cap actually reduced the render resolution — a
-// proxy for "high-DPR mobile device". Used to gate further mobile-
-// specific quality reductions (MSAA samples, dust RT resolution).
-// `?dprCap=99` disables the cap, which also disables this gate, so
-// a single URL toggle is enough to A/B the full mobile-quality
-// pathway against full-quality rendering on the same device.
-export function isMobileQuality(): boolean {
-  return getRenderPixelRatio() < window.devicePixelRatio;
-}
+// Re-exported so existing scene.ts importers don't have to change.
+// The implementations live in quality.ts (no Three.js dependency)
+// so renderLoop.ts can import them eagerly without the renderLoop ↔
+// scene module cycle.
+export { getRenderPixelRatio, isMobileQuality } from "./quality.ts";
+import { getRenderPixelRatio, isMobileQuality } from "./quality.ts";
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -550,18 +531,14 @@ export function onWheel(e: WheelEvent) {
 //   writes it to the screen at viewport resolution.
 // Margin around the visible viewport that the bloom kernel can read
 // into without hitting edge-clamp / black. Sized so the deepest bloom
-// mip level's blur reach fits inside the cropped-out region. 1.1 was
-// tested empirically to keep the edge-vignette artifact out of the
-// visible region with our BLOOM_RADIUS = 0.4. Reduces every composer
-// pass's pixel area by ~16% vs the previous 1.2.
+// mip level's blur reach fits inside the cropped-out region.
 export const BLOOM_OVERSCAN = 1.1;
 const OVERSCAN_MARGIN = (BLOOM_OVERSCAN - 1) / (2 * BLOOM_OVERSCAN);
 
 function makeComposerRT() {
-  // 8x MSAA + HalfFloat is 64 bytes/pixel inside tile memory. On a
-  // tile-based mobile GPU that splits rendering into very small tiles
-  // (~64x64) and pays binning overhead at every boundary. 4x halves
-  // the per-pixel storage and is the natural sweet spot on mobile.
+  // 8× MSAA + HalfFloat is 64 bytes/pixel in tile memory; mobile TBDR
+  // GPUs split into tiny tiles and pay binning overhead at each
+  // boundary. 4× is the mobile sweet spot.
   const samples = isMobileQuality() ? 4 : 8;
   return new THREE.WebGLRenderTarget(
     Math.round(window.innerWidth * BLOOM_OVERSCAN * getRenderPixelRatio()),
@@ -576,12 +553,11 @@ composer.setSize(
   Math.round(window.innerHeight * BLOOM_OVERSCAN),
 );
 composer.addPass(new RenderPass(scene, camera));
-// Half-resolution bloom on mobile. Bloom RTs internally halve again
-// per mip level, so passing half here makes level-0 a quarter of the
-// linear viewport (1/16 the pixel area). The composite step bilinearly
-// upsamples back to full res when blending over the scene; bloom is
-// already low-frequency, so the softening is essentially invisible.
-// Cuts bloom shading by ~75% on mobile.
+// Mobile bloom runs at half the input resolution. UnrealBloomPass
+// internally halves again per mip, so this puts level-0 at 1/4 the
+// linear viewport (1/16 the pixel area). The composite step
+// bilinearly upsamples; bloom is low-frequency so the softening is
+// essentially invisible.
 const BLOOM_DIVISOR = isMobileQuality() ? 2 : 1;
 export const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(
@@ -603,15 +579,9 @@ for (const rt of bloomPass.renderTargetsVertical) rt.texture.type = THREE.HalfFl
 bloomPass.renderTargetBright.texture.type = THREE.HalfFloatType;
 composer.addPass(bloomPass);
 
-// Combined final pass: crop margin + linear→sRGB conversion. Replaces
-// the previous OutputPass + cropPass pair, saving one full-screen pass
-// over the oversized composer RT. The fragment shader does what
-// OutputPass's color-management step did (linear → sRGB transfer) AND
-// the crop UV remap, in one texture sample. Lensing pass (added later
-// in deep-zoom code) sits before this in the chain and now operates on
-// linear-HDR scene data instead of post-tone-mapped sRGB — more
-// physically correct, but a real change for bright objects under
-// gravitational lensing.
+// Crop margin + linear→sRGB transfer in one fullscreen pass. Combining
+// these two trivial post-bloom steps avoids an extra read/write of the
+// oversized composer RT.
 const cropPass = new ShaderPass({
   uniforms: {
     tDiffuse: { value: null },
@@ -628,8 +598,7 @@ const cropPass = new ShaderPass({
     uniform sampler2D tDiffuse;
     uniform float uMargin;
     varying vec2 vUv;
-    // Linear → sRGB transfer (Three.js's sRGBTransferOETF). Used to
-    // be applied by OutputPass; absorbed here so we can drop that pass.
+    // Three.js's sRGBTransferOETF, inlined.
     vec3 linearToSRGB(vec3 v) {
       return mix(
         pow(v, vec3(0.41666)) * 1.055 - vec3(0.055),
@@ -644,24 +613,15 @@ const cropPass = new ShaderPass({
     }
   `,
 });
-// cropPass goes BEFORE lensing in the chain. Two reasons:
-//   (1) Lensing should distort gamma-encoded values (sRGB), not linear
-//       HDR — distorting linear HDR makes bright stars look wrong
-//       when bent. Putting cropPass first means lensing samples sRGB.
-//   (2) Lensing's math is now in viewport-UV space (no BLOOM_OVERSCAN
-//       scaling). When cropPass is the last enabled pass (lensing
-//       disabled), it writes 1:1 to the viewport-sized screen. When
-//       lensing is enabled, cropPass writes the cropped content
-//       *stretched* to fill the oversized intermediate buffer — so
-//       buffer-uv 0..1 corresponds to viewport-uv 0..1, which is
-//       what lensing's math expects.
+// cropPass precedes lensingPass: lensing distorts gamma-encoded
+// (sRGB) samples — distorting linear HDR makes bright stars look
+// wrong when bent. Operating on already-cropped content also lets
+// lensing work in viewport-UV space without BLOOM_OVERSCAN scaling.
 composer.addPass(cropPass);
 
 // Screen-space gravitational lensing pass (enabled during deep zoom).
 // Samples dust at the bent UV too so background nebulae warp with the
-// scene. The tDust texture is window-sized; no BLOOM_OVERSCAN scaling
-// is needed because lensing now operates on already-cropped content
-// in viewport-UV space.
+// scene.
 const lensingPass = new ShaderPass({
   uniforms: {
     tDiffuse: { value: null },
@@ -784,7 +744,7 @@ let lensingCandidates: LensingCandidate[] = [];
 export function requestLensing(p: LensingParams): void {
   const dist = p.camDist ?? orbitRadius;
   const fov = camera.fov * Math.PI / 180;
-  const halfTan = Math.tan(fov / 2) * BLOOM_OVERSCAN;
+  const halfTan = Math.tan(fov / 2);
   const shadowFrac = (p.shadowRadiusScene / dist) / (2 * halfTan);
   lensingCandidates.push({ params: p, shadowFrac });
 }
@@ -812,9 +772,6 @@ function applyLensing(p: LensingParams, shadowFrac: number): void {
 
   const rsScene = ((RS_KM_PER_MSUN * p.massMsun) / KM_PER_PC) * SCALE;
   const fov = camera.fov * Math.PI / 180;
-  // No BLOOM_OVERSCAN multiplier here — lensing now runs after cropPass
-  // and operates on viewport-UV-space content. The cropPass-comes-first
-  // chain change made these factors unnecessary on both platforms.
   const halfTan = Math.tan(fov / 2);
   uniforms.uShadowRadius!.value = shadowFrac;
   uniforms.uSchwarzRadius!.value = (rsScene / dist) / (2 * halfTan);
@@ -836,7 +793,7 @@ export function finalizeLensingFrame(): void {
     }
     // Skip the full-screen shader when the shadow covers less than
     // ~0.1 px — no visible effect, just GPU cost.
-    const MIN_SHADOW_FRAC = 0.1 / (window.innerHeight * BLOOM_OVERSCAN);
+    const MIN_SHADOW_FRAC = 0.1 / window.innerHeight;
     if (best.shadowFrac < MIN_SHADOW_FRAC) {
       lensingPass.enabled = false;
       lensingCandidates.length = 0;
@@ -858,10 +815,6 @@ export function getLensingOccluder(): { cx: number; cy: number; radius: number }
     radius: shadowFrac * window.innerHeight * 4,
   };
 }
-
-// (cropPass is added earlier in the chain — see comment near its
-// definition. It precedes lensingPass instead of following it so
-// lensing operates on sRGB-encoded viewport-UV-space content.)
 
 // Camera FOV widening helpers — called from main's animate loop so the
 // scene renders into the oversized RT with the visible viewport centered.

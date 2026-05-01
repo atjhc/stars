@@ -211,14 +211,7 @@ export async function initDust(): Promise<void> {
   emissionMesh.frustumCulled = false;
   emissionScene.add(emissionMesh);
 
-  // Quarter-res on mobile (divisor 4) instead of half-res. The dust
-  // volume is baked at 6 pc/voxel — low enough frequency that the
-  // bilinear upsample doesn't show aliasing at typical viewing
-  // distances. On a mobile GPU this is one of the largest bandwidth
-  // savings available since dust ray-marching is texture-fetch heavy.
-  const dustDiv = isMobileQuality() ? 4 : 2;
-  const hw = Math.round(window.innerWidth * getRenderPixelRatio() / dustDiv);
-  const hh = Math.round(window.innerHeight * getRenderPixelRatio() / dustDiv);
+  const [hw, hh] = computeDustRTSize();
   halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
 
   // Fullscreen blit quad to upscale the half-res result. The RT was
@@ -308,11 +301,21 @@ export function getDustTexture(): THREE.Texture | null {
   return (emissionMesh && wantVisible && halfResRT) ? halfResRT.texture : null;
 }
 
-export function handleDustResize(): void {
-  if (!halfResRT) return;
+// Quarter-res on mobile (divisor 4), half-res on desktop. The dust
+// volume is baked at 6 pc/voxel — low enough frequency that bilinear
+// upsample doesn't alias at typical viewing distance. On mobile this
+// is one of the largest single bandwidth savings, since dust ray-
+// marching is texture-fetch heavy.
+function computeDustRTSize(): [number, number] {
   const dustDiv = isMobileQuality() ? 4 : 2;
   const hw = Math.round(window.innerWidth * getRenderPixelRatio() / dustDiv);
   const hh = Math.round(window.innerHeight * getRenderPixelRatio() / dustDiv);
+  return [hw, hh];
+}
+
+export function handleDustResize(): void {
+  if (!halfResRT) return;
+  const [hw, hh] = computeDustRTSize();
   halfResRT.setSize(hw, hh);
 }
 
