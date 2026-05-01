@@ -5,7 +5,7 @@
 // setLabelsDirty, tile-load completion), setAlwaysOn(true) for
 // debug / bench modes that need continuous frames.
 
-import { isMobileQuality } from "./quality.ts";
+import { qualityProfile } from "./quality.ts";
 
 type StepFn = (now: number) => void;
 
@@ -18,7 +18,7 @@ let inputBumpUntil = 0;
 // each frame finishes well inside its 33 ms budget, the GPU sits idle
 // for the rest, and the sustained 30 fps avoids the racing-to-60-then-
 // throttling-to-20 pattern. 0 = no cap (desktop).
-const FPS_CAP_MS = isMobileQuality() ? 1000 / 30 : 0;
+const FPS_CAP_MS = qualityProfile.fpsCapMs;
 let lastFrameTime = 0;
 
 const keepFramePredicates: Array<() => boolean> = [];

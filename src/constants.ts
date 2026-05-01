@@ -67,7 +67,13 @@ export function solDistanceFade(solDist: number, maxSolDist: number): number {
 export const COLLISION_PAD_PX = 2;
 export const COLLISION_ALPHA_CUTOFF = 0.15;
 
-export const TILE_BASE_URL = "/tiles/";
+// `?debug=1` routes tile fetches through `/tiles-debug/` (rewritten back
+// to `/tiles/` server-side, but with a no-store Cache-Control header — see
+// vercel.json). Lets local iteration on baked artifacts skip the year-long
+// immutable cache that production tiles get.
+const _debugMode = typeof window !== "undefined"
+  && new URLSearchParams(window.location.search).get("debug") === "1";
+export const TILE_BASE_URL = _debugMode ? "/tiles-debug/" : "/tiles/";
 
 export const BLOOM_STRENGTH = 0.3;
 export const BLOOM_RADIUS = 0.4;

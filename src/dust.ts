@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { camera, scene, getRenderPixelRatio, isMobileQuality } from "./scene.ts";
+import { camera, scene, getRenderPixelRatio, qualityProfile } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
@@ -160,7 +160,7 @@ function createEmissionMaterial(
 export async function initDust(): Promise<void> {
   const [metaResp, dataResp] = await Promise.all([
     fetch(`${TILE_BASE_URL}dust_meta.json`),
-    fetch(`${TILE_BASE_URL}dust_volume_rgba.bin`),
+    fetch(`${TILE_BASE_URL}dust_volume.bin`),
   ]);
   if (!metaResp.ok || !dataResp.ok) {
     console.warn("Dust volume not available");
@@ -173,13 +173,23 @@ export async function initDust(): Promise<void> {
   const [zSize, ySize, xSize] = meta.shape;
 
   const dustTexture = new THREE.Data3DTexture(data, xSize, ySize, zSize);
-  dustTexture.format = THREE.RGBAFormat;
+  // 3-channel: alpha was always 255 (the shader only reads .rgb), so
+  // baking and uploading without it cuts GPU memory by 25%. WebGL2 3D
+  // textures need a SIZED internalFormat — `RGB8` — since the unsized
+  // `RGB` is invalid for texImage3D.
+  dustTexture.format = THREE.RGBFormat;
+  dustTexture.internalFormat = "RGB8";
   dustTexture.type = THREE.UnsignedByteType;
   dustTexture.minFilter = THREE.LinearFilter;
   dustTexture.magFilter = THREE.LinearFilter;
   dustTexture.wrapS = THREE.ClampToEdgeWrapping;
   dustTexture.wrapT = THREE.ClampToEdgeWrapping;
   dustTexture.wrapR = THREE.ClampToEdgeWrapping;
+  // 333 voxels × 3 bytes = 999 bytes/row, not a multiple of 4. Default
+  // UNPACK_ALIGNMENT (4) would mis-align rows; Three.js sets this on
+  // upload from `texture.unpackAlignment`, but defaults to 4 — so we
+  // override to 1.
+  dustTexture.unpackAlignment = 1;
   dustTexture.needsUpdate = true;
 
   const galHalf = new THREE.Vector3(
@@ -307,7 +317,7 @@ export function getDustTexture(): THREE.Texture | null {
 // is one of the largest single bandwidth savings, since dust ray-
 // marching is texture-fetch heavy.
 function computeDustRTSize(): [number, number] {
-  const dustDiv = isMobileQuality() ? 4 : 2;
+  const dustDiv = qualityProfile.dustDiv;
   const hw = Math.round(window.innerWidth * getRenderPixelRatio() / dustDiv);
   const hh = Math.round(window.innerHeight * getRenderPixelRatio() / dustDiv);
   return [hw, hh];

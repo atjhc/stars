@@ -176,7 +176,7 @@ Riello et al. (2021) polynomial fit, which is accurate to ~0.05 mag.
 - **Zenodo record:** [8187943](https://zenodo.org/records/8187943)
 - **License:** CC-BY 4.0
 - **Source file:** `data/cache/edenhofer2023_healpix.fits` (~3.25 GB, auto-downloaded)
-- **Output:** `dist/tiles/dust_volume_rgba.bin` (~60 MB baked RGBA 3D texture)
+- **Output:** `dist/tiles/dust_volume.bin` (~44 MB baked RGB 3D texture)
 
 The source FITS (`mean_and_std_healpix.fits`) is a HEALPix sphere stack
 (NSIDE healpix pixels × log-spaced radial distance bins) covering 69–1250 pc
@@ -245,6 +245,6 @@ calls to external data sources.
 | `nebulae.json` | 3.8 KB | Eager |
 | `constellations.json` | 11 KB | Eager |
 | `dust_meta.json` | 436 B | Eager |
-| `dust_volume_rgba.bin` | 12 MB | Eager |
+| `dust_volume.bin` | 21 MB | Eager |
 | `tile_*.bin` | ~28 MB total | Lazy (distance/frustum) |
 | `tile_*.lbl.json` | ~940 KB total | Lazy (distance) |

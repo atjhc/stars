@@ -95,6 +95,7 @@ let meta: CatalogMeta | null = null;
 let notable: NotableEntry[] = [];
 let systems: Record<string, SystemData> = {};
 let searchIndex: SearchEntry[] = [];
+let searchIndexReady: Promise<SearchEntry[]> = Promise.resolve(searchIndex);
 
 const tileLabelCache = new Map<string, LabelRow[]>();
 const tileLabelLoading = new Set<string>();
@@ -108,19 +109,39 @@ export function onTileLabelsLoaded(fn: TileLabelListener) { loadListeners.push(f
 export function onTileLabelsEvicted(fn: TileEvictListener) { evictListeners.push(fn); }
 
 export async function initCatalog(): Promise<void> {
-  const [m, n, s, idx] = await Promise.all([
+  // names.json is the largest eager artifact (~307 KB gzip) and only
+  // gates downstream consumers (constellations, planets, search, URL
+  // focus restore) — not first paint. Kick it off in parallel but
+  // don't block on it; consumers await whenSearchIndexReady().
+  searchIndexReady = fetch(`${TILE_BASE_URL}names.json`)
+    .then((r) => r.json() as Promise<SearchEntry[]>)
+    .then((idx) => {
+      searchIndex = idx;
+      console.log(`Catalog: ${idx.length} searchable`);
+      return idx;
+    });
+
+  const [m, n, s] = await Promise.all([
     fetch(`${TILE_BASE_URL}meta.json`).then((r) => r.json()),
     fetch(`${TILE_BASE_URL}notable.json`).then((r) => r.json()),
     fetch(`${TILE_BASE_URL}systems.json`).then((r) => r.json()),
-    fetch(`${TILE_BASE_URL}names.json`).then((r) => r.json()),
   ]);
   meta = m;
   notable = n;
   systems = s;
-  searchIndex = idx;
   console.log(
-    `Catalog: ${meta!.totalStars} stars, ${meta!.tileCount} tiles, ${notable.length} notable, ${Object.keys(systems).length} systems, ${searchIndex.length} searchable`,
+    `Catalog: ${meta!.totalStars} stars, ${meta!.tileCount} tiles, ${notable.length} notable, ${Object.keys(systems).length} systems`,
   );
+}
+
+// Resolves once the global search index (names.json) is loaded. Use
+// this in any code path that reads getSearchIndex() before the user
+// has had a chance to interact — startup URL focus restore,
+// constellation line rendering, planet position fixup. Pure search
+// panel use can keep calling getSearchIndex() directly: by the time
+// the panel opens, names.json is long since loaded.
+export function whenSearchIndexReady(): Promise<SearchEntry[]> {
+  return searchIndexReady;
 }
 
 export function getMeta(): CatalogMeta | null { return meta; }

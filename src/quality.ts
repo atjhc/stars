@@ -29,3 +29,46 @@ export function getRenderPixelRatio(): number {
 export function isMobileQuality(): boolean {
   return getRenderPixelRatio() < window.devicePixelRatio;
 }
+
+export interface QualityProfile {
+  // EffectComposer RT MSAA sample count.
+  msaa: number;
+  // Bloom-input resolution divisor (UnrealBloomPass).
+  bloomDiv: number;
+  // Dust ray-march RT resolution divisor (relative to render resolution).
+  dustDiv: number;
+  // Cap of streamed octree tiles kept in memory (geometry + tier-1 anchors).
+  tileBudget: number;
+  // Multiplier on the meta-derived tier-1 label load distance.
+  tier1LoadDistMult: number;
+  // Apparent magnitude (from Sol) above which tier-1 stars get no canvas
+  // label. `Infinity` means no filter.
+  tier1LabelMaxMag: number;
+  // Render-loop frame budget in ms. 0 = uncapped.
+  fpsCapMs: number;
+}
+
+const MOBILE: QualityProfile = {
+  msaa: 4,
+  bloomDiv: 2,
+  dustDiv: 4,
+  tileBudget: 40,
+  tier1LoadDistMult: 0.8,
+  tier1LabelMaxMag: 5.0,
+  fpsCapMs: 1000 / 30,
+};
+
+const DESKTOP: QualityProfile = {
+  msaa: 8,
+  bloomDiv: 1,
+  dustDiv: 2,
+  tileBudget: 80,
+  tier1LoadDistMult: 1.0,
+  tier1LabelMaxMag: Infinity,
+  fpsCapMs: 0,
+};
+
+// Frozen at module load. Toggling DPR cap requires a reload anyway
+// (window.devicePixelRatio doesn't change during a session, and the
+// composer / RT sizes are baked at scene init).
+export const qualityProfile: QualityProfile = isMobileQuality() ? MOBILE : DESKTOP;

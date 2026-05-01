@@ -274,13 +274,14 @@ honest — only brightness bumps.
   (400 ms) on load/evict.
 - **Distance fade**: `computeDistanceOpacity` multiplies a smooth
   1 → 0 ramp over the last `TILE_DIST_FADE_BAND = 20%` of `cullDist`.
-- `MAX_LOADED_TILES` — LRU eviction by `lastUsed` timestamp. 80 on
-  desktop, 40 on mobile (`isMobileQuality()`); each tile carries
-  geometry + materials + tier-1 anchors + their canvas labels, so the
-  smaller cap matches mobile texture-cache budgets.
+- `qualityProfile.tileBudget` — LRU eviction by `lastUsed` timestamp.
+  80 on desktop, 40 on mobile; each tile carries geometry + materials
+  + tier-1 anchors + their canvas labels, so the smaller cap matches
+  mobile texture-cache budgets.
 - `tier1LoadDist` — radius beyond which tile labels (and their tier-1
-  anchors / canvas labels) are despawned. Driven by `meta.labelTierVisibility["1"]`,
-  multiplied by 0.8 on mobile.
+  anchors / canvas labels) are despawned. Driven by
+  `meta.labelTierVisibility["1"]`, multiplied by
+  `qualityProfile.tier1LoadDistMult` (1.0 desktop / 0.8 mobile).
 
 ## Star naming (in build-catalog.py)
 
@@ -321,9 +322,9 @@ the center `1 / OVERSCAN` portion back to display. The crop pass sits
 *before* lensing in the chain, so lensing distorts gamma-encoded sRGB
 samples (correct) and operates in viewport-UV space without overscan
 scaling. On mobile, bloom runs at half its input resolution
-(`BLOOM_DIVISOR = 2`), MSAA drops from 8× to 4×, and the dust RT
-drops from half-res to quarter-res — see `docs/profiling.md` for the
-mobile quality profile.
+(`qualityProfile.bloomDiv = 2`), MSAA drops from 8× to 4×, and the
+dust RT drops from half-res to quarter-res — see `docs/profiling.md`
+for the mobile quality profile.
 
 ## Runtime artifacts
 

@@ -106,12 +106,13 @@ opacity are excluded from collision checks.
 
 ### Mobile label filter
 
-On `isMobileQuality()` devices, `spawnTier1Anchor` skips
-`registerCanvasLabel` for tier-1 stars whose `mag` (apparent magnitude
-from Sol) exceeds `MOBILE_LABEL_MAX_MAG = 5.0`. The billboard mesh
-still spawns and the anchor still goes into `allInteractiveStars` /
-`tier1Meshes` (so selection, hover, and shader-gated rendering are
-unchanged); just no canvas label.
+`spawnTier1Anchor` skips `registerCanvasLabel` for tier-1 stars whose
+`mag` (apparent magnitude from Sol) exceeds
+`qualityProfile.tier1LabelMaxMag` (5.0 on mobile, `Infinity` on
+desktop — i.e. no filter). The billboard mesh still spawns and the
+anchor still goes into `allInteractiveStars` / `tier1Meshes` (so
+selection, hover, and shader-gated rendering are unchanged); just no
+canvas label.
 
 Filtering by apparent-mag rather than absolute-mag because the streamed
 catalog is already apparent-mag-bounded — most tier-1 stars have absMag

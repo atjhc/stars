@@ -3,7 +3,7 @@ import type { Star } from "./types.ts";
 import { scene, camera, lookToward } from "./scene.ts";
 import { notableObjects } from "./starfield.ts";
 import { SCALE, LY_PER_PARSEC, TILE_BASE_URL } from "./constants.ts";
-import { type SearchEntry, getSearchIndex } from "./catalog.ts";
+import { type SearchEntry, getSearchIndex, whenSearchIndexReady } from "./catalog.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 import { favoriteIcon } from "./detail.ts";
@@ -226,7 +226,12 @@ const constellationHandler: LabelTypeHandler = {
 // -- Init ---------------------------------------------------------------
 
 export async function initConstellations(): Promise<void> {
-  const res = await fetch(`${TILE_BASE_URL}constellations.json`);
+  const [res] = await Promise.all([
+    fetch(`${TILE_BASE_URL}constellations.json`),
+    // Constellation lines reference named stars by name; non-notable
+    // endpoints (e.g. dim line stars) come from the search index.
+    whenSearchIndexReady(),
+  ]);
   if (!res.ok) {
     console.warn("constellations.json not found — constellation lines disabled");
     return;

@@ -76,8 +76,8 @@ const viewport = document.getElementById("viewport")!;
 // The implementations live in quality.ts (no Three.js dependency)
 // so renderLoop.ts can import them eagerly without the renderLoop ↔
 // scene module cycle.
-export { getRenderPixelRatio, isMobileQuality } from "./quality.ts";
-import { getRenderPixelRatio, isMobileQuality } from "./quality.ts";
+export { getRenderPixelRatio, isMobileQuality, qualityProfile } from "./quality.ts";
+import { getRenderPixelRatio, qualityProfile } from "./quality.ts";
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -539,11 +539,10 @@ function makeComposerRT() {
   // 8× MSAA + HalfFloat is 64 bytes/pixel in tile memory; mobile TBDR
   // GPUs split into tiny tiles and pay binning overhead at each
   // boundary. 4× is the mobile sweet spot.
-  const samples = isMobileQuality() ? 4 : 8;
   return new THREE.WebGLRenderTarget(
     Math.round(window.innerWidth * BLOOM_OVERSCAN * getRenderPixelRatio()),
     Math.round(window.innerHeight * BLOOM_OVERSCAN * getRenderPixelRatio()),
-    { samples, type: THREE.HalfFloatType },
+    { samples: qualityProfile.msaa, type: THREE.HalfFloatType },
   );
 }
 let composerRT = makeComposerRT();
@@ -558,7 +557,7 @@ composer.addPass(new RenderPass(scene, camera));
 // linear viewport (1/16 the pixel area). The composite step
 // bilinearly upsamples; bloom is low-frequency so the softening is
 // essentially invisible.
-const BLOOM_DIVISOR = isMobileQuality() ? 2 : 1;
+const BLOOM_DIVISOR = qualityProfile.bloomDiv;
 export const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(
     Math.round(window.innerWidth * BLOOM_OVERSCAN / BLOOM_DIVISOR),

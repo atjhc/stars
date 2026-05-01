@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Snap nebula label positions to the nearest emission peak in the baked dust volume.
 
-Reads data/nebulae.json and dist/tiles/dust_volume_rgba.bin, finds the
+Reads data/nebulae.json and dist/tiles/dust_volume.bin, finds the
 strongest emission peak within SEARCH_RADIUS_PC of each label's current
 position, and updates the position. Each label claims a unique peak
 (greedy by emission strength) so no two labels overlap.
@@ -15,7 +15,7 @@ import numpy as np
 from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VOLUME_PATH = os.path.join(ROOT, "dist", "tiles", "dust_volume_rgba.bin")
+VOLUME_PATH = os.path.join(ROOT, "dist", "tiles", "dust_volume.bin")
 META_PATH = os.path.join(ROOT, "dist", "tiles", "dust_meta.json")
 NEBULAE_PATH = os.path.join(ROOT, "data", "nebulae.json")
 SEARCH_RADIUS_PC = 80
@@ -30,7 +30,8 @@ def main():
     half_xy = (nx - 1) // 2
     half_z = (nz - 1) // 2
 
-    data = np.fromfile(VOLUME_PATH, dtype=np.uint8).reshape(nz, ny, nx, 4)
+    channels = meta.get("channels", 3)
+    data = np.fromfile(VOLUME_PATH, dtype=np.uint8).reshape(nz, ny, nx, channels)
     density = data[:, :, :, 0].astype(float)
     ion = data[:, :, :, 1].astype(float)
     scat = data[:, :, :, 2].astype(float)

@@ -126,18 +126,24 @@ actually shrunk the render resolution, i.e. high-DPR mobile devices.
 `?dprCap=99` disables both the cap and the gate, providing a
 single-toggle A/B between full and mobile quality on the same device.
 
+All knobs live in a single frozen `qualityProfile` object exported
+from `src/quality.ts`; consuming modules read fields off it instead of
+re-deriving from `isMobileQuality()`. Adding a new tier (e.g. an
+explicit "battery saver" `?quality=` override) means a new profile
+constant and one branch in the picker — no changes to feature code.
+
 Active reductions on mobile:
 
-| knob | desktop | mobile | impact |
+| knob (`qualityProfile.*`) | desktop | mobile | impact |
 |---|---|---|---|
 | WebGL pixel ratio cap | native | min(dpr, 2) | ~55% fragment reduction on iPhone (DPR 3) |
-| MSAA samples | 8× | 4× | halves tile-memory pressure on mobile TBDR |
-| Bloom input resolution | full | half | ~75% bloom shading reduction |
-| Dust RT divisor | half-res (÷2) | quarter-res (÷4) | dust ray-march bandwidth |
-| MAX_LOADED_TILES | 80 | 40 | smaller GPU memory working set |
-| tier1LoadDist | meta | × 0.8 | tighter tier-1 anchor / label working set |
-| Tier-1 label registration | all | `mag ≤ 5.0` only | fewer registered labels, less paint, less crowding |
-| Frame-rate cap | uncapped | 30 fps | thermal headroom (avoids race-throttle-drop oscillation) |
+| `msaa` | 8× | 4× | halves tile-memory pressure on mobile TBDR |
+| `bloomDiv` | 1× (full) | 2× (half) | ~75% bloom shading reduction |
+| `dustDiv` | 2× (half) | 4× (quarter) | dust ray-march bandwidth |
+| `tileBudget` | 80 | 40 | smaller GPU memory working set |
+| `tier1LoadDistMult` | 1.0 | 0.8 | tighter tier-1 anchor / label working set |
+| `tier1LabelMaxMag` | ∞ | 5.0 | fewer registered labels, less paint, less crowding |
+| `fpsCapMs` | 0 (uncapped) | 33 (30 fps) | thermal headroom (avoids race-throttle-drop oscillation) |
 
 Validated path: iPhone 15 went from ~10 fps in the worst orbit case
 to a steady 35-40 fps after this arc (with thermal throttling beyond
@@ -227,17 +233,18 @@ case benefits most.
    crowding on the small screen.
 
 **Mobile tile budgets + state diagnostic** (`src/starfield.ts`,
-`src/debug.ts`). `MAX_LOADED_TILES` drops from 80 to 40 on mobile;
-`tier1LoadDist` gets a 0.8 multiplier. Each loaded tile carries
-geometry + materials + tier-1 anchors + their canvas labels — Safari's
-tile cache thrashes well below desktop's working-set limit. New
-`tiles N/MAX  labels M` line in the `?debug=1` panel surfaces the
-collection sizes (refreshed at 2 Hz) so monotonic growth or
-budget-exceedance is visible on-device.
+`src/debug.ts`). `qualityProfile.tileBudget` drops from 80 to 40 on
+mobile; `qualityProfile.tier1LoadDistMult` is 0.8. Each loaded tile
+carries geometry + materials + tier-1 anchors + their canvas
+labels — Safari's tile cache thrashes well below desktop's
+working-set limit. New `tiles N/MAX  labels M` line in the `?debug=1`
+panel surfaces the collection sizes (refreshed at 2 Hz) so monotonic
+growth or budget-exceedance is visible on-device.
 
 **Half-res bloom on mobile + planet sphere segments 64×32**
 (`src/scene.ts`, `src/planets.ts`). Mobile bloom runs at half the
-input resolution (`BLOOM_DIVISOR = 2`); UnrealBloomPass internally
+input resolution (`qualityProfile.bloomDiv = 2`); UnrealBloomPass
+internally
 halves again per mip, so level-0 ends up at 1/16 the pixel area of
 viewport. Composite step bilinearly upsamples; bloom is low-frequency
 so the softening is essentially invisible. Cuts bloom shading by

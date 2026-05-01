@@ -187,7 +187,7 @@ Sources and licences:
 - `data/neutronstars.json` — Nearby neutron stars (Magnificent Seven + notable pulsars within 1 kpc): RA/Dec, distance, mass, radius, kind (`ins`/`pulsar`), metadata
 - `data/planets.json` — Solar System planets: JPL Approximate Positions Keplerian elements (per-century rates), physical radius (km), IAU rotational elements (`rotation: [α₀, δ₀, W₀, Ẇ]`), metadata. Runtime fetches the *built* copy at `dist/tiles/planets.json`, so edits here only take effect after re-running `scripts/build-catalog.py`.
 - `data/cache/` — Downloaded source data (gitignored): FITS cubes, etc.
-- `dist/tiles/dust_volume_rgba.bin` — Baked RGBA 3D texture (density + hot-star illumination)
+- `dist/tiles/dust_volume.bin` — Baked RGB 3D texture (density + hot-star illumination)
 - `dist/tiles/dust_meta.json` — Dust volume dimensions and format metadata
 - `dist/tiles/nebulae.json` — Runtime nebula data with baked scene coordinates
 - `dist/tiles/planets/` — Equirectangular planet surface maps (Solar System Scope, CC-BY 4.0)

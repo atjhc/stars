@@ -4,7 +4,7 @@ Bake the Edenhofer et al. (2024) 3D dust density cube into the RGBA texture
 consumed by Drake's volumetric dust renderer.
 
 Input:  data/cache/edenhofer2023_healpix.fits  (~3.25 GB HEALPix × distance)
-Output: dist/tiles/dust_volume_rgba.bin         (RGBA uint8)
+Output: dist/tiles/dust_volume.bin              (RGB uint8)
         dist/tiles/dust_meta.json
 
 The source FITS is downloaded automatically if missing.
@@ -16,7 +16,7 @@ Pipeline:
      Optional intra-voxel supersampling smooths out aliasing.
   3. Threshold Local Bubble residuals.
   4. Compute hot-star illumination from O/B stars in the AT-HYG catalog.
-  5. Bake into RGBA: R=density, G=ionizing flux, B=scattering flux, A=255
+  5. Bake into RGB: R=density, G=ionizing flux, B=scattering flux
 """
 
 import argparse
@@ -326,11 +326,10 @@ def write_output(density, ion_flux, scat_flux):
     r = (density * 255).clip(0, 255).astype(np.uint8)
     g = (ion_flux * 255).clip(0, 255).astype(np.uint8)
     b = (scat_flux * 255).clip(0, 255).astype(np.uint8)
-    a = np.full_like(r, 255)
 
-    rgba = np.stack([r, g, b, a], axis=-1)
-    out_path = os.path.join(OUTPUT_DIR, "dust_volume_rgba.bin")
-    rgba.tofile(out_path)
+    rgb = np.stack([r, g, b], axis=-1)
+    out_path = os.path.join(OUTPUT_DIR, "dust_volume.bin")
+    rgb.tofile(out_path)
     size_mb = os.path.getsize(out_path) / 1e6
     print(f"Wrote {out_path} ({size_mb:.1f} MB)")
 
@@ -343,8 +342,8 @@ def write_output(density, ion_flux, scat_flux):
         "source": "Edenhofer et al. 2024, A&A 685, A82 (Zenodo 8187943, HEALPix variant)",
         "supersample": SUPERSAMPLE,
         "units": "normalized dust extinction density (posterior mean)",
-        "format": "RGBA uint8: R=density, G=ionizing_flux, B=scattering_flux, A=255",
-        "channels": 4,
+        "format": "RGB uint8: R=density, G=ionizing_flux, B=scattering_flux",
+        "channels": 3,
     }
     meta_path = os.path.join(OUTPUT_DIR, "dust_meta.json")
     with open(meta_path, "w") as f:

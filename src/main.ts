@@ -27,7 +27,7 @@ import {
 } from "./systemStore.ts";
 import { toggleFavorite } from "./favorites.ts";
 
-import { type SearchEntry, getSearchIndex } from "./catalog.ts";
+import { type SearchEntry, getSearchIndex, whenSearchIndexReady } from "./catalog.ts";
 import { updateDetailPanel, onDetailStarClick } from "./detail.ts";
 import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
@@ -61,6 +61,7 @@ import {
   getHoveredWorldPos,
 } from "./starfield.ts";
 import { animateTo } from "./scene.ts";
+import { focusTarget } from "./systemDispatch.ts";
 import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
 import { initGpuTimer, gpuPhase, drainGpuQueries, wrapComposerPasses } from "./gpuTimer.ts";
 
@@ -430,7 +431,7 @@ function trySelectSystem(name: string, subsetNames?: string[]): boolean {
   return true;
 }
 
-function handleSearchSelect(entry: SearchEntry) {
+function handleSearchSelect(entry: SearchEntry): Promise<void> {
   pendingSystemSelect = null;
   // Constellations span the sky — no meaningful point to fly to.
   if (entry.k !== "x") {
@@ -441,31 +442,39 @@ function handleSearchSelect(entry: SearchEntry) {
   if (handlerType) {
     selectByType(handlerType, entry.n);
     scheduleUrlWrite();
-    return;
+    return Promise.resolve();
   }
   if (entry.k === "c") {
     if (trySelectSystem(entry.n)) {
       scheduleUrlWrite();
-    } else {
-      // Group doesn't exist yet — member tiles haven't streamed.
-      // Force-load a member tile; when rebuildSystems fires, the
-      // onLabelsChanged callback retries the selection and writes the URL.
-      pendingSystemSelect = { name: entry.n };
-      const member = getSearchIndex().find((e) => e.sy === entry.n && e.t);
-      if (member?.t && member.i !== undefined) {
-        requestTileFocus(member.t, member.i, () => {});
-      }
+      return Promise.resolve();
     }
-    return;
+    // Group doesn't exist yet — member tiles haven't streamed.
+    // Force-load a member tile; when rebuildSystems fires, the
+    // onLabelsChanged callback retries the selection and writes the URL.
+    pendingSystemSelect = { name: entry.n };
+    const member = getSearchIndex().find((e) => e.sy === entry.n && e.t);
+    if (member?.t && member.i !== undefined) {
+      return new Promise<void>((resolve) => {
+        requestTileFocus(member.t!, member.i!, () => resolve());
+      });
+    }
+    return Promise.resolve();
   }
   if (entry.t !== undefined && entry.i !== undefined) {
-    requestTileFocus(entry.t, entry.i, (mesh) => {
-      clearAllSelections();
-      selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
-      rebaseForStar(mesh);
-      scheduleUrlWrite();
+    const tile = entry.t;
+    const i = entry.i;
+    return new Promise<void>((resolve) => {
+      requestTileFocus(tile, i, (mesh) => {
+        clearAllSelections();
+        selectTarget(mesh, updateDetailPanel, doUpdateLabelVisibility);
+        rebaseForStar(mesh);
+        scheduleUrlWrite();
+        resolve();
+      });
     });
   }
+  return Promise.resolve();
 }
 setupSearch(handleSearchSelect, (entry) => {
   lookToward(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
@@ -519,6 +528,9 @@ doUpdateLabelVisibility();
   const focusName = urlState.focus ?? legacyName;
 
   if (focusName) {
+    // Names of dim tier-1 stars only resolve through the search index;
+    // wait for it before attempting lookup.
+    await whenSearchIndexReady();
     // Sub-group syntax: "Rigil Kentaurus,Toliman" → find the system
     // they belong to and select just those members.
     if (focusName.includes(",")) {
@@ -526,22 +538,37 @@ doUpdateLabelVisibility();
       const firstMember = getSearchIndex().find((e) => e.n === memberNames[0]);
       const systemName = firstMember?.sy;
       if (systemName) {
+        let memberTileReady: Promise<void> = Promise.resolve();
         if (!trySelectSystem(systemName, memberNames)) {
           pendingSystemSelect = { name: systemName, subsetNames: memberNames };
           if (firstMember.t && firstMember.i !== undefined) {
-            requestTileFocus(firstMember.t, firstMember.i, () => {});
+            // Await member tile so the system's stars are visible
+            // on the very first painted frame, not after streaming.
+            memberTileReady = new Promise<void>((resolve) => {
+              requestTileFocus(firstMember.t!, firstMember.i!, () => resolve());
+            });
           }
         }
+        // setTargetImmediate cancels any animation queued by
+        // trySelectSystem; wanted hard cut on URL restore.
         if (firstMember.p) setTargetImmediate(new THREE.Vector3(firstMember.p[0], firstMember.p[1], firstMember.p[2]));
+        await memberTileReady;
       }
     } else if (trySelectSystem(focusName)) {
       // Exact system-name match (binary/trinary or cluster).
+      // Hard-cut to the system so the first painted frame shows the
+      // restored selection at rest, not mid-flyby from origin.
+      const sys = getSelectedSystem();
+      if (sys) setTargetImmediate(focusTarget(sys, camera.position));
       scheduleUrlWrite();
     } else {
       const entry = getSearchIndex().find((e) => e.n === focusName || e.sy === focusName);
       if (entry) {
-        handleSearchSelect(entry);
+        const focusReady = handleSearchSelect(entry);
+        // setTargetImmediate cancels the animateTo that handleSearchSelect
+        // queued; URL restore wants a hard cut, not a flyby on page load.
         setTargetImmediate(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+        await focusReady;
       }
     }
   } else {

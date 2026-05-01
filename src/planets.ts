@@ -17,7 +17,7 @@ import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
 import { registerCanvasLabel, updateCanvasLabel } from "./labelCanvas.ts";
 import { starLabelMargin } from "./labels.ts";
-import { getSearchIndex } from "./catalog.ts";
+import { getSearchIndex, whenSearchIndexReady } from "./catalog.ts";
 import {
   julianCenturiesSinceJ2000, julianDaysSinceJ2000,
   orbitState, helioEcliptic,
@@ -787,7 +787,12 @@ function attachSaturnRings(saturn: Planet, illumination: number): void {
 }
 
 export async function initPlanetLabels(): Promise<void> {
-  const resp = await fetch(`${TILE_BASE_URL}planets.json`);
+  const [resp] = await Promise.all([
+    fetch(`${TILE_BASE_URL}planets.json`),
+    // Planet entries in the search index get their position fixed up
+    // below to match the live anchor (the build-time bake is approximate).
+    whenSearchIndexReady(),
+  ]);
   if (!resp.ok) return;
   const raw: Record<string, PlanetEntry & { _about?: unknown }> = await resp.json();
 

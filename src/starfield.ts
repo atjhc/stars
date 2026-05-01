@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Star, SystemGroup, BinarySystem, ClusterGroup } from "./types.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
-import { scene, camera, target, isMobileQuality } from "./scene.ts";
+import { scene, camera, target, qualityProfile } from "./scene.ts";
 import { createStarAnchor } from "./billboard.ts";
 import { showSystemMembers } from "./interaction.ts";
 import { setLabelsDirty, relinkAfterRebuild, getPinnedTile, getSelectedMesh } from "./systemStore.ts";
@@ -29,22 +29,12 @@ export { magLimitUniform, DEFAULT_MAG_LIMIT, setMagLimit, apparentMag, getHovere
 // anchors, and canvas labels — 80 tiles is a substantial GPU memory
 // working set, and Safari's tile cache thrashes well below desktop's
 // limit, manifesting as fps degradation as the user pans.
-const MAX_LOADED_TILES = isMobileQuality() ? 40 : 80;
+const MAX_LOADED_TILES = qualityProfile.tileBudget;
 const TILE_FADE_MS = 400;
 // Mobile tightens the label-load radius too, so distant tiles drop
 // their labels (and the tier-1 anchors they own) sooner.
-const TIER1_LOAD_DIST_MULT = isMobileQuality() ? 0.8 : 1.0;
 const TIER1_LOAD_DIST_DEFAULT = 150;
-let tier1LoadDist = TIER1_LOAD_DIST_DEFAULT * TIER1_LOAD_DIST_MULT;
-
-// Mobile: skip canvas label registration for tier-1 stars apparently-
-// dim from Sol. Filtering by apparent `mag` rather than `absmag`
-// because the streamed catalog is already apparent-mag-bounded (most
-// tier-1 stars have absMag ≤ 7), so an absmag filter barely cuts.
-// Stars dimmer than this from Sol's vantage become labeled only at
-// close approach — known limitation, addressable later with a
-// proximity-aware heuristic.
-const MOBILE_LABEL_MAX_MAG = 5.0;
+let tier1LoadDist = TIER1_LOAD_DIST_DEFAULT * qualityProfile.tier1LoadDistMult;
 
 interface LoadedTile {
   mesh: THREE.Mesh;
@@ -219,7 +209,7 @@ function spawnTier1Anchor(row: LabelRow, path: string, sx: number, sy: number, s
   anchorsGroup.add(anchor);
   // Mobile filter: skip the canvas label but keep the anchor —
   // selection / hover and the shader-gated billboard still work.
-  if (isMobileQuality() && star.mag > MOBILE_LABEL_MAX_MAG) {
+  if (star.mag > qualityProfile.tier1LabelMaxMag) {
     return anchor;
   }
   const id = `tier1:${path}/${row.i}`;
@@ -432,6 +422,15 @@ export function requestTileFocus(
   if (existing) { onResolved(existing); return; }
   forcedTiles.add(tile);
   pendingSelection = { tile, i, onResolved };
+  // Kick off the load directly. Without this, the load would wait for
+  // the next updateStarfield sweep, which only runs from the render
+  // loop — so URL focus restore couldn't await the focused tile
+  // before first paint.
+  const tileMeta = getMeta()?.tiles[tile];
+  if (tileMeta) {
+    loadTile(tile, tileMeta);
+    if (tileMeta.lbl) loadTileLabels(tile);
+  }
 }
 
 function shouldLoadGeometry(path: string, frustum: THREE.Frustum, camPos: THREE.Vector3): boolean {
@@ -575,7 +574,7 @@ export async function initStarfield() {
       `renderer expects ${BYTES_PER_STAR}. Rebuild tiles via build-catalog.py.`,
     );
   }
-  tier1LoadDist = (meta.labelTierVisibility["1"] ?? TIER1_LOAD_DIST_DEFAULT) * TIER1_LOAD_DIST_MULT;
+  tier1LoadDist = (meta.labelTierVisibility["1"] ?? TIER1_LOAD_DIST_DEFAULT) * qualityProfile.tier1LoadDistMult;
   precomputeTileSpheres();
 
   onTileLabelsLoaded((path, labels) => spawnTileLabels(path, labels));
