@@ -16,6 +16,20 @@ import {
   registerCanvasLabel, updateCanvasLabel,
 } from "./labelCanvas.ts";
 import { computeStarMinOrbit } from "./stars.ts";
+import { getSearchIndex } from "./catalog.ts";
+
+function resolveArrivalLookAt(
+  ref: string | [number, number, number] | undefined,
+): THREE.Vector3 | undefined {
+  if (!ref) return undefined;
+  if (typeof ref !== "string") return new THREE.Vector3(ref[0], ref[1], ref[2]);
+  const entry = getSearchIndex().find((e) => e.n === ref);
+  if (!entry) {
+    console.warn(`[blackholes] arrivalLookAt name not found in search index: ${ref}`);
+    return undefined;
+  }
+  return new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]);
+}
 
 const BH_CANVAS_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const BH_CANVAS_COLOR = "rgba(180,140,220,0.85)";
@@ -33,6 +47,13 @@ interface BlackHoleEntry {
   wikipedia?: string;
   notes?: string;
   scene_pos: [number, number, number];
+  // Set-piece arrival direction: string → resolved against the search
+  // index by name (e.g. "Sol"); tuple → direct scene-space position.
+  // Camera arrives looking through the BH toward this point.
+  arrivalLookAt?: string | [number, number, number];
+  // Arrival distance from the BH center, in km. Overrides the
+  // auto-computed "shadow fills 15% of viewport" default.
+  arrivalRadiusKm?: number;
 }
 
 interface BlackHoleLabel {
@@ -184,10 +205,15 @@ const bhHandler: LabelTypeHandler = {
     selectedBH = bh;
     applyGlow(bh);
     setMinOrbitOverride(DEEP_ZOOM_MIN_ORBIT);
-    // Arrive where the shadow disc fills ~15% of the viewport.
+    // Default: arrive where the shadow disc fills ~15% of the viewport.
+    // Per-entity `arrivalRadiusKm` overrides for set-piece framing.
     const rsScene = ((RS_KM_PER_MSUN * bh.entry.mass_msun) / KM_PER_PC) * SCALE;
     const shadowRadius = BH_SHADOW_TO_RS * rsScene;
-    animateTo(bh.anchor.position, computeStarMinOrbit(shadowRadius, 0.15));
+    const arrivalRadius = bh.entry.arrivalRadiusKm !== undefined
+      ? (bh.entry.arrivalRadiusKm / KM_PER_PC) * SCALE
+      : computeStarMinOrbit(shadowRadius, 0.15);
+    const lookAt = resolveArrivalLookAt(bh.entry.arrivalLookAt);
+    animateTo(bh.anchor.position, arrivalRadius, lookAt);
     setLabelsDirty(true);
     return true;
   },

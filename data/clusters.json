@@ -19,6 +19,8 @@
       "Asterope"
     ],
     "radius_pc": 20,
+    "arrivalRadiusLy": 100,
+    "minOrbitRadiusLy": 50,
     "wikipedia": "https://en.wikipedia.org/wiki/Pleiades",
     "notes": "Young open cluster in Taurus, ~100 Myr old, ~136 pc away. The nine named 'Seven Sisters' \u2014 Alcyone, Atlas, Electra, Maia, Merope, Taygeta, Celaeno, Pleione, and Asterope \u2014 are hot blue-white B-type stars glowing through residual reflection nebulosity. One of the most striking sights in a small telescope or binoculars."
   },
@@ -35,6 +37,7 @@
       "Ain"
     ],
     "radius_pc": 10,
+    "arrivalRadiusLy": 30,
     "wikipedia": "https://en.wikipedia.org/wiki/Hyades_(star_cluster)",
     "notes": "Nearest open cluster to Sol at ~47 pc, forming the V-shaped face of Taurus. Aldebaran lies in the foreground and is NOT a member \u2014 it's less than half the cluster's distance. Age ~625 Myr, roughly 400 confirmed members."
   },
@@ -78,6 +81,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 40,
     "wikipedia": "https://en.wikipedia.org/wiki/IC_2602",
     "notes": "Bright open cluster in Carina at ~150 pc. Often called the 'Southern Pleiades' for its visual resemblance. Age ~30 Myr, one of the youngest nearby clusters."
   },
@@ -90,6 +94,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 25,
     "wikipedia": "https://en.wikipedia.org/wiki/Beehive_Cluster",
     "notes": "Large open cluster in Cancer at ~183 pc, visible as a fuzzy patch to the naked eye. Age ~600 Myr. One of the nearest Messier objects, known since antiquity."
   },
@@ -113,6 +118,7 @@
     "aliases": [],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 20,
     "wikipedia": "https://en.wikipedia.org/wiki/Blanco_1",
     "notes": "Open cluster in Sculptor at ~234 pc. Age ~100 Myr. A relatively sparse cluster in the southern sky."
   },
@@ -124,6 +130,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 50,
     "wikipedia": "https://en.wikipedia.org/wiki/Ptolemy_Cluster",
     "notes": "Large bright open cluster in Scorpius at ~276 pc. Known since antiquity \u2014 Ptolemy cataloged it in 130 AD. Age ~200 Myr. One of the most prominent open clusters in the sky."
   },
@@ -158,6 +165,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 30,
     "wikipedia": "https://en.wikipedia.org/wiki/Butterfly_Cluster",
     "notes": "Open cluster in Scorpius at ~452 pc. Named for its butterfly-like shape. Age ~100 Myr. Visible to the naked eye near the stinger of Scorpius."
   },
@@ -177,6 +185,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 80,
     "wikipedia": "https://en.wikipedia.org/wiki/NGC_3532",
     "notes": "Rich open cluster in Carina at ~472 pc. One of the brightest open clusters in the sky with ~3400 confirmed members. Age ~300 Myr. Named for its resemblance to scattered silver coins."
   },
@@ -196,6 +205,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 30,
     "wikipedia": "https://en.wikipedia.org/wiki/IC_4756",
     "notes": "Open cluster in Serpens at ~467 pc. Paired with NGC 6633 as 'Tweedledum and Tweedledee' \u2014 two similar-age clusters at similar distances in adjacent constellations. Age ~800 Myr, with ~700 confirmed members."
   },
@@ -206,6 +216,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 75,
     "wikipedia": "https://en.wikipedia.org/wiki/Messier_41",
     "notes": "Open cluster in Canis Major at ~715 pc, about 4\u00b0 south of Sirius. Contains several red giants. Age ~200 Myr."
   },
@@ -213,6 +224,7 @@
     "aliases": [],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 50,
     "wikipedia": "https://en.wikipedia.org/wiki/NGC_6281",
     "notes": "Open cluster in Scorpius at ~521 pc, near \u03bc Scorpii (Xamidimura). Age ~300 Myr, with ~750 confirmed members. Visible in binoculars as a compact knot of stars in the tail of the Scorpion."
   },
@@ -223,6 +235,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 30,
     "wikipedia": "https://en.wikipedia.org/wiki/Messier_35",
     "notes": "Large open cluster in Gemini at ~839 pc, visible to the naked eye as a hazy spot near Castor's foot. Age ~175 Myr."
   },
@@ -251,6 +264,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 100,
     "wikipedia": "https://en.wikipedia.org/wiki/Sigma_Orionis_cluster",
     "notes": "Young cluster at ~396 pc around the multiple star \u03c3 Orionis. Age ~3 Myr, important for studying brown dwarfs and protoplanetary disks."
   },
@@ -270,6 +284,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 40,
     "wikipedia": "https://en.wikipedia.org/wiki/NGC_6124",
     "notes": "Prominent open cluster in Scorpius at ~630 pc, visible to the naked eye (mag 5.8). Discovered by Lacaille in 1751. Contains ~125 bright members. Age ~140 Myr."
   },
@@ -279,6 +294,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 77,
     "wikipedia": null,
     "notes": "Large open cluster in Cassiopeia at ~374 pc, sometimes called the Muscleman Cluster. One of the largest nearby clusters with over 3,000 Gaia DR3 members. Age ~150-300 Myr."
   },
@@ -288,6 +304,7 @@
     ],
     "type": "open",
     "seed_stars": [],
+    "arrivalRadiusLy": 40,
     "wikipedia": null,
     "notes": "Open cluster in Ophiuchus at ~372 pc, near IC 4665. Age ~500 Myr, older than its neighbor."
   }

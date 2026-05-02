@@ -128,10 +128,10 @@ let lastStateUpdate = 0;
 // debug panel's current width is without pixel-art distortion.
 interface StatsPanel {
   dom: HTMLCanvasElement;
-  update(value: number, maxValue: number): void;
+  update(value: number): void;
 }
 
-function createStatsPanel(name: string, fg: string, bg: string): StatsPanel {
+function createStatsPanel(name: string, fg: string, bg: string, minRange = 1): StatsPanel {
   const dpr = Math.round(window.devicePixelRatio || 1);
   const HEIGHT_CSS = 48;
   const TEXT_Y_CSS = 2;
@@ -144,9 +144,7 @@ function createStatsPanel(name: string, fg: string, bg: string): StatsPanel {
   canvas.style.cssText = `display:block;width:100%;height:${HEIGHT_CSS}px`;
   const ctx = canvas.getContext("2d")!;
 
-  let min = Infinity;
-  let max = 0;
-  const history: Array<{ v: number; m: number }> = [];
+  const history: number[] = [];
   let measuredWidth = 0;
 
   function syncSize() {
@@ -175,9 +173,18 @@ function createStatsPanel(name: string, fg: string, bg: string): StatsPanel {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
+    // Range comes from the currently visible window, not session-wide:
+    // a big spike earlier doesn't keep dwarfing later activity once it
+    // scrolls off the right edge. Floored at minRange so a flat run
+    // doesn't pin every bar to full-height by virtue of being its own
+    // local max.
+    let visMax = 0;
+    for (const v of history) if (v > visMax) visMax = v;
+    const displayMax = Math.max(visMax, minRange);
+
     ctx.fillStyle = fg;
     const label = history.length > 0
-      ? `${Math.round(history[history.length - 1]!.v)} ${name} (${Math.round(min)}-${Math.round(max)})`
+      ? `${Math.round(history[history.length - 1]!)} ${name} (0-${Math.round(displayMax)})`
       : name;
     ctx.fillText(label, TEXT_X, TEXT_Y);
 
@@ -189,22 +196,20 @@ function createStatsPanel(name: string, fg: string, bg: string): StatsPanel {
     ctx.fillRect(GRAPH_X, GRAPH_Y, GRAPH_W, GRAPH_H);
     ctx.globalAlpha = 1;
 
-    // One CSS-pixel bar per sample, right-aligned.
+    // Bars autoscale so displayMax fills the graph height.
     ctx.fillStyle = fg;
     const maxBars = Math.max(1, Math.floor(GRAPH_W / dpr));
     const start = Math.max(0, history.length - maxBars);
     for (let i = start; i < history.length; i++) {
-      const { v, m } = history[i]!;
-      const barH = Math.min(GRAPH_H, Math.max(1, (v / m) * GRAPH_H));
+      const v = history[i]!;
+      const barH = Math.min(GRAPH_H, Math.max(1, (v / displayMax) * GRAPH_H));
       const x = GRAPH_X + (i - start) * dpr;
       ctx.fillRect(x, GRAPH_Y + GRAPH_H - barH, dpr, barH);
     }
   }
 
-  function update(value: number, maxValue: number) {
-    min = Math.min(min, value);
-    max = Math.max(max, value);
-    history.push({ v: value, m: maxValue });
+  function update(value: number) {
+    history.push(value);
     const capacity = Math.max(1, measuredWidth - 2 * PAD_CSS);
     while (history.length > capacity) history.shift();
     draw();
@@ -223,7 +228,7 @@ interface SampleSummary {
   p99_ms: number;
   min_ms: number;
   max_ms: number;
-  phases: Record<string, { calls: number; total_ms: number; per_frame_ms: number }>;
+  phases: Record<string, { calls: number; total_ms: number; per_frame_ms: number; max_ms: number }>;
 }
 
 interface StatsKit {
@@ -241,7 +246,7 @@ function createStatsKit(): StatsKit {
 
   const panels: StatsPanel[] = [
     createStatsPanel("FPS", "#0ff", "#002"),
-    createStatsPanel("MS", "#0f0", "#020"),
+    createStatsPanel("MS", "#0f0", "#020", 10),
   ];
   const memory = (performance as Performance & { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
   if (memory) panels.push(createStatsPanel("MB", "#f08", "#201"));
@@ -251,16 +256,26 @@ function createStatsKit(): StatsKit {
   for (const p of panels) container.appendChild(p.dom);
   show(0);
 
-  // Status line under the graph — only shows text while sampling.
+  // Status line doubles as the sampling toggle. Idle: "▶ sample" hint;
+  // active: live counter; click flips between the two.
   const statusEl = document.createElement("div");
-  statusEl.style.cssText = "font:10px/1.3 monospace;color:#fc6;margin-top:2px;min-height:12px;cursor:default";
+  statusEl.style.cssText = "font:10px/1.3 monospace;color:#fc6;margin-top:2px;min-height:12px;cursor:pointer;user-select:none";
+  statusEl.textContent = "▶ sample";
   container.appendChild(statusEl);
 
   // Eat mouse events so clicking the stats panel doesn't also toggle
   // the enclosing debug panel via makeCollapsible's mouseup handler.
   container.addEventListener("mousedown", (e) => e.stopPropagation());
+  // Click on the graph cycles panels; click on the status line toggles
+  // sampling. Both stop propagation to the outer collapsible.
+  statusEl.addEventListener("mousedown", (e) => e.stopPropagation());
+  statusEl.addEventListener("mouseup", (e) => {
+    e.stopPropagation();
+    toggleSampling();
+  });
   container.addEventListener("mouseup", (e) => {
     e.stopPropagation();
+    if (e.target === statusEl) return;
     mode = (mode + 1) % panels.length;
     show(mode);
   });
@@ -279,7 +294,7 @@ function createStatsKit(): StatsKit {
   // Per-phase timing accumulator. Populated only while sampling is on;
   // phase() is a straight passthrough otherwise so the instrumentation
   // costs nothing in production use.
-  const phaseTotals = new Map<string, { calls: number; totalMs: number }>();
+  const phaseTotals = new Map<string, { calls: number; totalMs: number; maxMs: number }>();
 
   let lastSummary: SampleSummary | null = null;
 
@@ -294,6 +309,7 @@ function createStatsKit(): StatsKit {
         calls: data.calls,
         total_ms: +data.totalMs.toFixed(2),
         per_frame_ms: +(data.totalMs / arr.length).toFixed(3),
+        max_ms: +data.maxMs.toFixed(2),
       };
     }
     const summary: SampleSummary = {
@@ -324,6 +340,21 @@ function createStatsKit(): StatsKit {
     return summary;
   }
 
+  function toggleSampling() {
+    if (samples === null) {
+      samples = [];
+      sampleStart = performance.now();
+      phaseTotals.clear();
+      statusEl.textContent = "● sampling 0s / 0f";
+    } else {
+      const elapsed = performance.now() - sampleStart;
+      const arr = samples;
+      samples = null;
+      statusEl.textContent = "▶ sample";
+      if (arr.length > 0) lastSummary = summarize(arr, elapsed);
+    }
+  }
+
   return {
     container,
     begin() { beginTime = performance.now(); },
@@ -331,34 +362,21 @@ function createStatsKit(): StatsKit {
       const now = performance.now();
       const frameMs = now - beginTime;
       frames++;
-      panels[1]!.update(frameMs, 200);
+      panels[1]!.update(frameMs);
       if (samples !== null) samples.push(frameMs);
       if (now >= prevTime + 1000) {
-        panels[0]!.update((frames * 1000) / (now - prevTime), 100);
+        panels[0]!.update((frames * 1000) / (now - prevTime));
         frames = 0;
         prevTime = now;
         if (memory) {
-          panels[2]!.update(memory.usedJSHeapSize / 1048576, memory.jsHeapSizeLimit / 1048576);
+          panels[2]!.update(memory.usedJSHeapSize / 1048576);
         }
         if (samples !== null) {
           statusEl.textContent = `● sampling ${((now - sampleStart) / 1000).toFixed(0)}s / ${samples.length}f`;
         }
       }
     },
-    toggleSampling() {
-      if (samples === null) {
-        samples = [];
-        sampleStart = performance.now();
-        phaseTotals.clear();
-        statusEl.textContent = "● sampling 0s / 0f";
-      } else {
-        const elapsed = performance.now() - sampleStart;
-        const arr = samples;
-        samples = null;
-        statusEl.textContent = "";
-        if (arr.length > 0) lastSummary = summarize(arr, elapsed);
-      }
-    },
+    toggleSampling,
     lastSummary() { return lastSummary; },
     phase<T>(name: string, fn: () => T): T {
       if (samples === null) return fn();
@@ -366,8 +384,13 @@ function createStatsKit(): StatsKit {
       const result = fn();
       const elapsedMs = performance.now() - t0;
       const cur = phaseTotals.get(name);
-      if (cur) { cur.calls++; cur.totalMs += elapsedMs; }
-      else phaseTotals.set(name, { calls: 1, totalMs: elapsedMs });
+      if (cur) {
+        cur.calls++;
+        cur.totalMs += elapsedMs;
+        if (elapsedMs > cur.maxMs) cur.maxMs = elapsedMs;
+      } else {
+        phaseTotals.set(name, { calls: 1, totalMs: elapsedMs, maxMs: elapsedMs });
+      }
       return result;
     },
   };

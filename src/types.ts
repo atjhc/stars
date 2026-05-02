@@ -25,6 +25,8 @@ export interface BinarySystem extends SystemGroupBase {
 export interface ClusterGroup extends SystemGroupBase {
   kind: "cluster";
   aliases?: string[];
+  arrivalRadiusLy?: number;
+  minOrbitRadiusLy?: number;
 }
 
 export type SystemGroup = BinarySystem | ClusterGroup;

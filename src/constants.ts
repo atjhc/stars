@@ -24,11 +24,14 @@ export const AU_PER_PC = AU_PER_LY * LY_PER_PARSEC;
 export const KM_PER_AU = 1.496e8;
 export const KM_PER_PC = 3.086e13;
 
+// One light-year, expressed in scene units. Conversion factor for
+// ly-denominated config values (cluster arrival/min radii, etc.).
+export const LY_TO_SCENE = SCALE / LY_PER_PARSEC;
 // Inside this camera-to-destination distance, projected label positions
 // barely shift frame-to-frame, so the collision pass re-engages during
 // the final deceleration of a transit instead of waiting for the
-// animation to fully end. ~1 ly in scene units.
-export const ARRIVAL_COLLISION_DIST = SCALE / LY_PER_PARSEC;
+// animation to fully end.
+export const ARRIVAL_COLLISION_DIST = LY_TO_SCENE;
 // Schwarzschild radius in km for a 1 M☉ body.
 export const RS_KM_PER_MSUN = 2.953;
 

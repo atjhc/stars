@@ -70,6 +70,12 @@ export interface SystemData {
   notes?: string;
   centroid?: [number, number, number];
   radius?: number;
+  // Optional cluster arrival framing (light-years). When `arrivalRadiusLy`
+  // is set, selectSystem uses it instead of the auto-derived spread.
+  // `minOrbitRadiusLy` floors the zoom-in distance, so the user can't
+  // dive past the cluster's framed view.
+  arrivalRadiusLy?: number;
+  minOrbitRadiusLy?: number;
 }
 
 // Global search entry. Short keys to minimize the JSON payload; see

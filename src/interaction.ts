@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { camera, animateTo, setMinOrbitOverride } from "./scene.ts";
+import { LY_TO_SCENE } from "./constants.ts";
 import { addRecent } from "./recents.ts";
 import { refreshSearch } from "./search.ts";
 import { starRadiusScene } from "./color.ts";
@@ -131,11 +132,21 @@ export function selectSystem(
       ? [...group.collapsedMembers]
       : null);
   setSelectedSubset(snap);
-  const viewDist = systemMinOrbit(group);
-  setMinOrbitOverride(viewDist);
+  // Cluster overrides take precedence over the auto-derived spread:
+  // `arrivalRadiusLy` sets the arrival distance; `minOrbitRadiusLy`
+  // sets the floor (so the user can't dive past the framed view).
+  // `auto` is computed lazily so a fully-overridden cluster skips the
+  // member-spread walk entirely.
+  const isCluster = group.kind === "cluster";
+  const hasArrival = isCluster && group.arrivalRadiusLy !== undefined;
+  const hasMin = isCluster && group.minOrbitRadiusLy !== undefined;
+  const auto = hasArrival && hasMin ? 0 : systemMinOrbit(group);
+  const arrivalDist = hasArrival ? group.arrivalRadiusLy! * LY_TO_SCENE : auto;
+  const minDist = hasMin ? group.minOrbitRadiusLy! * LY_TO_SCENE : auto;
+  setMinOrbitOverride(minDist);
   showSystemMembers(group);
   setLabelsDirty(true);
-  animateTo(focusTarget(group, camera.position), viewDist);
+  animateTo(focusTarget(group, camera.position), arrivalDist);
   setLastHoveredMesh(null);
   addRecent(group.name);
   refreshSearch();

@@ -566,6 +566,8 @@ def main(aug_path: str, out_dir: str, csv_paths: list[str]):
                 "wikipedia": cdef.get("wikipedia"),
                 "notes": cdef.get("notes"),
                 "centroid": [round(cx, 4), round(cy, 4), round(cz, 4)],
+                "arrivalRadiusLy": cdef.get("arrivalRadiusLy"),
+                "minOrbitRadiusLy": cdef.get("minOrbitRadiusLy"),
             }
             src = "Gaia DR3" if member_ids else "spatial"
             print(f"Cluster {cname!r}: {member_count} members ({src})")

@@ -3,12 +3,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 import { MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ORBIT_SENSITIVITY, ANIM_DURATION, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD, KM_PER_PC, RS_KM_PER_MSUN, SCALE } from "./constants.ts";
 import {
   halfViewportPxUniform,
   starCameraOffsetUniform, starViewRotationUniform,
 } from "./shaderUniforms.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
+import { scheduleUrlWrite } from "./urlState.ts";
 
 export const scene = new THREE.Scene();
 export const camera = new THREE.PerspectiveCamera(
@@ -405,7 +407,14 @@ export function effectiveCamDist(starPos: THREE.Vector3): number {
 // the camera ends at a sensible viewing distance for whatever was just
 // selected. setMinOrbitOverride must be called BEFORE animateTo for
 // this to pick up the new floor.
-export function animateTo(pos: THREE.Vector3, toRadius?: number) {
+//
+// `arrivalLookAt`, if given, places the camera on the far side of `pos`
+// from `arrivalLookAt` so the camera arrives looking through `pos`
+// toward that reference point. Used for set-piece arrivals (e.g. Gaia
+// BH1 facing back toward Sol so the lensing frames the galactic
+// nebulae). When omitted, the camera arrives looking back along the
+// transit path — the historical default.
+export function animateTo(pos: THREE.Vector3, toRadius?: number, arrivalLookAt?: THREE.Vector3) {
   const targetRadius = toRadius ?? Math.max(orbitRadius, getEffectiveMinOrbit());
   // Skip no-op animations. Re-selecting the star the camera is already
   // framed on otherwise triggers 600 ms of "animating" with from == to,
@@ -425,12 +434,20 @@ export function animateTo(pos: THREE.Vector3, toRadius?: number) {
   // (typical star-to-star); each additional order adds ~120ms.
   const logRange = Math.abs(Math.log(D0) - Math.log(targetRadius));
   const duration = Math.max(ANIM_DURATION, ANIM_DURATION + (logRange - 6) * 120);
-  // Destination orientation: camera at `to + awayDir·radius` looking
-  // back at `to`. Preserves current screen-up so roll carries through.
+  // Destination orientation. Two paths:
+  //   1. arrivalLookAt given → camera arrives at `to + (to - lookAt)·r`,
+  //      looking through `to` toward `lookAt`.
+  //   2. otherwise → camera arrives looking back along the transit path
+  //      (preserves current screen-up so roll carries through).
   const fromQuat = orbitOrientation.clone();
   const toQuat = orbitOrientation.clone();
-  if (totalDist > 0) {
-    const awayDir = new THREE.Vector3().subVectors(from, to).normalize();
+  const awayDir = new THREE.Vector3();
+  if (arrivalLookAt) awayDir.subVectors(to, arrivalLookAt);
+  // Fall back to transit-path direction if no arrivalLookAt was given,
+  // OR if the lookAt coincides with the target (degenerate awayDir).
+  if (awayDir.lengthSq() === 0 && totalDist > 0) awayDir.subVectors(from, to);
+  if (awayDir.lengthSq() > 0) {
+    awayDir.normalize();
     _buildOrientationAnim(awayDir, fromQuat, toQuat);
   }
 
@@ -486,9 +503,12 @@ export function tickAnimation(now: number) {
   const t = Math.min(1, (now - animation.start) / duration);
   const ease = easeInOutQuintRest(t);
 
-  // Orbit rotation: ease in/out over the first half of the transit
-  // so the camera is fully facing the destination during approach.
-  const ROT_FRAC = 0.5;
+  // Orbit rotation eases over most of the transit (not just the first
+  // half) — the destination view "settles in" as the camera reaches
+  // its final framing, which reads more dramatically for set-piece
+  // arrivals (e.g. lensing-through-target views) without visibly
+  // changing earlier transit phases.
+  const ROT_FRAC = 0.95;
   const rotT = Math.min(1, t / ROT_FRAC);
   const rotEase = rotT * rotT * (3 - 2 * rotT); // smoothstep
   orbitOrientation.slerpQuaternions(animation.fromQuat, animation.toQuat, rotEase);
@@ -516,7 +536,14 @@ export function tickAnimation(now: number) {
   }
 
   updateCamera();
-  if (t >= 1) animation = null;
+  if (t >= 1) {
+    animation = null;
+    // Persist the new resting target/radius/orientation. Otherwise a
+    // reload after a transit lands the user back at the pre-transit
+    // URL state — including a now-too-small orbitRadius (e.g. flying
+    // out from BH1 to Sol leaves URL r at the BH1 deep-zoom value).
+    scheduleUrlWrite();
+  }
 }
 
 const ORBIT_ANIM_MS = 500;
@@ -587,7 +614,10 @@ function tickOrbitAnim(now: number) {
   orbitOrientation.slerpQuaternions(orbitAnim.fromQuat, orbitAnim.toQuat, ease);
   targetOrientation.copy(orbitOrientation);
   updateCamera();
-  if (t >= 1) orbitAnim = null;
+  if (t >= 1) {
+    orbitAnim = null;
+    scheduleUrlWrite();
+  }
 }
 
 let lastSmoothTime = 0;
@@ -867,6 +897,22 @@ const lensingPass = new ShaderPass({
 lensingPass.enabled = false;
 composer.addPass(lensingPass);
 export { lensingPass };
+
+// Pre-compile the lensing fragment shader so the GLSL compile doesn't
+// land during the first BH/NS selection (lensing activates
+// mid-transit) as a ~20ms hitch in `sceneRender`. Deferred to the
+// first idle frame so the compile cost doesn't block module init —
+// shifting the spike to the worse window (initial load).
+requestAnimationFrame(() => {
+  const quad = new FullScreenQuad(lensingPass.material);
+  const rt = new THREE.WebGLRenderTarget(1, 1);
+  const prevTarget = renderer.getRenderTarget();
+  renderer.setRenderTarget(rt);
+  quad.render(renderer);
+  renderer.setRenderTarget(prevTarget);
+  quad.dispose();
+  rt.dispose();
+});
 
 // ─── Lensing arbiter ────────────────────────────────────────────────
 //

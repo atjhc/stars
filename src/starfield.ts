@@ -337,7 +337,8 @@ function rebuildSystems() {
     const base = { name, meshes: members, anchor, centroid, avgDist, wikipedia: data.wikipedia, notes: data.notes };
 
     const group: SystemGroup = isCluster
-      ? { ...base, kind: "cluster", aliases: data.aliases } as ClusterGroup
+      ? { ...base, kind: "cluster", aliases: data.aliases,
+          arrivalRadiusLy: data.arrivalRadiusLy, minOrbitRadiusLy: data.minOrbitRadiusLy } as ClusterGroup
       : { ...base, kind: "binary", collapsedMembers: [],
           screens: members.map(() => ({ x: 0, y: 0 })),
           parents: new Array(members.length) } as BinarySystem;
