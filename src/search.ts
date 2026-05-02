@@ -4,6 +4,7 @@ import { filterSearch, getSearchKindLabel } from "./searchFilter.ts";
 import { isDustVisible } from "./dust.ts";
 import { isFavorite } from "./favorites.ts";
 import { addRecent, getRecents } from "./recents.ts";
+import { registerPanel, setOpenPanel, closePanel } from "./panelManager.ts";
 
 const searchEl = document.getElementById("search")!;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -13,7 +14,7 @@ const tabButtons = searchEl.querySelectorAll<HTMLButtonElement>(".search-tab");
 
 type Category = "all" | "favorites" | "recent";
 
-let searchOpen = false;
+const isSearchOpen = () => searchEl.classList.contains("active");
 // -1 means "nothing highlighted yet" — stays that way until the user
 // presses an arrow key. Typing a query doesn't implicitly pre-select
 // the first row; the user has to confirm with ArrowDown (or ArrowUp,
@@ -32,19 +33,20 @@ function setActiveTab(tab: Category) {
   searchInput.focus();
 }
 
+registerPanel("search", () => {
+  searchEl.classList.remove("active");
+  searchInput.blur();
+});
+
 function openSearch() {
-  searchOpen = true;
   searchEl.classList.add("active");
-  searchBtn.classList.add("hidden");
   searchInput.value = "";
   setActiveTab(activeTab);
+  setOpenPanel("search");
 }
 
 function closeSearch() {
-  searchOpen = false;
-  searchEl.classList.remove("active");
-  searchBtn.classList.remove("hidden");
-  searchInput.blur();
+  closePanel("search");
 }
 
 function updateSearchResults(query: string) {
@@ -172,7 +174,7 @@ export function setupSearch(onSelect: (entry: SearchEntry) => void, onPreview?: 
   });
 
   searchInput.addEventListener("blur", () => {
-    setTimeout(() => { if (searchOpen) closeSearch(); }, 150);
+    setTimeout(() => { if (isSearchOpen()) closeSearch(); }, 150);
   });
 
   searchInput.addEventListener("input", () => {
@@ -181,7 +183,7 @@ export function setupSearch(onSelect: (entry: SearchEntry) => void, onPreview?: 
   });
 
   window.addEventListener("keydown", (e) => {
-    if (searchOpen) {
+    if (isSearchOpen()) {
     } else if (e.target instanceof HTMLInputElement) {
       return;
     } else if (e.key === "/") {
@@ -226,9 +228,9 @@ export function setupSearch(onSelect: (entry: SearchEntry) => void, onPreview?: 
     }
   });
 
-  return { isSearchOpen: () => searchOpen };
+  return { isSearchOpen };
 }
 
 export function refreshSearch() {
-  if (searchOpen) { updateSearchResults(searchInput.value); renderSearchResults(); }
+  if (isSearchOpen()) { updateSearchResults(searchInput.value); renderSearchResults(); }
 }

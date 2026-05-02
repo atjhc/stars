@@ -18,56 +18,41 @@
   .system-member-list { margin-top: 6px; }
   .system-member-row { color: #bbb; font-size: 11px; padding: 1px 0; }
   .member-spect { color: #777; font-size: 10px; }
-  #info {
-    position: absolute; top: 16px; left: 16px;
-    padding: 12px 16px;
-    font-size: 13px; line-height: 1.6; pointer-events: auto;
-    z-index: 20;
-    background: rgba(0,0,0,0.78); border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px;
-    transition: border-color 0.15s;
-    cursor: pointer;
-    min-width: 220px;
+  .circle-btn {
+    width: 40px; height: 40px; padding: 0;
+    border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
   }
-  #info:hover { border-color: rgba(255,255,255,0.4); }
-  #info .info-icon {
-    display: none;
-    align-items: center; justify-content: center;
-    width: 24px; height: 24px;
-    font: 600 24px/1 Georgia, 'Times New Roman', serif;
+  #detail-btn {
+    position: absolute; bottom: 16px; left: 16px; z-index: 20;
+    background: #000; border: 1px solid rgba(255,255,255,0.2);
     color: #ccc;
-    padding: 18px 20px;
+    font: 600 22px/1 Georgia, 'Times New Roman', serif;
+    display: none;
+    transition: border-color 0.15s, color 0.15s;
   }
-  #info.collapsed { padding: 0; min-width: 0; }
-  #info.collapsed .info-body { display: none; }
-  #info.collapsed .info-icon { display: inline-flex; }
-  #detail:hover { border-color: rgba(255,255,255,0.4); }
-  #detail { transition: border-color 0.15s; }
-  #info h1 { font-size: 16px; margin-bottom: 4px; font-weight: 600; }
-  #info .hint { color: #888; font-size: 11px; }
-  @media (hover: none) and (pointer: coarse) {
-    #info { top: 8px; left: 8px; padding: 6px 8px; }
-    #info h1 { font-size: 14px; margin-bottom: 0; }
-    #info .hint { display: none; }
-    #detail { bottom: 8px; left: 8px; padding: 8px 12px; }
-  }
+  #detail-btn:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+  #detail-btn.visible { display: flex; }
   #detail {
-    position: absolute; bottom: 16px; left: 16px; display: none;
+    position: absolute; bottom: 16px; left: 64px; display: none;
     background: #000; padding: 12px 16px; border-radius: 8px;
     font-size: 12px; line-height: 1.5;
     border: 1px solid rgba(255,255,255,0.15); z-index: 20;
     max-width: 320px; max-height: 60vh; overflow-y: auto; user-select: text;
+    transition: border-color 0.15s;
   }
-  #detail.active { display: block; }
+  #detail:hover { border-color: rgba(255,255,255,0.4); }
+  #detail.open { display: block; }
   #detail .favorite-toggle {
     position: absolute; top: 12px; right: 16px;
     cursor: pointer; color: #fc6; font-size: 16px; line-height: 1;
   }
   #detail .favorite-toggle:hover { text-shadow: 0 0 6px rgba(255,204,102,0.6); }
   #detail .star-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
-  #detail { cursor: pointer; }
-  #detail.collapsed .detail-body { display: none; }
-  #detail.collapsed .favorite-toggle { display: none; }
+  @media (hover: none) and (pointer: coarse) {
+    #detail-btn { bottom: 8px; left: 8px; }
+    #detail { bottom: 8px; left: 54px; padding: 8px 12px; }
+  }
   #detail .star-aliases { color: #777; font-size: 10px; margin-bottom: 4px; }
   #detail .star-detail { color: #aaa; font-size: 11px; }
   #detail .star-notes { color: #999; font-size: 11px; margin-top: 6px; }
@@ -78,17 +63,35 @@
   #detail .constellation-star-link { color: #7799cc; cursor: pointer; }
   #detail .constellation-star-link:hover { color: #aaccff; text-decoration: underline; }
   #search-btn {
-    position: absolute; top: 16px; right: 16px;
+    position: absolute; top: 64px; right: 16px; z-index: 20;
     background: #000; border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px; color: #888; font-size: 22px;
-    width: 36px; height: 36px; cursor: pointer; z-index: 20;
-    display: flex; align-items: center; justify-content: center;
-    transition: border-color 0.15s;
+    color: #888; font-size: 22px;
+    transition: border-color 0.15s, color 0.15s;
   }
   #search-btn:hover { border-color: rgba(255,255,255,0.4); color: #ccc; }
-  #search-btn.hidden { display: none; }
+  #layers-control {
+    position: absolute; top: 16px; right: 16px; z-index: 20;
+    display: flex; flex-direction: row; align-items: center; gap: 8px;
+  }
+  #layers-control button {
+    background: #000; border: 1px solid rgba(255,255,255,0.2); color: #888;
+    transition: opacity 0.18s ease, transform 0.18s ease,
+                color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  #layers-control button:hover { color: #ccc; border-color: rgba(255,255,255,0.4); }
+  #layers-control .layer-toggle.active {
+    color: #6699dd; border-color: #3c5a8c;
+    background: #0f1932;
+  }
+  #layers-control .layer-toggle.active:hover {
+    color: #88aadd; border-color: #5078b4;
+  }
+  #layers-control.collapsed .layer-toggle {
+    opacity: 0; pointer-events: none;
+    transform: translateX(12px) scale(0.85);
+  }
   #search {
-    position: absolute; top: 16px; right: 16px;
+    position: absolute; top: 64px; right: 64px;
     display: none; flex-direction: column;
     background: #000; border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.2); z-index: 20;
@@ -126,60 +129,49 @@
   }
   #search-results li:hover { background: rgba(255,255,255,0.08); }
   .search-secondary { color: #777; font-size: 11px; margin-left: 6px; }
-  #debug-panel {
+  #debug-btn {
     position: fixed; bottom: 12px; right: 12px; z-index: 100;
+    background: rgba(0,0,0,0.78); border: 1px solid rgba(120,160,220,0.35);
+    color: #6aaeff;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #debug-btn:hover { border-color: rgba(180,210,255,0.7); }
+  #debug-panel {
+    position: fixed; bottom: 12px; right: 60px; z-index: 100;
     background: rgba(0,0,0,0.78); border: 1px solid rgba(120,160,220,0.35);
     border-radius: 8px;
     color: #cde; font: 11px/1.5 monospace;
     min-width: 220px;
+    display: none;
     transition: border-color 0.15s;
     -webkit-user-select: text; user-select: text;
   }
+  #debug-panel.open { display: block; }
   #debug-panel * { -webkit-user-select: text; user-select: text; }
   #debug-panel:hover { border-color: rgba(180,210,255,0.7); }
   #debug-panel .debug-body {
     padding: 10px 14px;
-  }
-  #debug-panel .debug-bug {
-    display: none;
-    align-items: center; justify-content: center;
-    padding: 8px;
-    color: #6aaeff;
-    cursor: pointer;
   }
   #debug-panel .debug-copy {
     display: inline-block; margin-left: 6px;
     cursor: pointer; opacity: 0.5; vertical-align: middle;
   }
   #debug-panel .debug-copy:hover { opacity: 1; }
-  #debug-panel.collapsed { min-width: 0; }
-  #debug-panel.collapsed .debug-body { display: none; }
-  #debug-panel.collapsed .debug-bug { display: inline-flex; }
 </style>
 </head>
 <body>
 <div id="viewport">
-<div id="info" class="collapsed">
-  <div class="info-icon">i</div>
-  <div class="info-body">
-    <h1>Stellar Neighborhood</h1>
-    <div>1.86 million stars within ~3,260 light-years of Sol</div>
-    <div class="hint">
-      Drag to rotate<br>
-      ⌥+move to orbit<br>
-      / search<br>
-      F favorite<br>
-      L labels<br>
-      O orbit<br>
-      G grid<br>
-      C constellations<br>
-      N nebulae<br>
-      R orbit lines
-    </div>
-  </div>
-</div>
+<button id="detail-btn" class="circle-btn" aria-label="Selection details">i</button>
 <div id="detail"></div>
-<button id="search-btn" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="15" y1="15" x2="21" y2="21"/></svg></button>
+<button id="search-btn" class="circle-btn" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="15" y1="15" x2="21" y2="21"/></svg></button>
+<div id="layers-control" class="collapsed">
+  <button class="layer-toggle circle-btn" data-layer="orbits" aria-label="Orbits"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></button>
+  <button class="layer-toggle circle-btn" data-layer="nebulae" aria-label="Nebulae"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 15.9"/></svg></button>
+  <button class="layer-toggle circle-btn" data-layer="constellations" aria-label="Constellations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8,4 L17,7 L15,11 L20,20 M8,4 L9,15 L6,21 M9,15 L12,13 L15,11"/></svg></button>
+  <button class="layer-toggle circle-btn" data-layer="grid" aria-label="Grid"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+  <button class="layer-toggle circle-btn" data-layer="labels" aria-label="Labels"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2 C7.58 2 4 5.58 4 10 C4 15.5 12 22 12 22 C12 22 20 15.5 20 10 C20 5.58 16.42 2 12 2 Z"/><circle cx="12" cy="9.5" r="2.2" fill="currentColor" stroke="none"/></svg></button>
+  <button id="layers-btn" class="circle-btn" aria-label="Layers"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><polygon points="12 2 22 8.5 12 15 2 8.5"/><polyline points="2 15.5 12 22 22 15.5"/></svg></button>
+</div>
 <div id="search">
   <div id="search-tabs">
     <button class="search-tab active" data-tab="all">All</button>
@@ -189,13 +181,6 @@
   <input id="search-input" type="text" placeholder="Search stars..." autocomplete="off" spellcheck="false" autocorrect="off" />
   <ul id="search-results"></ul>
 </div>
-<script>
-  try {
-    var p = JSON.parse(localStorage.getItem("drake-panels") || "{}");
-    if (p.info) document.getElementById("info").classList.add("collapsed");
-    else document.getElementById("info").classList.remove("collapsed");
-  } catch(e) {}
-</script>
 <script type="module" src="./src/main.ts"></script>
 </div>
 </body>

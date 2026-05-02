@@ -40,6 +40,7 @@ import { initNebulaeLabels } from "./nebulaeLabels.ts";
 import { initBlackHoleLabels } from "./blackholes.ts";
 import { initNeutronStarLabels, renderNeutronStars } from "./neutronstars.ts";
 import { initPlanetLabels, pickPlanetAt, toggleOrbits, setOrbitsVisible, getOrbitsVisible } from "./planets.ts";
+import { setupLayersControl } from "./layersControl.ts";
 import {
   setAllLabelsVisible, updateAllLabels, clearAllSelections, selectByType,
   registerScreenOccluder, clearFrameOccluders, onSelectionChanged, clearHoverExcept, getHandlerSelectedName,
@@ -76,12 +77,6 @@ document.addEventListener("touchmove", (e) => {
     e.preventDefault();
   }
 }, { passive: false });
-
-import { makeCollapsible } from "./collapse.ts";
-{
-  const info = document.getElementById("info");
-  if (info) makeCollapsible(info, "info");
-}
 
 let labelsVisible = true;
 
@@ -552,6 +547,14 @@ onDetailStarClick((name) => {
   }
 }
 doUpdateLabelVisibility();
+
+setupLayersControl([
+  { id: "labels", isOn: () => labelsVisible, toggle: () => { labelsVisible = !labelsVisible; doUpdateLabelVisibility(); } },
+  { id: "grid", isOn: () => gridMesh.visible, toggle: () => { gridMesh.visible = !gridMesh.visible; } },
+  { id: "constellations", isOn: constellationsVisible, toggle: toggleConstellations },
+  { id: "nebulae", isOn: isDustVisible, toggle: () => { toggleDust(); doUpdateLabelVisibility(); } },
+  { id: "orbits", isOn: getOrbitsVisible, toggle: toggleOrbits },
+], scheduleUrlWrite);
 
 // Restore focus + orbit from URL query params (?focus=, ?r=, ?phi=, ?theta=).
 // Also supports legacy ?name= param.

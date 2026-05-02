@@ -9,7 +9,7 @@ import { camera, target, orbitRadius, getOrbitPhi, getOrbitTheta, bloomPass } fr
 import { BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD } from "./constants.ts";
 import { DEFAULT_MAG_LIMIT, setMagLimit, getLoadedTileCount, getMaxLoadedTiles } from "./starfield.ts";
 import { getCanvasLabelCount } from "./labelCanvas.ts";
-import { makeCollapsible } from "./collapse.ts";
+import { registerPanel, setOpenPanel, closePanel } from "./panelManager.ts";
 import { getSelectedSystem, getSelectedMesh } from "./systemStore.ts";
 import type { Star } from "./types.ts";
 import { setStatsPhaseImpl } from "./statsPhase.ts";
@@ -263,11 +263,9 @@ function createStatsKit(): StatsKit {
   statusEl.textContent = "▶ sample";
   container.appendChild(statusEl);
 
-  // Eat mouse events so clicking the stats panel doesn't also toggle
-  // the enclosing debug panel via makeCollapsible's mouseup handler.
-  container.addEventListener("mousedown", (e) => e.stopPropagation());
   // Click on the graph cycles panels; click on the status line toggles
-  // sampling. Both stop propagation to the outer collapsible.
+  // sampling.
+  container.addEventListener("mousedown", (e) => e.stopPropagation());
   statusEl.addEventListener("mousedown", (e) => e.stopPropagation());
   statusEl.addEventListener("mouseup", (e) => {
     e.stopPropagation();
@@ -514,10 +512,10 @@ export function refreshDebugPanel() {
 
 export function initDebug() {
   if (!debugEnabled) return;
+  if (panel) return;
 
   panel = document.createElement("div");
   panel.id = "debug-panel";
-  panel.classList.add("collapsed");
 
   bodyEl = document.createElement("div");
   bodyEl.className = "debug-body";
@@ -555,22 +553,26 @@ export function initDebug() {
   bodyEl.appendChild(headerRow);
   bodyEl.appendChild(cameraEl);
 
-  const bugIcon = document.createElement("div");
-  bugIcon.className = "debug-bug";
-  bugIcon.innerHTML = BUG_SVG;
-
   panel.appendChild(bodyEl);
-  panel.appendChild(bugIcon);
   document.body.appendChild(panel);
 
-  // FPS / MS / MB graphs — custom, full-width, crisp at any panel size.
-  // Click cycles which panel is showing; its own handlers stopPropagation
-  // so the debug panel's collapse click doesn't also fire.
+  const bugBtn = document.createElement("button");
+  bugBtn.id = "debug-btn";
+  bugBtn.className = "circle-btn";
+  bugBtn.setAttribute("aria-label", "Debug panel");
+  bugBtn.innerHTML = BUG_SVG;
+  document.body.appendChild(bugBtn);
+
+  bugBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (panel!.classList.contains("open")) closePanel("debug");
+    else { panel!.classList.add("open"); setOpenPanel("debug"); }
+  });
+  registerPanel("debug", () => panel!.classList.remove("open"));
+
   statsKit = createStatsKit();
   setStatsPhaseImpl((name, fn) => statsKit!.phase(name, fn));
   bodyEl.appendChild(statsKit.container);
-
-  makeCollapsible(panel, "debug");
 
   renderStatic();
   renderCamera();

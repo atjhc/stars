@@ -3,16 +3,23 @@ import { getSelectedMesh, getSelectedSystem, setLabelsDirty } from "./systemStor
 import { systemDetailHtml } from "./systemDispatch.ts";
 import { getActiveDetailHtml } from "./labelRegistry.ts";
 import { isFavorite, toggleFavorite } from "./favorites.ts";
-import { loadJSON, saveJSON } from "./storage.ts";
+import { registerPanel, setOpenPanel, closePanel } from "./panelManager.ts";
 
 const detail = document.getElementById("detail")!;
+const detailBtn = document.getElementById("detail-btn")!;
 
-// Callback for when a star name is clicked inside the detail panel
-// (e.g. constellation member stars). Set by main.ts to avoid circular deps.
 let starClickCallback: ((name: string) => void) | null = null;
 export function onDetailStarClick(cb: (name: string) => void): void {
   starClickCallback = cb;
 }
+
+registerPanel("detail", () => detail.classList.remove("open"));
+
+detailBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (detail.classList.contains("open")) closePanel("detail");
+  else { detail.classList.add("open"); setOpenPanel("detail"); }
+});
 
 detail.addEventListener("click", (e) => {
   const bmBtn = (e.target as HTMLElement).closest(".favorite-toggle");
@@ -33,10 +40,6 @@ detail.addEventListener("click", (e) => {
     if (name && starClickCallback) starClickCallback(name);
     return;
   }
-  if ((e.target as HTMLElement).closest("a")) return;
-  if (window.getSelection()?.toString()) return;
-  detail.classList.toggle("collapsed");
-  saveJSON("panels", { ...loadJSON<Record<string, boolean>>("panels", {}), detail: detail.classList.contains("collapsed") });
 });
 
 import { LY_PER_PARSEC } from "./constants.ts";
@@ -58,41 +61,45 @@ export function favoriteIcon(name: string): string {
   return `<span class="favorite-toggle" data-name="${name.replace(/"/g, "&quot;")}">${icon}</span>`;
 }
 
-function applyDetailCollapsed() {
-  const saved = loadJSON<Record<string, boolean>>("panels", {});
-  if (saved.detail) detail.classList.add("collapsed");
-  else detail.classList.remove("collapsed");
+// Memoize the rendered html so a re-fired selection event (or a
+// favorite toggle inside the panel) doesn't re-write innerHTML and
+// trash the user's text selection.
+let lastHtml: string | null = null;
+
+function showDetail(html: string) {
+  if (lastHtml !== html) {
+    lastHtml = html;
+    detail.innerHTML = html;
+  }
+  detailBtn.classList.add("visible");
+  if (!detail.classList.contains("open")) {
+    detail.classList.add("open");
+    setOpenPanel("detail");
+  }
+}
+
+function hideDetail() {
+  lastHtml = null;
+  detailBtn.classList.remove("visible");
+  closePanel("detail");
 }
 
 export function updateDetailPanel() {
   const registryHtml = getActiveDetailHtml();
-  if (registryHtml) {
-    detail.innerHTML = registryHtml;
-    applyDetailCollapsed();
-    detail.classList.add("active");
-    return;
-  }
+  if (registryHtml) { showDetail(registryHtml); return; }
 
   const selectedSystem = getSelectedSystem();
-  if (selectedSystem) {
-    detail.innerHTML = systemDetailHtml(selectedSystem);
-    applyDetailCollapsed();
-    detail.classList.add("active");
-    return;
-  }
+  if (selectedSystem) { showDetail(systemDetailHtml(selectedSystem)); return; }
 
   const selectedMesh = getSelectedMesh();
-  if (!selectedMesh) {
-    detail.classList.remove("active");
-    return;
-  }
-  const star = selectedMesh.userData as Star;
+  if (!selectedMesh) { hideDetail(); return; }
 
+  const star = selectedMesh.userData as Star;
   const aliasLine = star.aliases?.length
     ? `<div class="star-aliases">${star.aliases.join(" · ")}</div>`
     : "";
 
-  detail.innerHTML = `
+  showDetail(`
     ${favoriteIcon(star.name)}
     <div class="star-name">${star.name}</div>
     ${aliasLine}
@@ -106,7 +113,5 @@ export function updateDetailPanel() {
       ${renderNotes(star.notes)}
       ${renderWikiLink(star.wikipedia)}
     </div>
-  `;
-  applyDetailCollapsed();
-  detail.classList.add("active");
+  `);
 }
