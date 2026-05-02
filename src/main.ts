@@ -562,7 +562,12 @@ doUpdateLabelVisibility();
       if (sys) setTargetImmediate(focusTarget(sys, camera.position));
       scheduleUrlWrite();
     } else {
-      const entry = getSearchIndex().find((e) => e.n === focusName || e.sy === focusName);
+      // Name-exact match wins over a system-membership match — otherwise
+      // ?focus=Gaia%20BH1 (the black hole) resolves to "Gaia BH1 A"
+      // (its companion star, whose `sy` is "Gaia BH1") whenever the
+      // companion's index entry comes first in names.json.
+      const entry = getSearchIndex().find((e) => e.n === focusName)
+        ?? getSearchIndex().find((e) => e.sy === focusName);
       if (entry) {
         const focusReady = handleSearchSelect(entry);
         // setTargetImmediate cancels the animateTo that handleSearchSelect
