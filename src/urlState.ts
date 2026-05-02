@@ -3,7 +3,7 @@
 // updates, reading the live scene) lives in initUrlState().
 
 export interface UrlState {
-  orbit?: { radius: number; phi: number; theta: number };
+  orbit?: { radius: number; phi: number; theta: number; roll?: number };
   focus?: string;
   toggles?: { labels?: boolean; grid?: boolean; constellations?: boolean; nebulae?: boolean; orbits?: boolean };
   mag?: number;
@@ -39,6 +39,10 @@ export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLS
     q.set("r", fmt(state.orbit.radius));
     q.set("phi", fmt(state.orbit.phi));
     q.set("theta", fmt(state.orbit.theta));
+    q.delete("roll");
+    if (state.orbit.roll !== undefined && Math.abs(state.orbit.roll) > 1e-6) {
+      q.set("roll", fmt(state.orbit.roll));
+    }
   }
   if (state.focus !== undefined) q.set("focus", state.focus);
   else q.delete("focus");
@@ -72,7 +76,13 @@ export function parseUrlState(search: string): UrlState {
   if (raw.every((v) => v !== null)) {
     const nums = raw.map((v) => parseFloat(v!));
     if (nums.every((n) => Number.isFinite(n))) {
-      result.orbit = { radius: nums[0], phi: nums[1], theta: nums[2] };
+      const orbit: UrlState["orbit"] = { radius: nums[0], phi: nums[1], theta: nums[2] };
+      const rollRaw = q.get("roll");
+      if (rollRaw !== null) {
+        const r = parseFloat(rollRaw);
+        if (Number.isFinite(r)) orbit.roll = r;
+      }
+      result.orbit = orbit;
     }
   }
 

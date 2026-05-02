@@ -5,7 +5,7 @@
 // listen via `onDebugChange(fn)`; scalar tuning is applied directly
 // from the binding table below.
 
-import { camera, target, orbitRadius, orbitPhi, orbitTheta, bloomPass } from "./scene.ts";
+import { camera, target, orbitRadius, getOrbitPhi, getOrbitTheta, bloomPass } from "./scene.ts";
 import { BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD } from "./constants.ts";
 import { DEFAULT_MAG_LIMIT, setMagLimit, getLoadedTileCount, getMaxLoadedTiles } from "./starfield.ts";
 import { getCanvasLabelCount } from "./labelCanvas.ts";
@@ -417,7 +417,7 @@ function renderStatic() {
 
 function cameraStateText() {
   const cp = camera.position;
-  return `cam ${fmt(cp.x)} ${fmt(cp.y)} ${fmt(cp.z)}\ntgt ${fmt(target.x)} ${fmt(target.y)} ${fmt(target.z)}\norb r=${fmt(orbitRadius)} φ=${fmt(orbitPhi)} θ=${fmt(orbitTheta)}`;
+  return `cam ${fmt(cp.x)} ${fmt(cp.y)} ${fmt(cp.z)}\ntgt ${fmt(target.x)} ${fmt(target.y)} ${fmt(target.z)}\norb r=${fmt(orbitRadius)} φ=${fmt(getOrbitPhi())} θ=${fmt(getOrbitTheta())}`;
 }
 
 function cameraStateUrl() {
@@ -426,8 +426,8 @@ function cameraStateUrl() {
   const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name;
   if (name) params.set("name", name);
   params.set("r", fmt(orbitRadius));
-  params.set("phi", fmt(orbitPhi));
-  params.set("theta", fmt(orbitTheta));
+  params.set("phi", fmt(getOrbitPhi()));
+  params.set("theta", fmt(getOrbitTheta()));
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
 
@@ -437,7 +437,7 @@ function renderCamera() {
   const cp = camera.position;
   const ct = `cam  ${fmt(cp.x)}  ${fmt(cp.y)}  ${fmt(cp.z)}`;
   const tt = `tgt  ${fmt(target.x)}  ${fmt(target.y)}  ${fmt(target.z)}`;
-  const ot = `orb  r=${fmt(orbitRadius)} φ=${fmt(orbitPhi)} θ=${fmt(orbitTheta)}`;
+  const ot = `orb  r=${fmt(orbitRadius)} φ=${fmt(getOrbitPhi())} θ=${fmt(getOrbitTheta())}`;
   if (ct !== lastCamText) { camLine.textContent = ct; lastCamText = ct; }
   if (tt !== lastTgtText) { tgtLine.textContent = tt; lastTgtText = tt; }
   if (ot !== lastOrbText) { orbLine.textContent = ot; lastOrbText = ot; }

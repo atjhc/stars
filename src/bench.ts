@@ -6,7 +6,7 @@
 
 import {
   updateCamera, setOrbitRadius, setOrbitPhi, setOrbitTheta,
-  orbitRadius, orbitPhi, orbitTheta,
+  orbitRadius, getOrbitPhi, getOrbitTheta,
 } from "./scene.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { statsToggleSampling, getLastSampleSummary } from "./debug.ts";
@@ -39,8 +39,8 @@ declare global {
 export function runBench(): void {
   setTimeout(() => {
     const start = performance.now();
-    const baseTheta = orbitTheta;
-    const basePhi = orbitPhi;
+    const baseTheta = getOrbitTheta();
+    const basePhi = getOrbitPhi();
     const baseRadius = orbitRadius;
 
     statsToggleSampling();

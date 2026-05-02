@@ -182,47 +182,137 @@ function updateGrid() {
   gridShaderMat.uniforms.uSide.value = side;
 }
 
-// Normalize an angle delta into [-π, π] for shortest-path interpolation.
-function shortestAngleTo(from: number, to: number): number {
-  let d = to - from;
-  d -= Math.round(d / (2 * Math.PI)) * 2 * Math.PI;
-  return from + d;
-}
 camera.up.copy(galUp);
 
 export const target = new THREE.Vector3(0, 0, 0);
 export let orbitRadius = MIN_ORBIT_RADIUS;
-export let orbitPhi = 1.24;
-export let orbitTheta = 0.485;
 
-// Drag updates target angles; per-frame tickOrbitSmoothing eases the
-// rendered angles toward target with tau=ORBIT_SMOOTH_TAU_MS. This
-// decouples input rate from frame rate, so multiple coalesced
-// mousemoves no longer cause visible jumps when they collapse into a
-// single rendered frame. All non-drag paths (animations, auto-orbit,
-// URL restore) keep target == current so smoothing only kicks in for
-// drag input.
-let targetTheta = orbitTheta;
-let targetPhi = orbitPhi;
+// Camera position = target + orientation·(0,0,1)·orbitRadius;
+// orientation·(0,1,0) is screen-up. Drag inputs post-multiply
+// local-frame rotations, so "drag right" rotates around screen-
+// vertical regardless of current pose — no gimbal lock, no pole clamp.
+export const orbitOrientation = new THREE.Quaternion();
+const targetOrientation = new THREE.Quaternion();
+
+// Phi/theta/roll are decomposed lazily for URL serialization and the
+// debug panel. Singular at the poles; harmless because URL writes
+// only happen at rest and consumer reads are display-only.
+let _orbitPhi = 1.24;
+let _orbitTheta = 0.485;
+let _orbitRoll = 0;
+let _decomposedDirty = false;
+function _ensureDecomposed(): void {
+  if (!_decomposedDirty) return;
+  _decomposeOrientation(orbitOrientation);
+  _decomposedDirty = false;
+}
+export function getOrbitPhi(): number { _ensureDecomposed(); return _orbitPhi; }
+export function getOrbitTheta(): number { _ensureDecomposed(); return _orbitTheta; }
+export function getOrbitRoll(): number { _ensureDecomposed(); return _orbitRoll; }
+
 const ORBIT_SMOOTH_TAU_MS = 40;
-const ORBIT_SMOOTH_EPS = 1e-5;
+// Quaternion slerp is "close enough" when q dot target_q > 1 - eps.
+// Equivalent to half-angle < ~sqrt(2 eps) rad ≈ 0.0014 rad ≈ 0.08°.
+const ORBIT_SMOOTH_EPS = 1e-6;
+
+const _LOCAL_X = new THREE.Vector3(1, 0, 0);
+const _LOCAL_Y = new THREE.Vector3(0, 1, 0);
+const _LOCAL_Z = new THREE.Vector3(0, 0, 1);
+
+// Scratch objects used across compose/decompose/update paths. Reused
+// each frame to avoid GC pressure in the orbit-smoothing tick.
+const _scratchQuat = new THREE.Quaternion();
+const _scratchVecZ = new THREE.Vector3();
+const _scratchVecX = new THREE.Vector3();
+const _scratchVecY = new THREE.Vector3();
+const _scratchMat4 = new THREE.Matrix4();
+const _decompZ = new THREE.Vector3();
+const _decompNoRoll = new THREE.Quaternion();
+const _decompResidual = new THREE.Quaternion();
+
+// Build orientation from legacy spherical (phi from galUp, theta around
+// galUp, roll around look axis). Used by URL state restore and
+// setOrbitPhi/Theta/Roll setters for backward-compat callers.
+function _orientationFromPhiThetaRoll(
+  phi: number, theta: number, roll: number, out: THREE.Quaternion,
+): void {
+  const sinPhi = Math.sin(phi);
+  const cosPhi = Math.cos(phi);
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+  // Local +Z direction in world (from target to camera).
+  _scratchVecZ.set(0, 0, 0)
+    .addScaledVector(galX, sinPhi * cosTheta)
+    .addScaledVector(galZ, sinPhi * sinTheta)
+    .addScaledVector(galUp, cosPhi);
+  // Standard right axis (galUp × Z), then up = Z × right.
+  _scratchVecX.crossVectors(galUp, _scratchVecZ).normalize();
+  _scratchVecY.crossVectors(_scratchVecZ, _scratchVecX);
+  if (roll !== 0) {
+    const cosR = Math.cos(roll);
+    const sinR = Math.sin(roll);
+    const xx = _scratchVecX.x, xy = _scratchVecX.y, xz = _scratchVecX.z;
+    const yx = _scratchVecY.x, yy = _scratchVecY.y, yz = _scratchVecY.z;
+    _scratchVecX.set(cosR * xx + sinR * yx, cosR * xy + sinR * yy, cosR * xz + sinR * yz);
+    _scratchVecY.set(-sinR * xx + cosR * yx, -sinR * xy + cosR * yy, -sinR * xz + cosR * yz);
+  }
+  _scratchMat4.makeBasis(_scratchVecX, _scratchVecY, _scratchVecZ);
+  out.setFromRotationMatrix(_scratchMat4);
+}
+
+function _decomposeOrientation(q: THREE.Quaternion): void {
+  _decompZ.copy(_LOCAL_Z).applyQuaternion(q);
+  _orbitPhi = Math.acos(THREE.MathUtils.clamp(_decompZ.dot(galUp), -1, 1));
+  _orbitTheta = Math.atan2(_decompZ.dot(galZ), _decompZ.dot(galX));
+  _orientationFromPhiThetaRoll(_orbitPhi, _orbitTheta, 0, _decompNoRoll);
+  _decompResidual.copy(_decompNoRoll).invert().multiply(q);
+  // Residual is a pure rotation around local Z; its (x, y) components
+  // should be ~0 and the angle is 2·atan2(z, w).
+  _orbitRoll = 2 * Math.atan2(_decompResidual.z, _decompResidual.w);
+}
+
+_orientationFromPhiThetaRoll(_orbitPhi, _orbitTheta, _orbitRoll, orbitOrientation);
+targetOrientation.copy(orbitOrientation);
 
 export function setOrbitRadius(r: number) { orbitRadius = r; }
-export function setOrbitPhi(p: number) { orbitPhi = p; targetPhi = p; }
-export function setOrbitTheta(t: number) { orbitTheta = t; targetTheta = t; }
+export function setOrbitOrientation(q: THREE.Quaternion) {
+  orbitOrientation.copy(q);
+  targetOrientation.copy(q);
+  _decomposedDirty = true;
+}
+// Legacy helpers — replace one Euler component while keeping the
+// other two from the current orientation.
+export function setOrbitPhi(p: number) {
+  _ensureDecomposed();
+  _orientationFromPhiThetaRoll(p, _orbitTheta, _orbitRoll, _scratchQuat);
+  setOrbitOrientation(_scratchQuat);
+}
+export function setOrbitTheta(t: number) {
+  _ensureDecomposed();
+  _orientationFromPhiThetaRoll(_orbitPhi, t, _orbitRoll, _scratchQuat);
+  setOrbitOrientation(_scratchQuat);
+}
+export function setOrbitRoll(r: number) {
+  _ensureDecomposed();
+  _orientationFromPhiThetaRoll(_orbitPhi, _orbitTheta, r, _scratchQuat);
+  setOrbitOrientation(_scratchQuat);
+}
 
 export function updateCamera() {
-  const sinPhi = Math.sin(orbitPhi);
-  const cosPhi = Math.cos(orbitPhi);
-  const sinTheta = Math.sin(orbitTheta);
-  const cosTheta = Math.cos(orbitTheta);
+  // Derive the world-space camera basis from the orientation
+  // quaternion. local +Z = away-from-target direction; local +Y =
+  // screen-up; local +X = screen-right.
+  _scratchVecZ.copy(_LOCAL_Z).applyQuaternion(orbitOrientation);
+  _scratchVecY.copy(_LOCAL_Y).applyQuaternion(orbitOrientation);
+  _scratchVecX.copy(_LOCAL_X).applyQuaternion(orbitOrientation);
 
-  camera.position
-    .copy(target)
-    .addScaledVector(galX, orbitRadius * sinPhi * cosTheta)
-    .addScaledVector(galZ, orbitRadius * sinPhi * sinTheta)
-    .addScaledVector(galUp, orbitRadius * cosPhi);
-  camera.lookAt(target);
+  camera.position.copy(target).addScaledVector(_scratchVecZ, orbitRadius);
+  // Direct quaternion assignment — skips the lookAt(target) basis
+  // rebuild, which would just re-derive the same matrix we already
+  // have in `orbitOrientation`. camera.up stays in sync for any
+  // third-party code that reads it.
+  camera.quaternion.copy(orbitOrientation);
+  camera.up.copy(_scratchVecY);
   // Near plane scales with orbit radius (capped so it never crowds
   // the camera at typical zooms, floored only to keep `near > 0` as
   // Three.js requires). The 0.1× factor keeps near well inside the
@@ -232,36 +322,26 @@ export function updateCamera() {
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
 
-  // Float64 view rotation from orbit angles: z = orbit unit vector,
-  // x = normalize(galUp × z), y = z × x. Rows are the view basis axes.
-  const zx = galX.x * sinPhi * cosTheta + galZ.x * sinPhi * sinTheta + galUp.x * cosPhi;
-  const zy = galX.y * sinPhi * cosTheta + galZ.y * sinPhi * sinTheta + galUp.y * cosPhi;
-  const zz = galX.z * sinPhi * cosTheta + galZ.z * sinPhi * sinTheta + galUp.z * cosPhi;
-  const xRawX = galUp.y * zz - galUp.z * zy;
-  const xRawY = galUp.z * zx - galUp.x * zz;
-  const xRawZ = galUp.x * zy - galUp.y * zx;
-  const invXLen = 1 / Math.sqrt(xRawX * xRawX + xRawY * xRawY + xRawZ * xRawZ);
-  const xx = xRawX * invXLen;
-  const xy = xRawY * invXLen;
-  const xz = xRawZ * invXLen;
-  const yx = zy * xz - zz * xy;
-  const yy = zz * xx - zx * xz;
-  const yz = zx * xy - zy * xx;
+  // Float64 view-rotation matrix — same basis we just assigned to
+  // camera.quaternion, but stored at quaternion precision so
+  // projectToScreenUV can stay sub-ULP.
+  const xx = _scratchVecX.x, xy = _scratchVecX.y, xz = _scratchVecX.z;
+  const yx = _scratchVecY.x, yy = _scratchVecY.y, yz = _scratchVecY.z;
+  const zx = _scratchVecZ.x, zy = _scratchVecZ.y, zz = _scratchVecZ.z;
   viewRotation[0] = xx; viewRotation[1] = xy; viewRotation[2] = xz;
   viewRotation[3] = yx; viewRotation[4] = yy; viewRotation[5] = yz;
   viewRotation[6] = zx; viewRotation[7] = zy; viewRotation[8] = zz;
 
   // Float64 orbit offset for label projection (two-part decomposition).
-  const oxPhi = orbitRadius * sinPhi;
-  cameraOffset[0] = galX.x * oxPhi * cosTheta + galZ.x * oxPhi * sinTheta + galUp.x * orbitRadius * cosPhi;
-  cameraOffset[1] = galX.y * oxPhi * cosTheta + galZ.y * oxPhi * sinTheta + galUp.y * orbitRadius * cosPhi;
-  cameraOffset[2] = galX.z * oxPhi * cosTheta + galZ.z * oxPhi * sinTheta + galUp.z * orbitRadius * cosPhi;
+  cameraOffset[0] = zx * orbitRadius;
+  cameraOffset[1] = zy * orbitRadius;
+  cameraOffset[2] = zz * orbitRadius;
 
-  // Camera orbit offset for Float32 shaders. The other half of the
-  // decomposition (target - tileOrigin) is computed per-tile in
-  // starfield.ts updateTileTargets().
   starCameraOffsetUniform.value.set(cameraOffset[0]!, cameraOffset[1]!, cameraOffset[2]!);
   starViewRotationUniform.value.set(xx, xy, xz, yx, yy, yz, zx, zy, zz);
+
+  _decomposedDirty = true;
+
   updateGrid();
 }
 updateCamera();
@@ -277,11 +357,39 @@ export let animation: {
   dir: THREE.Vector3;
   D0: number;         // initial camera-to-destination distance
   // Orbit rotation interpolated in parallel with the transit.
-  fromTheta: number;
-  fromPhi: number;
-  toTheta: number;
-  toPhi: number;
+  fromQuat: THREE.Quaternion;
+  toQuat: THREE.Quaternion;
 } | null = null;
+
+// Build orientation that places the camera at target + awayDir·radius
+// looking back at target, preserving the screen-up direction implied
+// by `currentOrientation` so roll persists across re-targeting.
+// Matrix4.lookAt handles the up-parallel-to-forward singularity
+// internally by perturbing up.
+const _buildScratchUp = new THREE.Vector3();
+const _buildScratchOrigin = new THREE.Vector3(0, 0, 0);
+const _buildScratchMat = new THREE.Matrix4();
+function _orientationLookAlong(
+  awayDir: THREE.Vector3, currentOrientation: THREE.Quaternion, out: THREE.Quaternion,
+): void {
+  _buildScratchUp.copy(_LOCAL_Y).applyQuaternion(currentOrientation);
+  _buildScratchMat.lookAt(awayDir, _buildScratchOrigin, _buildScratchUp);
+  out.setFromRotationMatrix(_buildScratchMat);
+}
+
+// Build {fromQuat, toQuat} pair for an orientation animation that
+// looks back along `awayDir`. Always picks the shortest slerp path
+// by sign-flipping toQuat when its dot with fromQuat is negative.
+function _buildOrientationAnim(
+  awayDir: THREE.Vector3, fromQuat: THREE.Quaternion, toQuat: THREE.Quaternion,
+): void {
+  fromQuat.copy(orbitOrientation);
+  _orientationLookAlong(awayDir, orbitOrientation, toQuat);
+  if (fromQuat.dot(toQuat) < 0) {
+    toQuat.x = -toQuat.x; toQuat.y = -toQuat.y;
+    toQuat.z = -toQuat.z; toQuat.w = -toQuat.w;
+  }
+}
 
 // Camera-to-star distance for angular-size math. Mid-animation,
 // `orbitRadius` is unrelated to the selected star (target is
@@ -317,18 +425,13 @@ export function animateTo(pos: THREE.Vector3, toRadius?: number) {
   // (typical star-to-star); each additional order adds ~120ms.
   const logRange = Math.abs(Math.log(D0) - Math.log(targetRadius));
   const duration = Math.max(ANIM_DURATION, ANIM_DURATION + (logRange - 6) * 120);
-  // Compute destination orbit angles so the camera faces the target
-  // on arrival. The rotation interpolates in parallel with the transit.
-  let toTheta = orbitTheta;
-  let toPhi = orbitPhi;
+  // Destination orientation: camera at `to + awayDir·radius` looking
+  // back at `to`. Preserves current screen-up so roll carries through.
+  const fromQuat = orbitOrientation.clone();
+  const toQuat = orbitOrientation.clone();
   if (totalDist > 0) {
-    const lookDir = new THREE.Vector3().subVectors(from, to).normalize();
-    const lx = lookDir.dot(galX);
-    const lz = lookDir.dot(galZ);
-    const ly = lookDir.dot(galUp);
-    toTheta = Math.atan2(lz, lx);
-    toPhi = THREE.MathUtils.clamp(Math.acos(THREE.MathUtils.clamp(ly, -1, 1)), 0.1, Math.PI - 0.1);
-    toTheta = shortestAngleTo(orbitTheta, toTheta);
+    const awayDir = new THREE.Vector3().subVectors(from, to).normalize();
+    _buildOrientationAnim(awayDir, fromQuat, toQuat);
   }
 
   animation = {
@@ -338,8 +441,7 @@ export function animateTo(pos: THREE.Vector3, toRadius?: number) {
     start: performance.now(),
     duration,
     totalDist, dir, D0,
-    fromTheta: orbitTheta, fromPhi: orbitPhi,
-    toTheta, toPhi,
+    fromQuat, toQuat,
   };
   kick();
 }
@@ -389,10 +491,8 @@ export function tickAnimation(now: number) {
   const ROT_FRAC = 0.5;
   const rotT = Math.min(1, t / ROT_FRAC);
   const rotEase = rotT * rotT * (3 - 2 * rotT); // smoothstep
-  orbitTheta = animation.fromTheta + (animation.toTheta - animation.fromTheta) * rotEase;
-  orbitPhi = animation.fromPhi + (animation.toPhi - animation.fromPhi) * rotEase;
-  targetTheta = orbitTheta;
-  targetPhi = orbitPhi;
+  orbitOrientation.slerpQuaternions(animation.fromQuat, animation.toQuat, rotEase);
+  targetOrientation.copy(orbitOrientation);
 
   if (t >= 1) {
     // Exact endpoint — no residual, no snap.
@@ -420,26 +520,20 @@ export function tickAnimation(now: number) {
 }
 
 const ORBIT_ANIM_MS = 500;
-let orbitAnim: { fromTheta: number; fromPhi: number; toTheta: number; toPhi: number; start: number } | null = null;
+let orbitAnim: { fromQuat: THREE.Quaternion; toQuat: THREE.Quaternion; start: number } | null = null;
 
 export function lookToward(worldPos: THREE.Vector3) {
-  // Skip when the target already is worldPos — subVectors would give a
-  // zero-length direction that normalizes to (0,0,0) and produces a
-  // bogus (theta, phi) default pose. This path is hit when the search
-  // preview lands on the currently-focused star, so a no-op here keeps
-  // the camera still instead of spinning to an arbitrary rotation.
+  // Skip when the target already is worldPos — the away-direction
+  // would degenerate to (0,0,0). This path fires when search preview
+  // lands on the currently-focused entity; we want the camera still.
   if (target.equals(worldPos)) return;
-  const dir = new THREE.Vector3().subVectors(target, worldPos).normalize();
-  const x = dir.dot(galX);
-  const z = dir.dot(galZ);
-  const y = dir.dot(galUp);
-  let toTheta = Math.atan2(z, x);
-  let toPhi = Math.acos(THREE.MathUtils.clamp(y, -1, 1));
-  toPhi = THREE.MathUtils.clamp(toPhi, 0.1, Math.PI - 0.1);
-
-  toTheta = shortestAngleTo(orbitTheta, toTheta);
-
-  orbitAnim = { fromTheta: orbitTheta, fromPhi: orbitPhi, toTheta, toPhi, start: performance.now() };
+  // Camera on the far side of `target` from worldPos: away-direction
+  // is `(target - worldPos)` so the look axis passes through worldPos.
+  const awayDir = new THREE.Vector3().subVectors(target, worldPos).normalize();
+  const fromQuat = new THREE.Quaternion();
+  const toQuat = new THREE.Quaternion();
+  _buildOrientationAnim(awayDir, fromQuat, toQuat);
+  orbitAnim = { fromQuat, toQuat, start: performance.now() };
   kick();
 }
 
@@ -457,13 +551,19 @@ export function toggleAutoOrbit(): void {
 export function stopAutoOrbit(): void { autoOrbitActive = false; }
 
 let lastAutoOrbitTime = 0;
+const _autoOrbitQuat = new THREE.Quaternion();
 function tickAutoOrbit(now: number): void {
   if (!autoOrbitActive) { lastAutoOrbitTime = 0; return; }
   if (lastAutoOrbitTime === 0) { lastAutoOrbitTime = now; return; }
   const dt = (now - lastAutoOrbitTime) / 1000;
   lastAutoOrbitTime = now;
-  orbitTheta += AUTO_ORBIT_RAD_PER_SEC * dt;
-  targetTheta = orbitTheta;
+  // Rotate around galUp in WORLD space (pre-multiply) so auto-orbit
+  // always sweeps the galactic-up axis regardless of current view
+  // orientation — matches the historical "camera circles overhead"
+  // feel even after the user has rolled or tilted.
+  _autoOrbitQuat.setFromAxisAngle(galUp, AUTO_ORBIT_RAD_PER_SEC * dt);
+  orbitOrientation.premultiply(_autoOrbitQuat);
+  targetOrientation.copy(orbitOrientation);
   updateCamera();
 }
 
@@ -473,8 +573,10 @@ export function hasActiveCameraAnim(): boolean {
 registerKeepFrame(hasActiveCameraAnim);
 
 function isOrbitSmoothing(): boolean {
-  return Math.abs(targetTheta - orbitTheta) > ORBIT_SMOOTH_EPS
-      || Math.abs(targetPhi - orbitPhi) > ORBIT_SMOOTH_EPS;
+  // 1 - dot is half the squared chord between unit quaternions; > eps
+  // means the target hasn't been reached. Cheap and avoids slerp-style
+  // angle math in the keep-frame predicate.
+  return 1 - Math.abs(orbitOrientation.dot(targetOrientation)) > ORBIT_SMOOTH_EPS;
 }
 registerKeepFrame(isOrbitSmoothing);
 
@@ -482,22 +584,17 @@ function tickOrbitAnim(now: number) {
   if (!orbitAnim) return;
   const t = Math.min(1, (now - orbitAnim.start) / ORBIT_ANIM_MS);
   const ease = (1 - Math.cos(Math.PI * t)) / 2;
-  orbitTheta = orbitAnim.fromTheta + (orbitAnim.toTheta - orbitAnim.fromTheta) * ease;
-  orbitPhi = orbitAnim.fromPhi + (orbitAnim.toPhi - orbitAnim.fromPhi) * ease;
-  targetTheta = orbitTheta;
-  targetPhi = orbitPhi;
+  orbitOrientation.slerpQuaternions(orbitAnim.fromQuat, orbitAnim.toQuat, ease);
+  targetOrientation.copy(orbitOrientation);
   updateCamera();
   if (t >= 1) orbitAnim = null;
 }
 
 let lastSmoothTime = 0;
 function tickOrbitSmoothing(now: number): void {
-  const dTheta = targetTheta - orbitTheta;
-  const dPhi = targetPhi - orbitPhi;
-  if (Math.abs(dTheta) < ORBIT_SMOOTH_EPS && Math.abs(dPhi) < ORBIT_SMOOTH_EPS) {
-    if (orbitTheta !== targetTheta || orbitPhi !== targetPhi) {
-      orbitTheta = targetTheta;
-      orbitPhi = targetPhi;
+  if (!isOrbitSmoothing()) {
+    if (!orbitOrientation.equals(targetOrientation)) {
+      orbitOrientation.copy(targetOrientation);
       updateCamera();
     }
     lastSmoothTime = 0;
@@ -510,14 +607,27 @@ function tickOrbitSmoothing(now: number): void {
   const dt = now - lastSmoothTime;
   lastSmoothTime = now;
   const k = 1 - Math.exp(-dt / ORBIT_SMOOTH_TAU_MS);
-  orbitTheta += dTheta * k;
-  orbitPhi += dPhi * k;
+  orbitOrientation.slerp(targetOrientation, k);
   updateCamera();
 }
 
+// Local-frame post-multiply: drag direction always matches what the
+// eye expects regardless of current orientation.
+const _dragQuat = new THREE.Quaternion();
+const _dragQuatV = new THREE.Quaternion();
 export function applyOrbitDrag(dx: number, dy: number) {
-  targetTheta += dx * ORBIT_SENSITIVITY;
-  targetPhi = THREE.MathUtils.clamp(targetPhi - dy * ORBIT_SENSITIVITY, 0.1, Math.PI - 0.1);
+  _dragQuat.setFromAxisAngle(_LOCAL_Y, -dx * ORBIT_SENSITIVITY);
+  _dragQuatV.setFromAxisAngle(_LOCAL_X, -dy * ORBIT_SENSITIVITY);
+  targetOrientation.multiply(_dragQuat).multiply(_dragQuatV);
+  kick();
+}
+
+// Caller passes the actual roll angle in radians — no internal
+// sensitivity multiplier — so trackball mappings can pass screen-
+// angle deltas directly.
+export function applyRollDelta(angleRad: number) {
+  _dragQuat.setFromAxisAngle(_LOCAL_Z, angleRad);
+  targetOrientation.multiply(_dragQuat);
   kick();
 }
 

@@ -5,9 +5,9 @@ import {
   scene, camera, renderer, composer, lensingPass,
   gridMesh, handleResize, bloomPass,
   beginBloomRender, endBloomRender,
-  updateCamera, applyOrbitDrag, lookToward, onWheel, tickAnimation,
-  orbitRadius, orbitPhi, orbitTheta, target,
-  setOrbitRadius, setOrbitPhi, setOrbitTheta, getEffectiveMinOrbit,
+  updateCamera, applyOrbitDrag, applyRollDelta, lookToward, onWheel, tickAnimation,
+  orbitRadius, getOrbitPhi, getOrbitTheta, getOrbitRoll, target,
+  setOrbitRadius, setOrbitPhi, setOrbitTheta, setOrbitRoll, getEffectiveMinOrbit,
   setTargetImmediate, updateDeepZoom, animation,
   finalizeLensingFrame, getLensingOccluder,
   toggleAutoOrbit, stopAutoOrbit, isAutoOrbit,
@@ -97,6 +97,30 @@ let prevMouse = { x: 0, y: 0 };
 let dragDistance = 0;
 let lastInputWasTouch = false;
 let isAltOrbit = false;
+// Screen-center "trackball" angle for the most recent in-mode roll
+// event. Roll mode is shift+drag (with click) or shift+option (no
+// click); each mousemove computes the angle from the screen center
+// to the cursor and applies the delta from the previous angle as
+// roll. Reset to null whenever roll mode is not active so the next
+// entry starts fresh.
+let lastRollAngle: number | null = null;
+function rollAngleFromCenter(e: MouseEvent): number {
+  return Math.atan2(e.clientY - window.innerHeight / 2, e.clientX - window.innerWidth / 2);
+}
+function applyMouseRoll(e: MouseEvent): void {
+  const angle = rollAngleFromCenter(e);
+  if (lastRollAngle === null) {
+    lastRollAngle = angle;
+    return;
+  }
+  let delta = angle - lastRollAngle;
+  // Wrap into (-π, π] so crossing the atan2 discontinuity (e.g. left
+  // of center, mouse straddling -π/+π) gives a small delta, not 2π.
+  if (delta > Math.PI) delta -= 2 * Math.PI;
+  else if (delta < -Math.PI) delta += 2 * Math.PI;
+  applyRollDelta(delta);
+  lastRollAngle = angle;
+}
 
 function trySelectAt(clientX: number, clientY: number) {
   // Screen-space star disc pick. Replaces the old 3D raycast against
@@ -181,18 +205,27 @@ window.addEventListener("mousemove", (e) => {
   prevMouse.x = e.clientX;
   prevMouse.y = e.clientY;
   bumpInput();
-  if (e.altKey && !isDragging) {
+  // Roll mode: shift held while in any active manipulation gesture
+  // (drag with click, or option without click). Single source of
+  // truth — clears lastRollAngle whenever roll isn't active.
+  const inAltMove = e.altKey && !isDragging;
+  const wantRoll = e.shiftKey && (inAltMove || isDragging);
+  if (!wantRoll) lastRollAngle = null;
+
+  if (inAltMove) {
     if (!isAltOrbit) { unhoverAll(); clearHoverExcept(null); }
     isAltOrbit = true;
     stopAutoOrbit();
-    applyOrbitDrag(dx, dy);
+    if (wantRoll) applyMouseRoll(e);
+    else applyOrbitDrag(dx, dy);
     scheduleUrlWrite();
     return;
   }
   isAltOrbit = false;
   if (!isDragging) return;
   dragDistance += Math.abs(dx) + Math.abs(dy);
-  applyOrbitDrag(dx, dy);
+  if (wantRoll) applyMouseRoll(e);
+  else applyOrbitDrag(dx, dy);
   scheduleUrlWrite();
 });
 
@@ -586,11 +619,12 @@ doUpdateLabelVisibility();
   }
 
   if (urlState.orbit) {
-    const { radius, phi, theta } = urlState.orbit;
+    const { radius, phi, theta, roll } = urlState.orbit;
     // Set radius directly — deep zoom allows arbitrarily small values
     setOrbitRadius(radius);
     setOrbitPhi(THREE.MathUtils.clamp(phi, 0.1, Math.PI - 0.1));
     setOrbitTheta(theta);
+    if (roll !== undefined) setOrbitRoll(roll);
     updateDeepZoom();
     updateCamera();
   }
@@ -624,7 +658,7 @@ function currentFocusName(): string | undefined {
 
 initUrlState({
   getState: () => ({
-    orbit: { radius: orbitRadius, phi: orbitPhi, theta: orbitTheta },
+    orbit: { radius: orbitRadius, phi: getOrbitPhi(), theta: getOrbitTheta(), roll: getOrbitRoll() },
     focus: currentFocusName(),
     toggles: {
       labels: labelsVisible,
@@ -670,8 +704,27 @@ if (benchEnabled) runBench();
 // Bench + debug need continuous frames for sampling / live stats graphs.
 if (benchEnabled || debugEnabled) setAlwaysOn(true);
 
+// Diagnostic: Bun's dev server forwards `window.onerror` events as
+// "Script error." when the offending script is CORS-tainted (the HMR
+// client chunk hits this on some Bun versions). Catching the error
+// inside our own callbacks bypasses the event boundary and lets us
+// log the actual stack via console.error, which the relay forwards
+// verbatim. Same for unhandledrejection — Promise reasons aren't
+// subject to CORS sanitization either.
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("unhandledrejection:", e.reason);
+});
+
 // Render loop
 function animate(now: number) {
+  try {
+    animateInner(now);
+  } catch (e) {
+    console.error("animate threw:", e);
+    throw e;
+  }
+}
+function animateInner(now: number) {
   statsBegin();
   tickAnimation(now);
   updateDeepZoom();
