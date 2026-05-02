@@ -184,7 +184,7 @@ interface Planet {
   entry: PlanetEntry;
   anchor: THREE.Object3D;
   mesh: THREE.Mesh;
-  orbitLine: THREE.LineLoop;
+  orbitLine: THREE.Line;
   sceneRadius: number;
   // Time-independent pole orientation; spin = W0 + W_dot·days around
   // mesh-local +Y per frame. Precession is sub-degree on decade
@@ -252,21 +252,33 @@ const tmpScreen = { x: 0, y: 0, behind: false };
 // 16k segments keep the inscribed-polygon dip between vertices well
 // below a planet radius even for Neptune.
 //
+// Builds the orbit as a fading comet-trail: vertex 0 is at the
+// planet's current true anomaly, and increasing index walks BACKWARD
+// in nu so the trail extends behind the planet's direction of motion,
+// with a per-vertex RGBA alpha that fades 1 → 0 over one full
+// revolution. THREE.Line (not LineLoop) so the alpha-1 head and
+// alpha-0 tail aren't bridged by a closing segment.
+//
 // `orbitFocusScene` is the scene position of the orbit's focus —
-// (0,0,0) for heliocentric bodies (Sol-centred), the parent's scene
-// position for moons. Vertices are stored relative to `planetScenePos`
-// and the caller sets `orbitLine.position` to match; Three.js folds
-// the offset back in via `modelViewMatrix` on the CPU in Float64, so
-// the GPU's view transform sees a small camera-to-body delta — for
-// Eros (orbit ~2.1e-5) raw world coords would quantise to Float32
-// ULP ~2.5e-12, the same scale as the body's diameter.
+// (0,0,0) for heliocentric bodies, the parent's scene position for
+// moons. Vertices are stored relative to `planetScenePos` and the
+// caller sets `orbitLine.position` to match; Three.js folds the
+// offset back in via `modelViewMatrix` on the CPU in Float64, so the
+// GPU's view transform sees a small camera-to-body delta — for Eros
+// (orbit ~2.1e-5) raw world coords would quantise to Float32 ULP
+// ~2.5e-12, the same scale as the body's diameter.
 function createOrbitLine(
   state: OrbitState,
   planetScenePos: THREE.Vector3,
   orbitFocusScene: THREE.Vector3,
-): THREE.LineLoop {
+): THREE.Line {
   const segments = 16384;
   const positions = new Float32Array(segments * 3);
+  // RGBA Uint8 (normalized) — Three.js auto-enables USE_COLOR_ALPHA
+  // when the color attribute has itemSize 4, multiplying vertex alpha
+  // into the fragment alongside material.opacity. Saves the custom
+  // shader and ~75% memory vs Float32 alpha + default RGB color.
+  const colors = new Uint8Array(segments * 4);
   const step = (Math.PI * 2) / segments;
   const e = state.e;
   const semiLatus = state.a * (1 - e * e);
@@ -276,7 +288,7 @@ function createOrbitLine(
   const cn = Math.cos(state.long_node), sn = Math.sin(state.long_node);
   const ci = Math.cos(state.i), si = Math.sin(state.i);
   for (let i = 0; i < segments; i++) {
-    const nu = state.nu + i * step;
+    const nu = state.nu - i * step;
     const r = semiLatus / (1 + e * Math.cos(nu));
     const angle = nu + omega;
     const ca = Math.cos(angle), sa = Math.sin(angle);
@@ -288,16 +300,21 @@ function createOrbitLine(
     positions[i * 3 + 0] = orbitFocusScene.x + ex * SCENE_PER_AU - planetScenePos.x;
     positions[i * 3 + 1] = orbitFocusScene.y + eq_z * SCENE_PER_AU - planetScenePos.y;
     positions[i * 3 + 2] = orbitFocusScene.z + -eq_y * SCENE_PER_AU - planetScenePos.z;
+    colors[i * 4 + 0] = 0x4d;
+    colors[i * 4 + 1] = 0x7f;
+    colors[i * 4 + 2] = 0xc4;
+    colors[i * 4 + 3] = Math.round(255 * (1 - i / segments));
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 4, true));
   const material = new THREE.LineBasicMaterial({
-    color: 0x4d7fc4,
+    vertexColors: true,
     transparent: true,
     opacity: ORBIT_BASE_OPACITY,
     depthWrite: false,
   });
-  const line = new THREE.LineLoop(geometry, material);
+  const line = new THREE.Line(geometry, material);
   line.frustumCulled = false;
   return line;
 }
