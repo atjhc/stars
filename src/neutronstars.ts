@@ -238,9 +238,6 @@ const markerVertex = `
     float worldScale = vHalfBillPx * camDist / (F_HALF_TAN_INV * uHalfViewportPx);
     vec3 finalPos = viewPos + vec3(position.xy * worldScale * 2.0, 0.0);
     gl_Position = projectionMatrix * vec4(finalPos, 1.0);
-    // Pin clip-space Z to the middle of [-w, w] so the billboard
-    // never collides with the near plane at close zoom.
-    gl_Position.z = 0.0;
   }
 `;
 
@@ -308,7 +305,11 @@ function createMarkerMesh(ns: NeutronStarEntry, worldPos: THREE.Vector3, sceneRa
     // streaks show through inside the body.
     blending: THREE.NormalBlending,
     depthWrite: false,
-    depthTest: false,
+    // depthTest on so distant NSes get occluded by foreground planets
+    // / stars. The marker's projected z is the NS center's true depth
+    // (vertex offset is xy-only), and dynamic camera.near = orbit×0.1
+    // never crowds the marker even at planet-close orbits.
+    depthTest: true,
   });
   const mesh = new THREE.Mesh(geometry, material);
   // Mesh position is ignored by the shader (world position comes from
