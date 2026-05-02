@@ -10,9 +10,13 @@
 // frames later. drainGpuQueries() polls in-order and accumulates ready
 // results into per-phase totals. flushGpuPhases() reports the totals.
 //
-// No-op when the extension isn't available (Safari without
-// developer extensions, some headless contexts), so it's safe to
-// leave the wrappers permanently in the render loop.
+// Gated on `?bench=1` / `?debug=1` because each begin/end query
+// forces a pipeline flush on Apple's TBDR GPU (iOS 16+ Safari does
+// expose `EXT_disjoint_timer_query_webgl2`). With ~7 wrapped phases
+// per frame, the always-on cost was ~10+ ms — the difference between
+// 30 fps and 20 fps on iPhone 15. When `enabled` is false (the
+// default), `gpuPhase` and `drainGpuQueries` are zero-cost no-ops, so
+// the wrappers can stay statically referenced from the render loop.
 
 import type * as THREE from "three";
 

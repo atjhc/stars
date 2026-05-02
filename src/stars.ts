@@ -44,7 +44,11 @@ export const DISC_SCALE = 8.0;
 // Tile binary format: 20 bytes per star. Matches scripts/build-catalog.py.
 export const BYTES_PER_STAR = 20;
 
-export const DEFAULT_MAG_LIMIT = 7.5;
+// Device-default mag limit. Desktop = 7.5 (everything visible at the
+// darkest naked-eye sky); mobile = 6.5 to thin the background field.
+// Overridable via the `?mag=` URL param and the −/= keyboard shortcut.
+import { qualityProfile } from "./quality.ts";
+export const DEFAULT_MAG_LIMIT = qualityProfile.magLimit;
 export const magLimitUniform: THREE.IUniform<number> = { value: DEFAULT_MAG_LIMIT };
 export function setMagLimit(v: number) { magLimitUniform.value = v; }
 

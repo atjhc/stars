@@ -108,11 +108,13 @@ opacity are excluded from collision checks.
 
 `spawnTier1Anchor` skips `registerCanvasLabel` for tier-1 stars whose
 `mag` (apparent magnitude from Sol) exceeds
-`qualityProfile.tier1LabelMaxMag` (5.0 on mobile, `Infinity` on
-desktop — i.e. no filter). The billboard mesh still spawns and the
-anchor still goes into `allInteractiveStars` / `tier1Meshes` (so
-selection, hover, and shader-gated rendering are unchanged); just no
-canvas label.
+`qualityProfile.tier1LabelMaxMag` (3.5 on mobile — keeps only the
+brightest ~180 tier-1 named stars; `Infinity` on desktop — no
+filter). The billboard mesh still spawns and the anchor still goes
+into `allInteractiveStars` / `tier1Meshes` (so selection, hover, and
+shader-gated rendering are unchanged); just no canvas label. The
+philosophy split: desktop is a survey tool, mobile is for finding
+and observing specific targets in a sky that's too small to clutter.
 
 Filtering by apparent-mag rather than absolute-mag because the streamed
 catalog is already apparent-mag-bounded — most tier-1 stars have absMag

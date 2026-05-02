@@ -19,9 +19,11 @@ function fmt(n: number): string {
 const TOGGLE_DEFAULTS: Record<string, boolean> = {
   labels: true, grid: false, constellations: true, nebulae: true, orbits: true,
 };
-// Matches stars.ts::DEFAULT_MAG_LIMIT — hardcoded here to keep
-// urlState.ts import-free of scene modules.
-const DEFAULT_MAG = 7.5;
+// Sourced from quality.ts (a leaf module, no scene dependency) so the
+// URL-write skip-default check uses the active device default — a mobile
+// user at default 6.5 gets a clean URL, not `mag=6.5`.
+import { qualityProfile } from "./quality.ts";
+const DEFAULT_MAG = qualityProfile.magLimit;
 
 // Short aliases for toggle params. We always write the short form;
 // the long form is still accepted on parse for back-compat with old

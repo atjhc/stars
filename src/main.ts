@@ -45,7 +45,7 @@ import {
   registerScreenOccluder, clearFrameOccluders, onSelectionChanged, clearHoverExcept, getHandlerSelectedName,
   getHandlerByType, handlerTypeForSearchKind,
 } from "./labelRegistry.ts";
-import { initDebug, debugEnabled, benchEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase, refreshDebugPanel } from "./debug.ts";
+import { initDebug, debugEnabled, benchEnabled, gpuTimerEnabled, debug, onDebugChange, tickDebug, statsBegin, statsEnd, statsPhase, refreshDebugPanel } from "./debug.ts";
 import { runBench } from "./bench.ts";
 import {
   initLabelCanvas, renderLabelCanvas, setHitTargetsOverlay, setCanvasLabelsVisible,
@@ -649,8 +649,17 @@ if (debugEnabled) {
   });
 }
 
-initGpuTimer(renderer);
-wrapComposerPasses(composer, "gpu.composer");
+// Gate GPU timer queries on `?bench=1` or `?gputimer=1` only. iOS 16+
+// Safari exposes `EXT_disjoint_timer_query_webgl2`, but each begin/end
+// query forces a pipeline flush on Apple's TBDR GPU — and we wrap 7
+// phases per frame. Always-on cost the user as ~10+ ms/frame, the
+// difference between 30 fps and 20 fps on iPhone 15. Off in production;
+// off in plain `?debug=1` (so the FPS overlay reads true frame cost);
+// on only when explicitly measuring.
+if (gpuTimerEnabled) {
+  initGpuTimer(renderer);
+  wrapComposerPasses(composer, "gpu.composer");
+}
 if (benchEnabled) runBench();
 
 // Bench + debug need continuous frames for sampling / live stats graphs.

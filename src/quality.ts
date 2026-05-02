@@ -5,7 +5,13 @@
 
 const RENDER_DPR_CAP_DEFAULT = 2;
 
-const _dprCapQuery = new URLSearchParams(window.location.search).get("dprCap");
+// `typeof window` guard so this module is importable in non-DOM
+// contexts (bun test). All consumers behave as if on desktop in that
+// case — qualityProfile resolves to DESKTOP, which is what tests want.
+const _hasWindow = typeof window !== "undefined";
+const _dprCapQuery = _hasWindow
+  ? new URLSearchParams(window.location.search).get("dprCap")
+  : null;
 const _dprCap = _dprCapQuery === null
   ? RENDER_DPR_CAP_DEFAULT
   : Math.max(1, parseFloat(_dprCapQuery) || RENDER_DPR_CAP_DEFAULT);
@@ -17,7 +23,7 @@ const _dprCap = _dprCapQuery === null
 // cutting fragment work by ~55% on 3×-DPR devices.
 // `?dprCap=99` effectively disables the cap for A/B testing.
 export function getRenderPixelRatio(): number {
-  return Math.min(window.devicePixelRatio, _dprCap);
+  return Math.min(_hasWindow ? window.devicePixelRatio : 1, _dprCap);
 }
 
 // True when the cap actually reduced the render resolution — a proxy
@@ -27,7 +33,7 @@ export function getRenderPixelRatio(): number {
 // a single URL toggle is enough to A/B the full mobile-quality
 // pathway against full-quality rendering on the same device.
 export function isMobileQuality(): boolean {
-  return getRenderPixelRatio() < window.devicePixelRatio;
+  return _hasWindow && getRenderPixelRatio() < window.devicePixelRatio;
 }
 
 export interface QualityProfile {
@@ -46,6 +52,11 @@ export interface QualityProfile {
   tier1LabelMaxMag: number;
   // Render-loop frame budget in ms. 0 = uncapped.
   fpsCapMs: number;
+  // Initial value of the shader-side apparent-mag billboard cutoff
+  // (camera-relative; `?mag=` URL param + the −/= keys still override).
+  // Lower on mobile to thin the background field — the small screen
+  // is for finding/observing specific targets, not surveying broadly.
+  magLimit: number;
 }
 
 const MOBILE: QualityProfile = {
@@ -54,8 +65,16 @@ const MOBILE: QualityProfile = {
   dustDiv: 4,
   tileBudget: 40,
   tier1LoadDistMult: 0.8,
-  tier1LabelMaxMag: 5.0,
-  fpsCapMs: 1000 / 30,
+  tier1LabelMaxMag: 3.5,
+  // 32 ms (not 33.33) keeps the cap safely under the 60Hz 2-vsync
+  // boundary — exactly-at-boundary float jitter pushed some frames to
+  // the 3rd vsync (50 ms = 20 fps), tanking the average. The cap
+  // itself is also engaged *dynamically* (see renderLoop.ts): only
+  // active while the device's natural rate is clearly faster than
+  // the cap. When the scene is heavy enough that frames run >cap
+  // anyway, the cap can only add overhead, so it disengages.
+  fpsCapMs: 32,
+  magLimit: 6.5,
 };
 
 const DESKTOP: QualityProfile = {
@@ -66,6 +85,7 @@ const DESKTOP: QualityProfile = {
   tier1LoadDistMult: 1.0,
   tier1LabelMaxMag: Infinity,
   fpsCapMs: 0,
+  magLimit: 7.5,
 };
 
 // Frozen at module load. Toggling DPR cap requires a reload anyway

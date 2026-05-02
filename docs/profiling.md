@@ -142,8 +142,9 @@ Active reductions on mobile:
 | `dustDiv` | 2× (half) | 4× (quarter) | dust ray-march bandwidth |
 | `tileBudget` | 80 | 40 | smaller GPU memory working set |
 | `tier1LoadDistMult` | 1.0 | 0.8 | tighter tier-1 anchor / label working set |
-| `tier1LabelMaxMag` | ∞ | 5.0 | fewer registered labels, less paint, less crowding |
-| `fpsCapMs` | 0 (uncapped) | 33 (30 fps) | thermal headroom (avoids race-throttle-drop oscillation) |
+| `tier1LabelMaxMag` | ∞ | 3.5 | mobile keeps only the brightest tier-1 stars; the rest of the Bayer-name long tail is unlabeled |
+| `magLimit` | 7.5 | 6.5 | shader-side billboard cutoff; thins the background field |
+| `fpsCapMs` | 0 | 32 (dynamic) | thermal headroom; engages only when recent rAF intervals show natural rate > cap (cap can lower variable-workload average otherwise). 32 ms not 33.33 to dodge the 60Hz 2-vsync boundary jitter. See `src/renderLoop.ts`. |
 
 Validated path: iPhone 15 went from ~10 fps in the worst orbit case
 to a steady 35-40 fps after this arc (with thermal throttling beyond
@@ -412,10 +413,18 @@ queries gives ~0.87 ms each. Practical implications:
   2.5 ms might really be 1.5 ms once overhead is netted out.
 - Don't compare two similarly-sized passes to each other — overhead
   swamps the difference.
-- The timer itself stalls the GPU pipeline, so leaving wrappers on
-  costs ~5 ms/frame of bench-only time. Wrappers stay live in
-  prod (zero-cost when the extension isn't available there) but the
-  numbers are most useful with sampling on.
+- The timer itself stalls the GPU pipeline. Mac (Apple Silicon, IMR-
+  ish via Metal): ~5 ms/frame at 5 wrapped phases. iOS Safari
+  (TBDR): substantially more — every query drains the bin. We
+  measured the difference between 30 fps and 20 fps on iPhone 15
+  with the timer always-on at ~7 wrapped phases.
+- Therefore: `initGpuTimer` + `wrapComposerPasses` are gated on
+  `?bench=1` or the explicit opt-in `?gputimer=1` (`src/main.ts`).
+  Plain `?debug=1` *does not* enable the timer, so the FPS overlay
+  reads true frame cost without instrumentation deflation. When
+  the timer is off, `gpuPhase` and `drainGpuQueries` are zero-cost
+  no-ops, so the wrappers can stay statically referenced from the
+  render loop.
 
 GPU breakdown after the mobile-perf arc (3-pass composer:
 RenderPass + UnrealBloomPass + cropOutputPass, plus dustRT,

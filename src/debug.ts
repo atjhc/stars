@@ -54,6 +54,14 @@ export const benchEnabled = query.get("bench") === "1";
 // ?bench=1 implies debug mode — bench needs statsKit (created by
 // initDebug) to collect samples.
 export const debugEnabled = benchEnabled || query.get("debug") === "1";
+// GPU phase timing is kept separate from debug mode because each
+// EXT_disjoint_timer_query_webgl2 begin/end forces a TBDR pipeline
+// flush — ~10+ ms/frame on iOS Safari with our 7 wrapped phases.
+// Bench needs it to attribute per-pass cost, but plain debug should
+// not pay for it; users want an honest FPS reading without the
+// instrumentation deflating it. Opt in via `?gputimer=1` for ad-hoc
+// per-pass diagnostics on top of `?debug=1`.
+export const gpuTimerEnabled = benchEnabled || query.get("gputimer") === "1";
 export const debug: DebugState = { ...initialState };
 
 const toggleListeners: Array<(key: ToggleKey, value: boolean) => void> = [];
