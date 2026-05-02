@@ -195,9 +195,21 @@ export let orbitRadius = MIN_ORBIT_RADIUS;
 export let orbitPhi = 1.24;
 export let orbitTheta = 0.485;
 
+// Drag updates target angles; per-frame tickOrbitSmoothing eases the
+// rendered angles toward target with tau=ORBIT_SMOOTH_TAU_MS. This
+// decouples input rate from frame rate, so multiple coalesced
+// mousemoves no longer cause visible jumps when they collapse into a
+// single rendered frame. All non-drag paths (animations, auto-orbit,
+// URL restore) keep target == current so smoothing only kicks in for
+// drag input.
+let targetTheta = orbitTheta;
+let targetPhi = orbitPhi;
+const ORBIT_SMOOTH_TAU_MS = 40;
+const ORBIT_SMOOTH_EPS = 1e-5;
+
 export function setOrbitRadius(r: number) { orbitRadius = r; }
-export function setOrbitPhi(p: number) { orbitPhi = p; }
-export function setOrbitTheta(t: number) { orbitTheta = t; }
+export function setOrbitPhi(p: number) { orbitPhi = p; targetPhi = p; }
+export function setOrbitTheta(t: number) { orbitTheta = t; targetTheta = t; }
 
 export function updateCamera() {
   const sinPhi = Math.sin(orbitPhi);
@@ -366,6 +378,7 @@ window.addEventListener("keyup", (e) => { if (e.key === "Shift") slowMotion = fa
 export function tickAnimation(now: number) {
   tickAutoOrbit(now);
   tickOrbitAnim(now);
+  tickOrbitSmoothing(now);
   if (!animation) return;
   const duration = slowMotion ? animation.duration * 10 : animation.duration;
   const t = Math.min(1, (now - animation.start) / duration);
@@ -378,6 +391,8 @@ export function tickAnimation(now: number) {
   const rotEase = rotT * rotT * (3 - 2 * rotT); // smoothstep
   orbitTheta = animation.fromTheta + (animation.toTheta - animation.fromTheta) * rotEase;
   orbitPhi = animation.fromPhi + (animation.toPhi - animation.fromPhi) * rotEase;
+  targetTheta = orbitTheta;
+  targetPhi = orbitPhi;
 
   if (t >= 1) {
     // Exact endpoint — no residual, no snap.
@@ -448,6 +463,7 @@ function tickAutoOrbit(now: number): void {
   const dt = (now - lastAutoOrbitTime) / 1000;
   lastAutoOrbitTime = now;
   orbitTheta += AUTO_ORBIT_RAD_PER_SEC * dt;
+  targetTheta = orbitTheta;
   updateCamera();
 }
 
@@ -456,20 +472,53 @@ export function hasActiveCameraAnim(): boolean {
 }
 registerKeepFrame(hasActiveCameraAnim);
 
+function isOrbitSmoothing(): boolean {
+  return Math.abs(targetTheta - orbitTheta) > ORBIT_SMOOTH_EPS
+      || Math.abs(targetPhi - orbitPhi) > ORBIT_SMOOTH_EPS;
+}
+registerKeepFrame(isOrbitSmoothing);
+
 function tickOrbitAnim(now: number) {
   if (!orbitAnim) return;
   const t = Math.min(1, (now - orbitAnim.start) / ORBIT_ANIM_MS);
   const ease = (1 - Math.cos(Math.PI * t)) / 2;
   orbitTheta = orbitAnim.fromTheta + (orbitAnim.toTheta - orbitAnim.fromTheta) * ease;
   orbitPhi = orbitAnim.fromPhi + (orbitAnim.toPhi - orbitAnim.fromPhi) * ease;
+  targetTheta = orbitTheta;
+  targetPhi = orbitPhi;
   updateCamera();
   if (t >= 1) orbitAnim = null;
 }
 
-export function applyOrbitDrag(dx: number, dy: number) {
-  orbitTheta += dx * ORBIT_SENSITIVITY;
-  orbitPhi = THREE.MathUtils.clamp(orbitPhi - dy * ORBIT_SENSITIVITY, 0.1, Math.PI - 0.1);
+let lastSmoothTime = 0;
+function tickOrbitSmoothing(now: number): void {
+  const dTheta = targetTheta - orbitTheta;
+  const dPhi = targetPhi - orbitPhi;
+  if (Math.abs(dTheta) < ORBIT_SMOOTH_EPS && Math.abs(dPhi) < ORBIT_SMOOTH_EPS) {
+    if (orbitTheta !== targetTheta || orbitPhi !== targetPhi) {
+      orbitTheta = targetTheta;
+      orbitPhi = targetPhi;
+      updateCamera();
+    }
+    lastSmoothTime = 0;
+    return;
+  }
+  if (lastSmoothTime === 0) {
+    lastSmoothTime = now;
+    return;
+  }
+  const dt = now - lastSmoothTime;
+  lastSmoothTime = now;
+  const k = 1 - Math.exp(-dt / ORBIT_SMOOTH_TAU_MS);
+  orbitTheta += dTheta * k;
+  orbitPhi += dPhi * k;
   updateCamera();
+}
+
+export function applyOrbitDrag(dx: number, dy: number) {
+  targetTheta += dx * ORBIT_SENSITIVITY;
+  targetPhi = THREE.MathUtils.clamp(targetPhi - dy * ORBIT_SENSITIVITY, 0.1, Math.PI - 0.1);
+  kick();
 }
 
 let minOrbitOverride: number | null = null;
