@@ -85,6 +85,10 @@ TEXTURES = [
     ("mercury",     "jpg", f"{SSS_BASE}/2k_mercury.jpg",                        None),
     ("venus",       "jpg", f"{SSS_BASE}/2k_venus_atmosphere.jpg",               None),
     ("earth",       "jpg", f"{SSS_BASE}/2k_earth_daymap.jpg",                   None),
+    # White-on-black cloud cover, sampled as a transparent shell over Earth.
+    # JPG has no alpha channel; the runtime cloud shader derives alpha
+    # from the texture's luminance.
+    ("earth_clouds","jpg", f"{SSS_BASE}/2k_earth_clouds.jpg",                    None),
     ("luna",        "jpg", f"{SSS_BASE}/2k_moon.jpg",                           None),
     ("mars",        "jpg", f"{SSS_BASE}/2k_mars.jpg",                           None),
     ("jupiter",     "jpg", f"{SSS_BASE}/2k_jupiter.jpg",                        None),

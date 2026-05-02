@@ -327,25 +327,41 @@ function createOrbitLine(
 // takes the sun direction as a uniform — the planet's diameter is
 // many orders of magnitude smaller than its heliocentric distance,
 // so the sun's bearing is effectively constant across the surface.
-const planetVertex = `
+// Shared by the planet body shader and the Earth cloud shell. vViewDir
+// is unused by the cloud fragment shader; the GPU's varying-interp cost
+// is negligible (3 floats) and the shared source kills 7 lines of dupe.
+const bodyVertex = `
 varying vec3 vNormal;
+varying vec3 vViewDir;
 varying vec2 vUv;
 void main() {
   vNormal = normalize(mat3(modelMatrix) * normal);
+  vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+  vViewDir = cameraPosition - worldPos;
   vUv = uv;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
 const planetFragment = `
 varying vec3 vNormal;
+varying vec3 vViewDir;
 varying vec2 vUv;
 uniform sampler2D uTexture;
 uniform vec3 uSunDir;
 uniform float uIllumination;
 void main() {
-  float diff = max(dot(normalize(vNormal), uSunDir), 0.0);
+  vec3 N = normalize(vNormal);
+  vec3 V = normalize(vViewDir);
+  float ndotl = dot(N, uSunDir);
+  // Power-curve diffuse: the geometric terminator stays at ndotl=0
+  // (subsolar still peaks at 1.0), but the curve approaches 0 with a
+  // horizontal tangent — brightness near the terminator drops smoothly
+  // rather than linearly with cosine, so the transition reads gradual.
+  float diff = pow(max(ndotl, 0.0), 1.5);
+  vec3 H = normalize(uSunDir + V);
+  float spec = pow(max(dot(N, H), 0.0), 20.0) * step(0.0, ndotl) * 0.07;
   vec3 albedo = texture2D(uTexture, vUv).rgb;
-  vec3 color = albedo * (0.05 + 0.95 * diff) * uIllumination;
+  vec3 color = (albedo * (0.02 + 0.98 * diff) + vec3(spec)) * uIllumination;
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -505,7 +521,7 @@ function createPlanetMesh(
       uSunDir: { value: sunDir },
       uIllumination: { value: illumination },
     },
-    vertexShader: planetVertex,
+    vertexShader: bodyVertex,
     fragmentShader: planetFragment,
   });
   const mesh = new THREE.Mesh(geometry, material);
@@ -803,6 +819,55 @@ function attachSaturnRings(saturn: Planet, illumination: number): void {
   });
 }
 
+// Earth cloud shell — a slightly oversized sphere parented to Earth's
+// mesh so it inherits position + axial rotation for free. SSS's
+// 2k_earth_clouds source is grayscale white-on-black, so cloud.r doubles
+// as the alpha channel that JPG can't carry directly.
+const cloudFragment = `
+varying vec3 vNormal;
+varying vec3 vViewDir;
+varying vec2 vUv;
+uniform sampler2D uTexture;
+uniform vec3 uSunDir;
+uniform float uIllumination;
+void main() {
+  float ndotl = dot(normalize(vNormal), uSunDir);
+  float diff = pow(max(ndotl, 0.0), 1.5);
+  vec3 cloud = texture2D(uTexture, vUv).rgb;
+  float alpha = cloud.r;
+  if (alpha < 0.04) discard;
+  vec3 color = cloud * (0.02 + 0.98 * diff) * uIllumination;
+  gl_FragColor = vec4(color, alpha);
+}
+`;
+
+function attachEarthClouds(earth: Planet, illumination: number): void {
+  // 1.005× radius — clouds float a few km above the surface in scaled
+  // units. Parented to earth.mesh which is already scaled to sceneRadius,
+  // so the geometry's literal 1.005 becomes sceneRadius * 1.005 in world.
+  const geometry = new THREE.SphereGeometry(1.005, 64, 32);
+  const sunDir = earth.anchor.position.clone().normalize().negate();
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uTexture: { value: FALLBACK_TEXTURE },
+      uSunDir: { value: sunDir },
+      uIllumination: { value: illumination },
+    },
+    vertexShader: bodyVertex,
+    fragmentShader: cloudFragment,
+    transparent: true,
+    depthWrite: false,
+  });
+  const cloud = new THREE.Mesh(geometry, material);
+  cloud.visible = false;
+  cloud.userData.onTextureLoaded = () => { cloud.visible = true; };
+  earth.mesh.add(cloud);
+  earth.pendingTextures.push({
+    url: `${TILE_BASE_URL}planets/earth_clouds.jpg`,
+    mesh: cloud,
+  });
+}
+
 export async function initPlanetLabels(): Promise<void> {
   const [resp] = await Promise.all([
     fetch(`${TILE_BASE_URL}planets.json`),
@@ -930,9 +995,11 @@ export async function initPlanetLabels(): Promise<void> {
     const helioEcl = helioEcliptic(state);
     helioEcls[name] = helioEcl;
     const planet = addBody(name, entry, state, helioEcl, ORIGIN);
-    if (name === "Saturn") {
+    if (name === "Saturn" || name === "Earth") {
       const rAu = Math.hypot(helioEcl.x, helioEcl.y, helioEcl.z);
-      attachSaturnRings(planet, illuminationFor(rAu));
+      const illum = illuminationFor(rAu);
+      if (name === "Saturn") attachSaturnRings(planet, illum);
+      else attachEarthClouds(planet, illum);
     }
   }
 
