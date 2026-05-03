@@ -63,6 +63,12 @@ written to its final location. Currently:
     band at the south pole. On a wrapped sphere the polar singularity
     compresses the cap to a small near-pole region, so flat grey
     reads as a slightly dimmer cap rather than a black hole.
+  - `"fill_unmapped_matched"` — same idea but the fill grey is the
+    mean luminance of the mapped pixels rather than a fixed 128.
+    Used for the Uranian moon mosaics where Voyager 2 captured only
+    the southern hemispheres; a fixed grey would be far too bright
+    over a dark moon (Umbriel) and too dark over a bright one
+    (Ariel), making the unmapped half visibly mismatched.
 
 Post-processing is therefore baked into the asset — the runtime never
 sees the raw download. Force a refresh by deleting the output file
@@ -96,6 +102,26 @@ TEXTURES = [
     # Ring particles, alpha-encoded radial transparency. PNG, not JPEG.
     ("saturn_ring", "png", f"{SSS_BASE}/2k_saturn_ring_alpha.png",              None),
     ("uranus",      "jpg", f"{SSS_BASE}/2k_uranus.jpg",                         None),
+    # Voyager 2 imaged only the southern hemispheres of the major
+    # Uranian moons during its 1986 flyby (Uranus's south pole was
+    # facing the sun); the upstream USGS/NASA mosaics fill the
+    # unmapped north with black, which `fill_unmapped_matched`
+    # replaces with each moon's surface-tone-matched neutral grey.
+    ("miranda",     "jpg",
+        f"{WIKI_THUMB}/9/91/Miranda_map.jpg"
+        "/2048px-Miranda_map.jpg",                                                "fill_unmapped_matched"),
+    ("ariel",       "jpg",
+        f"{WIKI_THUMB}/7/74/Ariel_map_JPL_USGS.jpg"
+        "/1440px-Ariel_map_JPL_USGS.jpg",                                         "fill_unmapped_matched"),
+    ("umbriel",     "jpg",
+        f"{WIKI_THUMB}/4/42/Umbriel_map_JPL_USGS.jpg"
+        "/1440px-Umbriel_map_JPL_USGS.jpg",                                       "fill_unmapped_matched"),
+    ("titania",     "jpg",
+        f"{WIKI_THUMB}/8/85/Titania_map_JPL_USGS.jpg"
+        "/1440px-Titania_map_JPL_USGS.jpg",                                       "fill_unmapped_matched"),
+    ("oberon",      "jpg",
+        f"{WIKI_THUMB}/1/1d/Oberon_map_JPL_USGS.jpg"
+        "/1440px-Oberon_map_JPL_USGS.jpg",                                        "fill_unmapped_matched"),
     ("neptune",     "jpg", f"{SSS_BASE}/2k_neptune.jpg",                        None),
     # Real Dawn HAMO mosaic — public domain (NASA/JPL-Caltech). 2K
     # downsample of the 4000×2000 Wikimedia original. PIA20354 is the
@@ -275,6 +301,22 @@ def post_process(dest: str, tag: str) -> None:
             arr = np.array(im.convert("RGB"))
             arr[arr.mean(axis=2) < 20] = (128, 128, 128)
             Image.fromarray(arr).save(dest, format="JPEG", quality=88)
+    elif tag == "fill_unmapped_matched":
+        # Variant of fill_polar_gaps that samples the moon's actual
+        # surface tone instead of using a fixed 128 grey. Uranian moon
+        # mosaics are dominated by black northern hemispheres (Voyager
+        # 2 only imaged the south); a fixed grey would render brighter
+        # than the imaged surface for a dark moon like Umbriel and
+        # darker than it for a bright one like Ariel. Mean luminance
+        # of the mapped pixels gives a tone-matched neutral.
+        import numpy as np
+        with Image.open(dest) as im:
+            arr = np.array(im.convert("RGB"))
+            mapped = arr.mean(axis=2) >= 20
+            if mapped.any():
+                gray = int(round(arr[mapped].mean()))
+                arr[~mapped] = (gray, gray, gray)
+                Image.fromarray(arr).save(dest, format="JPEG", quality=88)
     elif tag == "tint_titan":
         # Tint sampled from Cassini PIA06230's natural-colour disc:
         # brightest sunlit pixels RGB(237,196,78) → multiplier

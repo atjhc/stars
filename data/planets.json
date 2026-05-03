@@ -311,6 +311,91 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Uranus",
     "notes": "Ice giant tilted ~98\u00b0 on its axis \u2014 likely the result of a giant impact. Pale cyan from atmospheric methane. 27 known moons, all named after Shakespeare and Pope characters."
   },
+  "Miranda": {
+    "kind": "moon",
+    "parent": "Uranus",
+    "aliases": ["Uranus V"],
+    "radius_km": 235.8,
+    "elements": {
+      "a_au":         [0.000868,   0.0],
+      "e":            [0.0013,     0.0],
+      "i_deg":        [97.77,      0.0],
+      "L_deg":        [0.0,        9302833.0],
+      "long_peri_deg":[0.0,        0.0],
+      "long_node_deg":[167.6,      0.0]
+    },
+    "rotation": [257.43, -15.08, 30.70, 254.6924052],
+    "wikipedia": "https://en.wikipedia.org/wiki/Miranda_(moon)",
+    "notes": "Smallest of Uranus's major moons but the most geologically extreme. Chevron-shaped coronae, deep canyons, and Verona Rupes \u2014 a ~20 km cliff, the tallest known in the solar system."
+  },
+  "Ariel": {
+    "kind": "moon",
+    "parent": "Uranus",
+    "aliases": ["Uranus I"],
+    "radius_km": 578.9,
+    "elements": {
+      "a_au":         [0.001276,   0.0],
+      "e":            [0.0012,     0.0],
+      "i_deg":        [97.77,      0.0],
+      "L_deg":        [60.0,       5217857.0],
+      "long_peri_deg":[0.0,        0.0],
+      "long_node_deg":[167.6,      0.0]
+    },
+    "rotation": [257.43, -15.10, 156.22, 142.8356681],
+    "wikipedia": "https://en.wikipedia.org/wiki/Ariel_(moon)",
+    "notes": "Brightest of Uranus's major moons. Geologically young surface scarred by extensive grooves and rifts \u2014 likely cryovolcanic and tectonic resurfacing within the past billion years."
+  },
+  "Umbriel": {
+    "kind": "moon",
+    "parent": "Uranus",
+    "aliases": ["Uranus II"],
+    "radius_km": 584.7,
+    "elements": {
+      "a_au":         [0.001779,   0.0],
+      "e":            [0.0039,     0.0],
+      "i_deg":        [97.77,      0.0],
+      "L_deg":        [120.0,      3173241.0],
+      "long_peri_deg":[0.0,        0.0],
+      "long_node_deg":[167.6,      0.0]
+    },
+    "rotation": [257.43, -15.10, 108.05, 86.8688923],
+    "wikipedia": "https://en.wikipedia.org/wiki/Umbriel",
+    "notes": "Darkest of Uranus's major moons \u2014 reflects only ~10% of incident sunlight. Heavily cratered ancient surface, broken by the bright equatorial ring of the 131 km Wunda crater."
+  },
+  "Titania": {
+    "kind": "moon",
+    "parent": "Uranus",
+    "aliases": ["Uranus III"],
+    "radius_km": 788.9,
+    "elements": {
+      "a_au":         [0.002917,   0.0],
+      "e":            [0.0011,     0.0],
+      "i_deg":        [97.77,      0.0],
+      "L_deg":        [180.0,      1510338.0],
+      "long_peri_deg":[0.0,        0.0],
+      "long_node_deg":[167.6,      0.0]
+    },
+    "rotation": [257.43, -15.10, 77.74, 41.3514316],
+    "wikipedia": "https://en.wikipedia.org/wiki/Titania_(moon)",
+    "notes": "Largest moon of Uranus. Heavily cratered surface cut by the 1500 km Messina Chasma rift system \u2014 evidence of past tectonic stretching as the interior cooled."
+  },
+  "Oberon": {
+    "kind": "moon",
+    "parent": "Uranus",
+    "aliases": ["Uranus IV"],
+    "radius_km": 761.4,
+    "elements": {
+      "a_au":         [0.003901,   0.0],
+      "e":            [0.0014,     0.0],
+      "i_deg":        [97.77,      0.0],
+      "L_deg":        [240.0,      976581.0],
+      "long_peri_deg":[0.0,        0.0],
+      "long_node_deg":[167.6,      0.0]
+    },
+    "rotation": [257.43, -15.10, 6.77, 26.7394932],
+    "wikipedia": "https://en.wikipedia.org/wiki/Oberon_(moon)",
+    "notes": "Outermost major moon of Uranus. Ancient cratered surface with mysterious dark patches at some crater floors \u2014 possibly cryovolcanic deposits from internal water-ammonia mixtures."
+  },
   "Neptune": {
     "aliases": [],
     "radius_km": 24622,

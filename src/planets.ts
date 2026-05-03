@@ -63,6 +63,7 @@ const TEXTURED_BODIES: Record<string, "jpg" | "png"> = {
   Io: "jpg", Europa: "jpg", Ganymede: "png", Callisto: "png",
   Mimas: "jpg", Enceladus: "jpg", Tethys: "jpg", Dione: "jpg",
   Rhea: "jpg", Titan: "jpg", Iapetus: "jpg",
+  Miranda: "jpg", Ariel: "jpg", Umbriel: "jpg", Titania: "jpg", Oberon: "jpg",
   Triton: "jpg", Charon: "jpg",
 };
 
