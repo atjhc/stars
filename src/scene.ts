@@ -96,11 +96,11 @@ const galNorthEq = new THREE.Vector3(
   Math.sin(decGNP),
   -Math.cos(decGNP) * Math.sin(raGNP),
 ).normalize();
-const galUp = galNorthEq;
+export const galUp = galNorthEq;
 const ref = Math.abs(galUp.dot(new THREE.Vector3(1, 0, 0))) < 0.9
   ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
-const galX = new THREE.Vector3().crossVectors(galUp, ref).normalize();
-const galZ = new THREE.Vector3().crossVectors(galX, galUp).normalize();
+export const galX = new THREE.Vector3().crossVectors(galUp, ref).normalize();
+export const galZ = new THREE.Vector3().crossVectors(galX, galUp).normalize();
 
 // Galactic-plane grid. A circular mesh sits at the focused target,
 // oriented with its local axes along (galX, galZ, galUp). Cell spacing
@@ -157,17 +157,23 @@ const gridShaderMat = new THREE.ShaderMaterial({
       // Radial fade — keeps the visible grid disc ~30% of view.
       alpha *= 1.0 - smoothstep(uOrbitRadius * 0.3, uOrbitRadius * 0.6, length(vUv2));
 
+      alpha *= 0.3;
       if (alpha < 0.01) discard;
       gl_FragColor = vec4(uColor, alpha);
     }
   `,
 });
 
-// Local axes (X, Y, Z) aligned with (galX, galZ, galUp) so the vertex
-// shader can read in-plane offsets directly from position.xy. Disc
-// radius (mesh.scale) is sized just past the shader's 0.6×R fade end.
+// Disc lies in the (galZ, galX) plane with normal galUp. Argument
+// order matters: makeBasis(galX, galZ, galUp) is LEFT-handed because
+// galX × galZ = galX × (galX × galUp) = -galUp (BAC-CAB), and feeding
+// a det=-1 matrix to setFromRotationMatrix silently produces a
+// malformed quaternion that lands the disc ~90° off the galactic
+// plane. Swapping the first two args makes it right-handed
+// (galZ × galX = +galUp); the disc is rotationally symmetric so this
+// only renames local-frame axes, doesn't change the rendered grid.
 export const gridMesh = new THREE.Mesh(new THREE.CircleGeometry(1, 64), gridShaderMat);
-gridMesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(galX, galZ, galUp));
+gridMesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(galZ, galX, galUp));
 gridMesh.visible = false;
 gridMesh.frustumCulled = false;
 scene.add(gridMesh);
@@ -178,9 +184,16 @@ function updateGrid() {
   // and we want the next render to use current target/orbit state.
   _gridScratch.copy(target).addScaledVector(galUp, -target.dot(galUp));
   gridMesh.position.copy(_gridScratch);
-  const side = orbitRadius * 0.7;
+  // Size and cell spacing track camera-to-grid distance, not orbit
+  // radius. When focus is far off the galactic plane (target offset
+  // along galUp) and zoom is tight, the grid still sits at target's
+  // in-plane projection — orbitRadius is tiny but the grid is
+  // (target·galUp) units away from the camera, so its visible scale
+  // has to follow that real distance to render at all.
+  const camDist = camera.position.distanceTo(gridMesh.position);
+  const side = camDist * 0.7;
   gridMesh.scale.set(side, side, 1);
-  gridShaderMat.uniforms.uOrbitRadius.value = orbitRadius;
+  gridShaderMat.uniforms.uOrbitRadius.value = camDist;
   gridShaderMat.uniforms.uSide.value = side;
 }
 
