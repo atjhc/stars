@@ -34,9 +34,15 @@ import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
 import {
   initDust, updateDust, renderDustToRT, compositeDustToScreen, getDustTexture,
+  getDustExtinctionTexture,
   toggleDust, setDustVisible, isDustVisible, handleDustResize,
 } from "./dust.ts";
 import { initNebulaeLabels } from "./nebulaeLabels.ts";
+import {
+  initSkybox, setSkyboxDustExtinction,
+  toggleSkybox, setSkyboxVisible, isSkyboxVisible,
+} from "./skybox.ts";
+import { initSkyboxDebug } from "./skyboxDebug.ts";
 import { initBlackHoleLabels } from "./blackholes.ts";
 import { initNeutronStarLabels, renderNeutronStars } from "./neutronstars.ts";
 import { initPlanetLabels, pickPlanetAt, toggleOrbits, setOrbitsVisible, getOrbitsVisible } from "./planets.ts";
@@ -410,6 +416,9 @@ window.addEventListener("keydown", (e) => {
   } else if (e.key === "r") {
     toggleOrbits();
     scheduleUrlWrite();
+  } else if (e.key === "s") {
+    toggleSkybox();
+    scheduleUrlWrite();
   } else if (e.key === "f") {
     const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name ?? getHandlerSelectedName();
     if (name) {
@@ -520,8 +529,18 @@ await initNeutronStarLabels();
 await initPlanetLabels();
 const dustInit = initDust();
 const nebulaeInit = initNebulaeLabels();
+const skyboxInit = initSkybox();
 dustInit.catch((e) => console.error("initDust failed:", e));
 nebulaeInit.catch((e) => console.error("initNebulaeLabels failed:", e));
+skyboxInit.catch((e) => console.error("initSkybox failed:", e));
+// Hand the dust half-res RT to the skybox once both are ready, so the
+// skybox can sample integrated optical depth from its alpha channel
+// for backdrop extinction. The RT is cleared each frame regardless of
+// dust visibility, so this stays valid even when nebulae are toggled off.
+Promise.all([dustInit, skyboxInit]).then(() => {
+  setSkyboxDustExtinction(getDustExtinctionTexture());
+}).catch(() => {});
+initSkyboxDebug();
 registerScreenOccluder(getLensingOccluder);
 onSelectionChanged(updateDetailPanel);
 
@@ -541,6 +560,7 @@ onDetailStarClick((name) => {
   if (urlToggles?.constellations !== undefined) setConstellationsVisible(urlToggles.constellations);
   if (urlToggles?.nebulae !== undefined) setDustVisible(urlToggles.nebulae);
   if (urlToggles?.orbits !== undefined) setOrbitsVisible(urlToggles.orbits);
+  if (urlToggles?.skybox !== undefined) setSkyboxVisible(urlToggles.skybox);
   if (parsed.mag !== undefined) {
     setMagLimit(parsed.mag);
     debug.mag_limit = parsed.mag;
@@ -554,6 +574,7 @@ setupLayersControl([
   { id: "constellations", isOn: constellationsVisible, toggle: toggleConstellations },
   { id: "nebulae", isOn: isDustVisible, toggle: () => { toggleDust(); doUpdateLabelVisibility(); } },
   { id: "orbits", isOn: getOrbitsVisible, toggle: toggleOrbits },
+  { id: "skybox", isOn: isSkyboxVisible, toggle: toggleSkybox },
 ], scheduleUrlWrite);
 
 // Restore focus + orbit from URL query params (?focus=, ?r=, ?phi=, ?theta=).
@@ -669,6 +690,7 @@ initUrlState({
       constellations: constellationsVisible(),
       nebulae: isDustVisible(),
       orbits: getOrbitsVisible(),
+      skybox: isSkyboxVisible(),
     },
     mag: magLimitUniform.value,
   }),

@@ -5,7 +5,7 @@
 export interface UrlState {
   orbit?: { radius: number; phi: number; theta: number; roll?: number };
   focus?: string;
-  toggles?: { labels?: boolean; grid?: boolean; constellations?: boolean; nebulae?: boolean; orbits?: boolean };
+  toggles?: { labels?: boolean; grid?: boolean; constellations?: boolean; nebulae?: boolean; orbits?: boolean; skybox?: boolean };
   mag?: number;
 }
 
@@ -17,7 +17,7 @@ function fmt(n: number): string {
 
 // Defaults: only write toggles that differ to keep URLs clean
 const TOGGLE_DEFAULTS: Record<string, boolean> = {
-  labels: true, grid: false, constellations: true, nebulae: true, orbits: true,
+  labels: true, grid: false, constellations: true, nebulae: true, orbits: true, skybox: false,
 };
 // Sourced from quality.ts (a leaf module, no scene dependency) so the
 // URL-write skip-default check uses the active device default — a mobile
@@ -30,7 +30,7 @@ const DEFAULT_MAG = qualityProfile.magLimit;
 // shareable URLs. `r` is reserved for the camera-orbit radius — orbits
 // (orbit-line visibility) uses `o` to avoid the collision.
 const TOGGLE_SHORT: Record<string, string> = {
-  labels: "l", grid: "g", constellations: "c", nebulae: "n", orbits: "o",
+  labels: "l", grid: "g", constellations: "c", nebulae: "n", orbits: "o", skybox: "s",
 };
 
 export function serializeUrlState(state: UrlState, base?: URLSearchParams): URLSearchParams {

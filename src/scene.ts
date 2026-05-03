@@ -102,6 +102,16 @@ const ref = Math.abs(galUp.dot(new THREE.Vector3(1, 0, 0))) < 0.9
 export const galX = new THREE.Vector3().crossVectors(galUp, ref).normalize();
 export const galZ = new THREE.Vector3().crossVectors(galX, galUp).normalize();
 
+// Galactic Cartesian → Drake scene. Derived in scripts/build-catalog.py
+// from the IAU galactic pole (RA=192.86°, Dec=27.13°, l_NCP=122.93°)
+// composed with the equatorial → scene swap (sx=x, sy=z, sz=−y).
+// Orthonormal — its inverse is its transpose.
+export const GAL_TO_SCENE = new THREE.Matrix3().set(
+  -0.054876, 0.494111, -0.867665,
+  -0.483835, 0.746982,  0.455985,
+   0.873437, 0.444829,  0.198076,
+);
+
 // Galactic-plane grid. A circular mesh sits at the focused target,
 // oriented with its local axes along (galX, galZ, galUp). Cell spacing
 // is derived from orbit radius and snaps to the nearest power of 10;

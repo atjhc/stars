@@ -1,8 +1,9 @@
 import * as THREE from "three";
-import { camera, scene, getRenderPixelRatio, qualityProfile } from "./scene.ts";
+import { camera, scene, getRenderPixelRatio, qualityProfile, GAL_TO_SCENE } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
+import { isSkyboxVisible } from "./skybox.ts";
 // Float32 precision is adequate — dust spans ~6000 scene units.
 const dustCamPosUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
 
@@ -22,14 +23,6 @@ const OCCLUDER_MATERIAL = new THREE.MeshBasicMaterial({ colorWrite: false });
 let occluderActive = false;
 export function setOccluderActive(v: boolean): void { occluderActive = v; }
 
-// Galactic Cartesian → Drake scene. Derived in build-catalog.py from
-// IAU galactic pole (RA=192.86°, Dec=27.13°) + equatorial→scene swap.
-const GAL_TO_SCENE = new THREE.Matrix3().set(
-  -0.054876, 0.494111, -0.867665,
-  -0.483835, 0.746982,  0.455985,
-   0.873437, 0.444829,  0.198076,
-);
-
 interface DustMeta {
   shape: [number, number, number];
   resolution_pc: number;
@@ -40,7 +33,7 @@ const emissionScene = new THREE.Scene();
 let emissionMesh: THREE.Mesh | null = null;
 let wantVisible = true;
 
-const TARGET_OPACITY = 0.04;
+const TARGET_OPACITY = 0.025;
 const FADE_DURATION_MS = 1200;
 let fadeStartMs = -1;
 registerKeepFrame(() => fadeStartMs >= 0);
@@ -70,6 +63,7 @@ const EMISSION_FRAGMENT = `
   uniform vec3 uCamWorldPos;
   uniform float uOpacity;
   uniform float uMagLimit;
+  uniform float uExtinctionStrength;
   varying vec3 vWorldPos;
 
   vec3 sceneToUV(vec3 scenePos) {
@@ -84,6 +78,7 @@ const EMISSION_FRAGMENT = `
     float maxDist = length(camRel);
 
     float accumDensity = 0.0;
+    float accumExt = 0.0;
     float accumHII = 0.0;
     float accumRef = 0.0;
     float stepSize = 18.0;
@@ -103,6 +98,10 @@ const EMISSION_FRAGMENT = `
 
         float transmittance = exp(-accumDensity);
         accumDensity += density * uOpacity * 0.3;
+        // Raw integrated density for backdrop extinction. Decoupled
+        // from uOpacity (which controls emission brightness) so we
+        // can dial extinction independently of dust glow.
+        accumExt += density;
 
         float sampleDist = max(traveled, 1.0);
         float distAtten = 150.0 / (150.0 + sampleDist);
@@ -124,9 +123,12 @@ const EMISSION_FRAGMENT = `
     vec3 color = total > 0.001
       ? (hiiColor * accumHII + refColor * accumRef) / total * total
       : vec3(0.0);
-    float alpha = min(1.0, total);
-    if (alpha < 0.001) discard;
-    gl_FragColor = vec4(color, alpha);
+    float emAlpha = min(1.0, total);
+    float opticalDepth = accumExt * uExtinctionStrength;
+    if (emAlpha < 0.001 && opticalDepth < 0.001) discard;
+    // RGB premultiplied for AdditiveBlending into the zero-cleared RT;
+    // alpha carries optical depth for the skybox extinction lookup.
+    gl_FragColor = vec4(color * emAlpha, opticalDepth);
   }
 `;
 
@@ -142,10 +144,11 @@ function createEmissionMaterial(
       uCamWorldPos: dustCamPosUniform,
       uOpacity: { value: 0 },
       uMagLimit: magLimitUniform,
+      uExtinctionStrength: { value: 0.025 },
     },
     vertexShader: SHARED_VERTEX,
     fragmentShader: EMISSION_FRAGMENT,
-    blending: THREE.NormalBlending,  // writes to offscreen RT, not directly to screen
+    blending: THREE.AdditiveBlending,
     depthWrite: false,
     // Per-pixel occlusion against any OCCLUDER_LAYER mesh: the pre-pass
     // fills halfResRT's depth buffer with the body's exact silhouette,
@@ -224,13 +227,11 @@ export async function initDust(): Promise<void> {
   const [hw, hh] = computeDustRTSize();
   halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
 
-  // Fullscreen blit quad to upscale the half-res result. The RT was
-  // filled with NormalBlending, so its RGB is already premultiplied by
-  // accumulated alpha — tell the blend pipeline to treat it as such so
-  // AdditiveBlending maps to (ONE, ONE) and we don't re-multiply by
-  // alpha. Matches what the lensing shader does when it samples tDust
-  // directly, so crossing the deep-zoom boundary doesn't change dust
-  // brightness.
+  // Fullscreen blit quad to upscale the half-res result. RT contains
+  // premultiplied RGB; AdditiveBlending + premultipliedAlpha maps to
+  // (ONE, ONE) so we don't re-multiply by alpha. Matches the lensing
+  // shader's tDust sampling so crossing the deep-zoom boundary doesn't
+  // change dust brightness.
   blitMaterial = new THREE.ShaderMaterial({
     uniforms: { tDiffuse: { value: halfResRT.texture } },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
@@ -269,27 +270,33 @@ export function updateDust(): void {
 // already written depth. Pixel-perfect against any silhouette without
 // the sphere-fit approximation that bled through irregular bodies.
 export function renderDustToRT(renderer: THREE.WebGLRenderer): void {
-  if (!emissionMesh || !wantVisible || !halfResRT) return;
+  if (!halfResRT) return;
+  // Skip the bind+clear entirely when nothing consumes the RT. The
+  // skybox needs a zero-cleared buffer for its extinction lookup
+  // (so toggling dust off doesn't leave stale optical depth), and
+  // the emission pass needs to render into it. If neither is on,
+  // there's no consumer.
+  const dustVisible = emissionMesh != null && wantVisible;
+  if (!dustVisible && !isSkyboxVisible()) return;
+
   const prevTarget = renderer.getRenderTarget();
   const prevAutoClear = renderer.autoClear;
   renderer.setRenderTarget(halfResRT);
   renderer.setClearColor(0x000000, 0);
-  // Manual clear once, then disable autoClear — otherwise each
-  // subsequent renderer.render() would wipe the depth pre-pass before
-  // the dust pass can test against it.
   renderer.clear(true, true, false);
   renderer.autoClear = false;
 
-  if (occluderActive) {
-    const savedMask = camera.layers.mask;
-    camera.layers.set(OCCLUDER_LAYER);
-    scene.overrideMaterial = OCCLUDER_MATERIAL;
-    renderer.render(scene, camera);
-    scene.overrideMaterial = null;
-    camera.layers.mask = savedMask;
+  if (dustVisible) {
+    if (occluderActive) {
+      const savedMask = camera.layers.mask;
+      camera.layers.set(OCCLUDER_LAYER);
+      scene.overrideMaterial = OCCLUDER_MATERIAL;
+      renderer.render(scene, camera);
+      scene.overrideMaterial = null;
+      camera.layers.mask = savedMask;
+    }
+    renderer.render(emissionScene, camera);
   }
-
-  renderer.render(emissionScene, camera);
 
   renderer.autoClear = prevAutoClear;
   renderer.setRenderTarget(prevTarget);
@@ -309,6 +316,15 @@ export function compositeDustToScreen(renderer: THREE.WebGLRenderer): void {
 
 export function getDustTexture(): THREE.Texture | null {
   return (emissionMesh && wantVisible && halfResRT) ? halfResRT.texture : null;
+}
+
+// Always-on accessor for the dust RT, used by the skybox shader to
+// read integrated optical depth from the alpha channel for backdrop
+// extinction. Stays valid when dust is toggled off (the RT is cleared
+// each frame regardless), so the skybox can sample unconditionally
+// and get zero extinction when there's no dust pass running.
+export function getDustExtinctionTexture(): THREE.Texture | null {
+  return halfResRT?.texture ?? null;
 }
 
 // Quarter-res on mobile (divisor 4), half-res on desktop. The dust

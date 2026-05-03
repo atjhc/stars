@@ -167,6 +167,7 @@ Sources and licences:
 - `src/planets.ts` — Solar System planet/moon labels + textured sun-lit globe rendering + elliptical orbit rings + Saturn rings, registered via labelRegistry. Positions propagated from JPL Keplerian elements via `src/keplerian.ts` to current date on page load. Bodies with a `parent` field (e.g. Luna) use geocentric elements and offset from the parent's heliocentric position. Surface maps lazy-loaded per body from `dist/tiles/planets/`.
 - `src/keplerian.ts` — Pure helper for JPL Approximate Positions: roll elements forward, solve Kepler, return heliocentric ecliptic Cartesian.
 - `src/dust.ts` — 3D dust volume ray marcher (Edenhofer 2024 data + hot-star illumination)
+- `src/skybox.ts` — Galactic-coordinate Milky Way panorama backdrop (ESO/Brunier eso0932a, CC-BY 4.0). Equirectangular sphere with custom shader; samples via the inverse of `src/dust.ts`'s `GAL_TO_SCENE` so the panorama plane lines up with the dust volume.
 - `src/systemStore.ts` — Centralized selection/hover state for stars, clusters, systems
 - `src/systemDispatch.ts` — Polymorphic dispatch functions for SystemGroup variants
 - `src/statsPhase.ts` — Tiny phase-timing shim (no internal imports). `debug.ts` installs the real implementation; consumers in the `debug → starfield → labelCanvas` chain call through here without re-introducing the cycle.
@@ -183,6 +184,7 @@ Sources and licences:
 - `scripts/snap-nebula-labels.py` — Snaps nebula label positions to nearest emission peaks in the baked dust volume
 - `scripts/fetch-hunt2023-astro.py` — Downloads RA/Dec/parallax/photometry from VizieR for Hunt & Reffert cluster members
 - `scripts/fetch-planet-textures.py` — Downloads Solar System Scope equirectangular surface maps into `dist/tiles/planets/`
+- `scripts/fetch-skybox.py` — Downloads ESO/Brunier Milky Way panorama (eso0932a, CC-BY 4.0) from Wikimedia and downsamples to 4096×2048 JPEG at `dist/tiles/skybox.jpg`
 - `scripts/merge-augmentations.py` — Merges research-batch JSON files into `data/augmentations.json`, preserving existing fields
 - `data/augmentations.json` — Hand-curated overrides: Wikipedia links, names, notes, aliases, system groupings, synthetic companions. Keyable by Gliese ID / HIP / "Sol" OR by IAU proper name; both entries merge with proper-name winning on conflict.
 - `data/clusters.json` — Star cluster definitions: name, aliases, seed stars, wikipedia, notes

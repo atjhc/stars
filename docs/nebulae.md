@@ -8,6 +8,14 @@ hot-star illumination. The dust positions are scientifically measured
 from Gaia data; the emission colors are simulated from the real
 positions and spectral types of O and B stars in the catalog.
 
+Behind that local volume, a single all-sky panorama provides the
+distant galactic backdrop — the unresolved Milky Way star band and its
+far-galactic dust lanes that the local Edenhofer cube doesn't cover
+(the cube ends at ~1.25 kpc; most of the visible Milky Way arch is at
+2–10 kpc). Local dust then extincts the backdrop along the line of
+sight, so dense molecular clouds silhouette against the distant
+galactic light. See "Galactic backdrop" below.
+
 The rendering is toggled with the **D** key, which shows both the
 volumetric dust glow and the named molecular cloud labels.
 
@@ -52,9 +60,11 @@ volumetric dust glow and the named molecular cloud labels.
 - **No self-shielding** — dense cloud cores should block UV from
   reaching their interiors, creating dark cores with illuminated rims.
   Our model illuminates uniformly through dust
-- **No extinction** — real dust dims and reddens background starlight.
-  Stars render through clouds unaffected. See "Dark cloud rendering"
-  under Planned Improvements
+- **Partial extinction** — the dust now darkens the galactic backdrop
+  panorama via integrated optical depth, so dense clouds silhouette
+  against distant galactic light. Drake's resolved foreground stars
+  still render through clouds unaffected (no per-star extinction).
+  See "Per-star extinction" under Planned Improvements
 - **6 pc voxel resolution** — structures smaller than ~20 ly remain blurred.
   The native Edenhofer data is 2 pc, but we downsample to keep the baked
   texture under ~25 MB gzipped; fine filaments still smear together
@@ -110,9 +120,13 @@ rendered: Aquila Rift, Cygnus Rift, Scutum Cloud, Ophiuchus-Scorpius
 Cloud, Cepheus Cloud, Vulpecula Rift, Cygnus X, Vulpecula OB1 Cloud,
 Cygnus OB7 Cloud, Canis Major (dark), Lupus Far Cloud.
 
-These require depth-aware extinction compositing (darkening only stars
-behind the dust) and a larger camera zoom range for galaxy-scale
-visualization. See "Planned improvements" below.
+Visualizing these as silhouettes against the galactic backdrop is
+now possible (the skybox is extincted by the dust volume), but
+properly *appreciating* their galaxy-scale extent requires the camera
+zoom range described in `docs/vision.md`. Per-star extinction —
+darkening only resolved foreground stars behind the dust — is still
+the missing piece for a fully depth-correct render. See "Planned
+improvements" below.
 
 ## Rendering pipeline
 
@@ -156,23 +170,35 @@ The script downloads the source FITS automatically on first run.
    `unpackAlignment = 1` because 333 × 3 = 999 bytes/row isn't a
    multiple of the default 4.
 
-2. Render emission at **half resolution** into an offscreen
-   `WebGLRenderTarget` via a ray-marching fragment shader on a
-   BackSide box mesh:
+2. Render emission **and** integrated optical depth at **half
+   resolution** into an offscreen `WebGLRenderTarget` (RGBA) via a
+   ray-marching fragment shader on a BackSide box mesh:
    - 128 steps × 18 scene units (~6 pc) per pixel
    - Each step: sample the 3D texture, compute emission from
      ionizing + scattering flux channels
-   - Accumulate with absorption (dense cores absorb their own
-     emission, preventing runaway brightness)
-   - Emission color: `hiiColor × accumHII + refColor × accumRef`
+   - Accumulate emission with absorption (dense cores absorb their
+     own emission, preventing runaway brightness)
+   - Accumulate raw integrated density into a separate channel for
+     backdrop extinction — decoupled from the emission opacity knob,
+     so emission brightness and dust-lane darkness can be tuned
+     independently
+   - Output `RGBA = (premultiplied emission, optical depth)` with
+     `AdditiveBlending` into the zero-cleared RT (premultiplying RGB
+     by the emission alpha in-shader matches what the previous
+     `NormalBlending(non-premul)` path produced, while freeing alpha
+     to carry optical depth)
+   - The RT is cleared every frame regardless of dust visibility, so
+     toggling nebulae off cleanly removes both emission and extinction
 
 3. **Upscale blit**: render a fullscreen quad that samples the
-   half-res texture with bilinear filtering, using additive blending
-   to composite onto the post-bloom starfield. Volumetric glow is
-   inherently smooth, so half-res is nearly indistinguishable.
+   half-res texture's RGB with bilinear filtering, using additive
+   blending to composite emission onto the post-bloom starfield.
+   Volumetric glow is inherently smooth, so half-res is nearly
+   indistinguishable.
 
-4. Render order: stars → bloom compositor → dust emission blit →
-   CSS2D labels.
+4. Render order: skybox (samples halfResRT.a as `exp(-τ)` extinction
+   over the panorama) → stars → bloom compositor → dust emission
+   blit → canvas labels.
 
 ### Labels (`src/nebulaeLabels.ts`)
 
@@ -195,6 +221,71 @@ The script downloads the source FITS automatically on first run.
 | Emission ray march | 128 steps/pixel at half-res | Half-resolution reduces fragment count 4× |
 | Upscale blit | Fullscreen quad, bilinear | Volumetric glow is smooth enough for half-res |
 | Labels (12 CSS2D) | DOM update per frame | Distance text only updated when hovered |
+
+## Galactic backdrop (skybox)
+
+A single 4096×2048 equirectangular Milky Way panorama (ESO/S. Brunier
+*eso0932a*, CC-BY 4.0) is rendered as the deepest layer of the scene
+to provide the distant galactic context the Edenhofer volume can't
+reach.
+
+### Asset (`scripts/fetch-skybox.py`)
+
+- Downloads from Wikimedia Commons, downsamples to 4096×2048
+- Wrap-padded **9-pixel median filter** to erase resolved-star
+  pinpoints (Drake renders its own catalog stars over this; without
+  the median we'd get visible double-stars wherever the panorama and
+  catalog overlap). Padding the image horizontally before filtering
+  and cropping back keeps the longitude=±180° meridian wrap continuous
+  — without it PIL's edge clamping leaves a visible seam at runtime
+- Final pass: feather-blend the leftmost and rightmost 16 columns
+  to enforce wrap continuity (the source ESO panorama has a residual
+  ~0.9/255 column-to-column step at the meridian after the median)
+- Saved at JPEG q=95 (~600 KB). Lower q reintroduces DCT quantization
+  noise that undoes the seam blend at the boundary; q=95 keeps the
+  delta below the interior pixel-to-pixel baseline
+
+### Runtime (`src/skybox.ts`)
+
+A back-side unit sphere with a custom shader. Vertex shader strips
+translation from the view matrix and uses `.xyww` so the sphere always
+surrounds the camera and renders at the far plane regardless of
+camera position. Fragment shader:
+
+- Rotates the scene-space view direction into galactic coordinates
+  via the transpose of the same `GAL_TO_SCENE` matrix in `src/dust.ts`
+  (orthonormal — transpose = inverse). Galactic equator therefore
+  registers exactly with the dust volume's frame
+- Samples the equirect panorama: `lon = atan2(g.y, g.x)`,
+  `lat = asin(g.z)`, `u = 0.5 - lon/(2π)`, `v = 0.5 - lat/π`. ESO
+  Brunier convention puts galactic east on the LEFT (standard
+  astronomical sky-map mirror of an Earth map)
+- **Backdrop extinction**: samples halfResRT.a (the dust pass's
+  optical-depth output) at the matching screen UV — with bloom-
+  overscan FOV correction since the composer renders into a 1.1×
+  oversized buffer — and multiplies the panorama by `exp(-τ)`. Local
+  dust silhouettes the backdrop without affecting Drake's foreground
+  stars (those render over the extincted skybox)
+- **Brightness scaling**: half-rate Pogson curve
+  `pow(2.512, (uMagLimit - 7.5) * 0.5)`. The user's mag-limit knob
+  also controls resolved-star and dust-emission visibility; the
+  skybox follows at half rate so it doesn't overpower the stars and
+  amplify pole / seam artifacts at high mag levels
+- **Polar attenuation**: `sqrt(cos(lat))` fades to zero at the poles.
+  Equirect projection collapses each polar circle to a single texture
+  row, so |lat|→90° has no real signal — just a smeared average that
+  brightness scaling makes ugly without the fade
+- Texture wrapS = `RepeatWrapping` so the bilinear filter blends
+  across the meridian instead of clamping to edge
+
+### Tuning constants
+
+| Constant | Location | Purpose |
+|---|---|---|
+| `uIntensity` | `src/skybox.ts` | Overall backdrop brightness (default 0.09) |
+| `uExtinctionStrength` | `src/dust.ts` | How dark dust lanes silhouette (default 0.025) |
+| `TARGET_OPACITY` | `src/dust.ts` | Local emission brightness (default 0.025) |
+| Median kernel size | `scripts/fetch-skybox.py` | How aggressive the de-starring is (default 9 px) |
 
 ## Data sources
 
@@ -231,22 +322,25 @@ actually renders.
 The Edenhofer source is 2 pc native; we bake at 6 pc to keep the RGB
 texture under ~25 MB gzipped. Dropping to 4 pc (~150 MB) or 2 pc (~1.2 GB)
 would resolve more filament and cloud-edge structure at real bandwidth /
-VRAM cost. 4 pc is the realistic next step. Going the other direction —
-8 pc (~19 MB) — is the cheap mobile-bandwidth lever flagged in
-`docs/perf-candidates.md`.
+VRAM cost. 4 pc is the realistic next step. 8 pc (~19 MB) is the cheap
+mobile-bandwidth lever in the other direction.
 
-### Dark cloud rendering
+### Per-star extinction
 
-Requires two components:
-1. **Depth-aware extinction**: a depth pre-pass renders star positions
-   into a depth buffer. The dust shader reads this to only darken stars
-   that are BEHIND the dust, not in front. Infrastructure was prototyped
-   (depth material, star depth RT) but removed for performance. Would
-   need to be re-added with careful optimization.
+Backdrop extinction is in place (the skybox is darkened by the dust
+volume's integrated optical depth — see "Galactic backdrop"). The
+remaining piece is letting local dust *also* darken the resolved
+catalog stars Drake renders. Requires:
+
+1. **Depth-aware extinction**: a depth pre-pass renders star
+   positions into a depth buffer; the dust shader reads this to only
+   darken stars that are behind the dust, not in front. Infrastructure
+   was prototyped (depth material, star depth RT) but removed for
+   performance. Would need to be re-added with careful optimization.
 2. **Galaxy-scale camera**: dark structures like the Aquila Rift and
    Cygnus Rift span 1000-2000 ly — larger than the current max zoom
-   (1076 ly from focus). Visualizing them requires the galaxy-scale
-   camera tier described in `docs/vision.md`.
+   (1076 ly from focus). Fully appreciating them requires the
+   galaxy-scale camera tier described in `docs/vision.md`.
 
 ### Additional emission lines
 
@@ -283,6 +377,9 @@ acceptable.
 - [Edenhofer et al. 2024 (A&A 685, A82)](https://www.aanda.org/articles/aa/full_html/2024/05/aa47628-23/aa47628-23.html)
 - [Leike et al. 2020 (A&A 639, A138)](https://www.aanda.org/articles/aa/full_html/2020/07/aa38169-20/aa38169-20.html)
 - [`dustmaps` Python package](https://dustmaps.readthedocs.io/)
+
+### Backdrop
+- [ESO eso0932a — The Milky Way panorama](https://www.eso.org/public/images/eso0932a/) (S. Brunier, CC-BY 4.0)
 
 ### Rendering
 - [Will Usher: WebGL Volume Rendering](https://www.willusher.io/webgl/2019/01/13/volume-rendering-with-webgl/)
