@@ -21,7 +21,8 @@ import {
   getLastHoveredMesh, isLabelsDirty, setLabelsDirty,
 } from "./systemStore.ts";
 import { isFavorite } from "./favorites.ts";
-import { isConstellationStar } from "./constellations.ts";
+import { isConstellationStar, constellationsVisible } from "./constellations.ts";
+import { inSolarSystemView } from "./planets.ts";
 import { statsPhase } from "./statsPhase.ts";
 
 // When far away the star is just a corona glow, so the label sits
@@ -84,6 +85,11 @@ export function updateLabels(
   // star occluders pushed below stack on top of planet ones.
 
   const magLimit = magLimitUniform.value;
+  // Inside Sol's planetary system: hide wider-galaxy labels so the
+  // view stays focused locally. Constellation members remain a
+  // navigation aid when constellations are on.
+  const inSolarSystem = inSolarSystemView();
+  const showConstellationStars = inSolarSystem && constellationsVisible();
   // Narrow fade band: tier-0 labels stay at full opacity until the star
   // is nearly at the render cutoff, then ease out over 0.5 mag. A wider
   // band muted nearby-but-intrinsically-dim notables (e.g. Proxima
@@ -133,6 +139,10 @@ export function updateLabels(
       const clampedOpacity = Math.max(0.2, opacity);
       const favBonus = isFavorite(group.name) ? 5000 : 0;
       const canvasId = systemCanvasLabelId(group);
+      if (inSolarSystem && !isHighlighted) {
+        if (canvasId) updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
+        continue;
+      }
       if (canvasId) {
         updateCanvasLabel(canvasId, {
           opacityTarget: clampedOpacity,
@@ -231,7 +241,7 @@ export function updateLabels(
       const favBonus = isFavorite(group.name) ? 5000 : 0;
 
       if (canvasId) {
-        if (!visible) {
+        if (!visible || (inSolarSystem && !isSystemHighlighted)) {
           updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
         } else {
           const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
@@ -294,6 +304,22 @@ export function updateLabels(
       && !collapsed.has(target)) {
       const owning = meshToSystem.get(target) ?? clusterOf.get(target);
       if (owning !== hoveredSystem && owning !== selectedSystem) return;
+    }
+
+    // Solar-system view: hoisted above the metrics/occluder pass so
+    // we don't pay screen projection for thousands of stars that the
+    // gate inside updateCanvasStarLabel would just hide anyway.
+    if (inSolarSystem && star.name !== "Sol") {
+      const sys = meshToSystem.get(target);
+      const sysHighlighted = sys !== undefined
+        && (sys === selectedSystem || sys === hoveredSystem);
+      if (target !== selectedMesh && target !== lastHoveredMesh && !sysHighlighted
+          && (!showConstellationStars || !isConstellationStar(star.name))) {
+        target.visible = false;
+        const canvasId = getCanvasLabelIdForMesh(target);
+        if (canvasId) updateCanvasLabel(canvasId, { hidden: true, pinned: false });
+        return;
+      }
     }
 
     const radius = starRadiusScene(star.lum, star.ci);

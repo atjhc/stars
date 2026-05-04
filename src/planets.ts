@@ -131,7 +131,7 @@ const SOLAR_SYSTEM_FADE_START = 900 * SCENE_PER_AU;
 // Orbit lines fade more gradually than labels — labels pile up on Sol's
 // pixel past ~1000 AU, but rings can stay faintly visible to preserve
 // Solar-System scale cues during the transition to interstellar views.
-const ORBIT_FADE_END = 3000 * SCENE_PER_AU;
+export const ORBIT_FADE_END = 3000 * SCENE_PER_AU;
 const ECLIPTIC_OBLIQUITY = (23.4393 * Math.PI) / 180;
 const ORBIT_BASE_OPACITY = 0.7;
 
@@ -141,6 +141,12 @@ function solarSystemFade(camDistFromSol: number): number {
 
 function orbitFade(camDistFromSol: number): number {
   return 1 - THREE.MathUtils.smoothstep(camDistFromSol, SOLAR_SYSTEM_FADE_START, ORBIT_FADE_END);
+}
+
+// Other label modules consult this to suppress wider-galaxy labels
+// while the user is studying Sol's planetary system.
+export function inSolarSystemView(): boolean {
+  return camera.position.length() < ORBIT_FADE_END;
 }
 
 type PlanetKind = "planet" | "dwarf" | "asteroid" | "moon";

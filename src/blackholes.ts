@@ -17,6 +17,7 @@ import {
 } from "./labelCanvas.ts";
 import { computeStarMinOrbit } from "./stars.ts";
 import { getSearchIndex } from "./catalog.ts";
+import { inSolarSystemView } from "./planets.ts";
 
 function resolveArrivalLookAt(
   ref: string | [number, number, number] | undefined,
@@ -148,12 +149,17 @@ const bhHandler: LabelTypeHandler = {
         if (d > maxSolDist) maxSolDist = d;
       }
     }
+    const hideForSolarView = inSolarSystemView();
     for (const bh of blackHoleLabels) {
       if (!bh.anchor.visible) {
         updateCanvasLabel(canvasIdFor(bh.name), { hidden: true });
         continue;
       }
       const isActive = bh === selectedBH || bh === hoveredBH;
+      if (hideForSolarView && !isActive) {
+        updateCanvasLabel(canvasIdFor(bh.name), { hidden: true, pinned: false });
+        continue;
+      }
       const trueDist = bh === selectedBH ? orbitRadius : distanceFromCamera(bh.anchor.position);
       const opacity = isActive ? 1.0 : solDistanceFade(bh.anchor.position.length(), maxSolDist);
       updateCanvasLabel(canvasIdFor(bh.name), {

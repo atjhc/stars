@@ -25,6 +25,7 @@ import {
 } from "./labelCanvas.ts";
 import { computeStarMinOrbit } from "./stars.ts";
 import { starLabelMargin } from "./labels.ts";
+import { inSolarSystemView } from "./planets.ts";
 
 // Canvas label styling — a saturated cyan-teal that reads as cool
 // thermal glow but stays clearly distinct from the pale powder-blue
@@ -355,16 +356,22 @@ const nsHandler: LabelTypeHandler = {
     const halfHeight = window.innerHeight / 2;
     const BLOOM_SPREAD_PX = 16;
 
+    const hideForSolarView = inSolarSystemView();
     for (const ns of neutronStars) {
       const isActive = ns === selectedNS || ns === hoveredNS;
       const camDist = ns === selectedNS ? orbitRadius : distanceFromCamera(ns.anchor.position);
       const solDist = ns.anchor.position.length();
       const opacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
-      updateCanvasLabel(canvasIdFor(ns.name), {
-        opacityTarget: opacity,
-        pinned: isActive,
-        subtitles: isActive ? [formatAstroDistance(camDist)] : [],
-      });
+      if (hideForSolarView && !isActive) {
+        updateCanvasLabel(canvasIdFor(ns.name), { hidden: true, pinned: false });
+      } else {
+        updateCanvasLabel(canvasIdFor(ns.name), {
+          hidden: false,
+          opacityTarget: opacity,
+          pinned: isActive,
+          subtitles: isActive ? [formatAstroDistance(camDist)] : [],
+        });
+      }
 
       const mat = ns.markerMesh.material as THREE.ShaderMaterial;
       const pos = ns.anchor.position;

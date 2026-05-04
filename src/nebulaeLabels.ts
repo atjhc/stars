@@ -9,6 +9,7 @@ import { isFavorite } from "./favorites.ts";
 import {
   registerCanvasLabel, updateCanvasLabel,
 } from "./labelCanvas.ts";
+import { inSolarSystemView } from "./planets.ts";
 
 const NEBULA_CANVAS_FONT = `13px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const NEBULA_CANVAS_COLOR = "rgba(255,180,120,0.85)";
@@ -113,10 +114,15 @@ const nebulaHandler: LabelTypeHandler = {
         if (d > maxSolDist) maxSolDist = d;
       }
     }
+    const hideForSolarView = inSolarSystemView();
     for (const nl of nebulaLabels) {
       const isActive = nl === selectedNebula || nl === hoveredNebula;
       if (!nl.anchor.visible) {
         updateCanvasLabel(canvasIdFor(nl.name), { hidden: true });
+        continue;
+      }
+      if (hideForSolarView && !isActive) {
+        updateCanvasLabel(canvasIdFor(nl.name), { hidden: true, pinned: false });
         continue;
       }
       const camDist = distanceFromCamera(nl.anchor.position);
