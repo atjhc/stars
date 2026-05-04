@@ -7,7 +7,7 @@ import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
 import {
-  registerCanvasLabel, updateCanvasLabel,
+  registerCanvasLabel, updateCanvasLabel, hideCanvasLabel,
 } from "./labelCanvas.ts";
 import { inSolarSystemView } from "./planets.ts";
 
@@ -122,7 +122,7 @@ const nebulaHandler: LabelTypeHandler = {
         continue;
       }
       if (hideForSolarView && !isActive) {
-        updateCanvasLabel(canvasIdFor(nl.name), { hidden: true, pinned: false });
+        hideCanvasLabel(canvasIdFor(nl.name));
         continue;
       }
       const camDist = distanceFromCamera(nl.anchor.position);

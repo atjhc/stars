@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
-import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ANIM_DURATION } from "./constants.ts";
+import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ANIM_DURATION, SOL_NAME } from "./constants.ts";
 import {
   scene, camera, renderer, composer, lensingPass,
   gridMesh, handleResize, bloomPass,
@@ -634,7 +634,7 @@ setupLayersControl([
       }
     }
   } else {
-    const solAnchor = notableObjects.find((m) => (m.userData as Star).name === "Sol");
+    const solAnchor = notableObjects.find((m) => (m.userData as Star).name === SOL_NAME);
     if (solAnchor) {
       selectStar(solAnchor, updateDetailPanel, doUpdateLabelVisibility);
       rebaseForStar(solAnchor);

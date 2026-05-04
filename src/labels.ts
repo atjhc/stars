@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ,
-  ARRIVAL_COLLISION_DIST,
+  ARRIVAL_COLLISION_DIST, SOL_NAME,
   solDistanceFade, formatAstroDistance,
 } from "./constants.ts";
 import {
@@ -15,7 +15,7 @@ import { starRadiusScene, starGlowCanvas } from "./color.ts";
 import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
 import { shouldHighlightLabel, type HighlightContext } from "./labelVisibility.ts";
 import { pushFrameOccluder } from "./labelRegistry.ts";
-import { updateCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty, setCanvasLabelsVisible } from "./labelCanvas.ts";
+import { updateCanvasLabel, hideCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty, setCanvasLabelsVisible } from "./labelCanvas.ts";
 import {
   getSelectedMesh, getSelectedSystem, getSelectedSubset, getHoveredSystem,
   getLastHoveredMesh, isLabelsDirty, setLabelsDirty,
@@ -140,7 +140,7 @@ export function updateLabels(
       const favBonus = isFavorite(group.name) ? 5000 : 0;
       const canvasId = systemCanvasLabelId(group);
       if (inSolarSystem && !isHighlighted) {
-        if (canvasId) updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
+        if (canvasId) hideCanvasLabel(canvasId);
         continue;
       }
       if (canvasId) {
@@ -184,7 +184,7 @@ export function updateLabels(
     if (skipCollapse) {
       group.collapsedMembers = [];
       const skipId = systemCanvasLabelId(group);
-      if (skipId) updateCanvasLabel(skipId, { hidden: true, pinned: false, subtitles: [] });
+      if (skipId) hideCanvasLabel(skipId);
       continue;
     }
 
@@ -242,7 +242,7 @@ export function updateLabels(
 
       if (canvasId) {
         if (!visible || (inSolarSystem && !isSystemHighlighted)) {
-          updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
+          hideCanvasLabel(canvasId);
         } else {
           const opacity = isSystemHighlighted ? 1.0 : 1.0 - THREE.MathUtils.smoothstep(dist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
           const clampedOpacity = Math.max(0.2, opacity);
@@ -276,7 +276,7 @@ export function updateLabels(
       }
     } else {
       group.collapsedMembers = [];
-      if (canvasId) updateCanvasLabel(canvasId, { hidden: true, pinned: false, subtitles: [] });
+      if (canvasId) hideCanvasLabel(canvasId);
     }
   }
   });
@@ -309,7 +309,7 @@ export function updateLabels(
     // Solar-system view: hoisted above the metrics/occluder pass so
     // we don't pay screen projection for thousands of stars that the
     // gate inside updateCanvasStarLabel would just hide anyway.
-    if (inSolarSystem && star.name !== "Sol") {
+    if (inSolarSystem && star.name !== SOL_NAME) {
       const sys = meshToSystem.get(target);
       const sysHighlighted = sys !== undefined
         && (sys === selectedSystem || sys === hoveredSystem);
@@ -317,7 +317,7 @@ export function updateLabels(
           && (!showConstellationStars || !isConstellationStar(star.name))) {
         target.visible = false;
         const canvasId = getCanvasLabelIdForMesh(target);
-        if (canvasId) updateCanvasLabel(canvasId, { hidden: true, pinned: false });
+        if (canvasId) hideCanvasLabel(canvasId);
         return;
       }
     }
@@ -370,7 +370,7 @@ export function updateLabels(
       // Collapsed members want to fade out (the cluster label claims
       // the visual space). Flag hidden; leave opacityTarget intact so
       // the visibleFactor animation has something to fade from.
-      updateCanvasLabel(canvasId, { hidden: true, pinned: false });
+      hideCanvasLabel(canvasId);
       return;
     }
 
@@ -405,7 +405,7 @@ export function updateLabels(
       const t = THREE.MathUtils.clamp((appMag - tier0FadeStart) / 0.5, 0, 1);
       if (t >= 1) {
         target.visible = false;
-        updateCanvasLabel(canvasId, { hidden: true, pinned: false });
+        hideCanvasLabel(canvasId);
         return;
       }
       target.visible = true;
@@ -413,7 +413,7 @@ export function updateLabels(
       const solFade = solDistanceFade(solDist, cachedMaxNotableSolDist);
       const finalOpacity = Math.max(0.15, (1 - t) * solFade);
       const magRank = Math.max(0, (10 - appMag) * 10);
-      const solBonus = star.name === "Sol" ? 3000 : 0;
+      const solBonus = star.name === SOL_NAME ? 3000 : 0;
       updateCanvasLabel(canvasId, {
         opacityTarget: finalOpacity,
         pinned: false,
@@ -429,7 +429,7 @@ export function updateLabels(
 
     if (camDist > LABEL_HIDE_DIST) {
       target.visible = false;
-      updateCanvasLabel(canvasId, { hidden: true, pinned: false });
+      hideCanvasLabel(canvasId);
       idleHiddenTier1.add(target);
       return;
     }

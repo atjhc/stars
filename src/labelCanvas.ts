@@ -182,6 +182,10 @@ export function updateCanvasLabel(id: string, patch: Partial<CanvasLabelDescript
   Object.assign(label, patch);
 }
 
+export function hideCanvasLabel(id: string): void {
+  updateCanvasLabel(id, { hidden: true, pinned: false, subtitles: [] });
+}
+
 export function getCanvasLabelCount(): number { return labels.size; }
 
 export function hasCanvasLabel(id: string): boolean {

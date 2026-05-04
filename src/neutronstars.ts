@@ -21,7 +21,7 @@ import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
 import {
-  registerCanvasLabel, updateCanvasLabel,
+  registerCanvasLabel, updateCanvasLabel, hideCanvasLabel,
 } from "./labelCanvas.ts";
 import { computeStarMinOrbit } from "./stars.ts";
 import { starLabelMargin } from "./labels.ts";
@@ -363,7 +363,7 @@ const nsHandler: LabelTypeHandler = {
       const solDist = ns.anchor.position.length();
       const opacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
       if (hideForSolarView && !isActive) {
-        updateCanvasLabel(canvasIdFor(ns.name), { hidden: true, pinned: false });
+        hideCanvasLabel(canvasIdFor(ns.name));
       } else {
         updateCanvasLabel(canvasIdFor(ns.name), {
           hidden: false,

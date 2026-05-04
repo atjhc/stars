@@ -13,7 +13,7 @@ import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 import { favoriteIcon } from "./detail.ts";
 import { isFavorite } from "./favorites.ts";
 import {
-  registerCanvasLabel, updateCanvasLabel,
+  registerCanvasLabel, updateCanvasLabel, hideCanvasLabel,
 } from "./labelCanvas.ts";
 import { computeStarMinOrbit } from "./stars.ts";
 import { getSearchIndex } from "./catalog.ts";
@@ -157,7 +157,7 @@ const bhHandler: LabelTypeHandler = {
       }
       const isActive = bh === selectedBH || bh === hoveredBH;
       if (hideForSolarView && !isActive) {
-        updateCanvasLabel(canvasIdFor(bh.name), { hidden: true, pinned: false });
+        hideCanvasLabel(canvasIdFor(bh.name));
         continue;
       }
       const trueDist = bh === selectedBH ? orbitRadius : distanceFromCamera(bh.anchor.position);
