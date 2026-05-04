@@ -38,6 +38,22 @@ registerPanel("search", () => {
   searchInput.blur();
 });
 
+// Document-level capture-phase Escape handler. Forces the close
+// directly rather than going through closePanel, which early-returns
+// if panelManager's `current` drifts out of sync with the visible
+// .active class. (Note: only fires if the runtime environment isn't
+// intercepting Escape — Karabiner / Hammerspoon / similar can swallow
+// the event before any browser handler sees it.)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && searchEl.classList.contains("active")) {
+    e.preventDefault();
+    e.stopPropagation();
+    searchEl.classList.remove("active");
+    searchInput.blur();
+    closePanel("search");
+  }
+}, true);
+
 function openSearch() {
   searchEl.classList.add("active");
   searchInput.value = "";
