@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import {
   LABEL_FADE_NEAR, LABEL_FADE_FAR, LABEL_HIDE_DIST, COLLAPSE_PX_SQ,
-  ARRIVAL_COLLISION_DIST, SOL_NAME,
+  ARRIVAL_COLLISION_DIST, SOL_NAME, SCENE_PER_AU,
   solDistanceFade, formatAstroDistance,
 } from "./constants.ts";
 import {
@@ -14,7 +14,7 @@ import { computeStarScreenMetrics } from "./stars.ts";
 import { starRadiusScene, starGlowCanvas } from "./color.ts";
 import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
 import { shouldHighlightLabel, type HighlightContext } from "./labelVisibility.ts";
-import { pushFrameOccluder } from "./labelRegistry.ts";
+import { pushStarOccluder, clearStarOccluders } from "./labelRegistry.ts";
 import { updateCanvasLabel, hideCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty, setCanvasLabelsVisible } from "./labelCanvas.ts";
 import {
   getSelectedMesh, getSelectedSystem, getSelectedSubset, getHoveredSystem,
@@ -24,6 +24,12 @@ import { isFavorite } from "./favorites.ts";
 import { isConstellationStar, constellationsVisible } from "./constellations.ts";
 import { inSolarSystemView } from "./planets.ts";
 import { statsPhase } from "./statsPhase.ts";
+
+// Once the camera is closer than ~10 AU to a star, its label fades out
+// — the disc/corona washes the text against the bright body. Below
+// 1 AU the label is fully gone.
+const NEAR_LABEL_FADE_FAR_SCENE = 10 * SCENE_PER_AU;
+const NEAR_LABEL_FADE_NEAR_SCENE = 1 * SCENE_PER_AU;
 
 // When far away the star is just a corona glow, so the label sits
 // close. As the disc grows the gap widens to the full buffer.
@@ -81,8 +87,10 @@ export function updateLabels(
   // throttles it to ~300 ms during orbit, which is exactly the cadence
   // we want for batched collision decisions.
   markCanvasCollisionDirty();
-  // Frame occluders are cleared in main.ts before updateAllLabels;
-  // star occluders pushed below stack on top of planet ones.
+  // Star occluders are kept across non-dirty frames so the debug overlay
+  // and idle-frame consumers see a stable hit-circle layout. Clear them
+  // here at the start of every dirty pass before processLabel re-pushes.
+  clearStarOccluders();
 
   const magLimit = magLimitUniform.value;
   // Inside Sol's planetary system: hide wider-galaxy labels so the
@@ -328,7 +336,12 @@ export function updateLabels(
     if (metrics.discPx > 2) {
       const s = projectToScreen(target.position);
       if (!s.behind) {
-        pushFrameOccluder({ cx: s.x, cy: s.y, radius: metrics.discPx });
+        // sqrt(boost) expansion so foreground-boosted halos still hide
+        // labels behind them; intensity bakes in tierFade and the
+        // foreground boost, rawBrightness is the un-boosted reference.
+        const boost = metrics.intensity / metrics.rawBrightness;
+        const radius = metrics.halfBillPx * Math.sqrt(Math.max(boost, 1));
+        pushStarOccluder({ cx: s.x, cy: s.y, radius });
       }
     }
 
@@ -374,6 +387,13 @@ export function updateLabels(
       return;
     }
 
+    const nearFade = THREE.MathUtils.smoothstep(camDist, NEAR_LABEL_FADE_NEAR_SCENE, NEAR_LABEL_FADE_FAR_SCENE);
+    if (nearFade <= 0) {
+      target.visible = false;
+      hideCanvasLabel(canvasId);
+      return;
+    }
+
     if (isHighlighted) {
       const isSelectedTarget = target === selectedMesh
         || (sys !== undefined && sys === selectedSystem);
@@ -385,7 +405,7 @@ export function updateLabels(
       target.visible = true;
       const glow = starGlowCanvas(star.ci);
       updateCanvasLabel(canvasId, {
-        opacityTarget: 1,
+        opacityTarget: nearFade,
         pinned: true,
         hidden: false,
         rank: 500,
@@ -411,7 +431,7 @@ export function updateLabels(
       target.visible = true;
       const solDist = target.position.length();
       const solFade = solDistanceFade(solDist, cachedMaxNotableSolDist);
-      const finalOpacity = Math.max(0.15, (1 - t) * solFade);
+      const finalOpacity = Math.max(0.15, (1 - t) * solFade) * nearFade;
       const magRank = Math.max(0, (10 - appMag) * 10);
       const solBonus = star.name === SOL_NAME ? 3000 : 0;
       updateCanvasLabel(canvasId, {
@@ -435,7 +455,7 @@ export function updateLabels(
     }
     target.visible = true;
     const opacity = 1.0 - THREE.MathUtils.smoothstep(camDist, LABEL_FADE_NEAR, LABEL_FADE_FAR);
-    const finalOpacity = Math.max(0.2, opacity);
+    const finalOpacity = Math.max(0.2, opacity) * nearFade;
     updateCanvasLabel(canvasId, {
       opacityTarget: finalOpacity,
       pinned: false,

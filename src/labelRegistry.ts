@@ -32,14 +32,17 @@ export interface LabelTypeHandler {
 export type Occluder = { cx: number; cy: number; radius: number };
 const occluders: Array<() => Occluder | null> = [];
 const frameOccluders: Occluder[] = [];
+// Star-disc occluders survive between the dirty labels passes that
+// produce them, so idle-frame consumers (e.g. the hit-target overlay)
+// keep seeing them.
+const starOccluders: Occluder[] = [];
 export function registerScreenOccluder(fn: () => Occluder | null): void {
   occluders.push(fn);
 }
-// Per-frame occluders published by the active label pass (e.g. every
-// rendered star's disc). Cleared each time updateLabels starts a dirty
-// pass so stale occluders don't linger between frames.
 export function clearFrameOccluders(): void { frameOccluders.length = 0; }
 export function pushFrameOccluder(o: Occluder): void { frameOccluders.push(o); }
+export function clearStarOccluders(): void { starOccluders.length = 0; }
+export function pushStarOccluder(o: Occluder): void { starOccluders.push(o); }
 export function collectScreenOccluders(): Occluder[] {
   const out: Occluder[] = [];
   for (const fn of occluders) {
@@ -47,6 +50,7 @@ export function collectScreenOccluders(): Occluder[] {
     if (o) out.push(o);
   }
   for (const o of frameOccluders) out.push(o);
+  for (const o of starOccluders) out.push(o);
   return out;
 }
 

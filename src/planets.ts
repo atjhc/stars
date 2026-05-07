@@ -4,7 +4,7 @@ import {
   orbitRadius, distanceFromCamera,
 } from "./scene.ts";
 import {
-  TILE_BASE_URL, KM_PER_PC, SCALE, AU_PER_PC,
+  TILE_BASE_URL, KM_PER_PC, SCALE, SCENE_PER_AU,
   formatAstroDistance,
 } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
@@ -121,7 +121,6 @@ function pumpTextureQueue(): void {
   });
 }
 
-const SCENE_PER_AU = SCALE / AU_PER_PC;
 // Fade band sits well outside the orbits we render (Eris's aphelion
 // is ~97 AU) so the rings stay annotated whenever the camera is
 // anywhere near the Solar System. Past 1000 AU labels would pile up

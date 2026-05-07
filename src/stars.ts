@@ -6,6 +6,7 @@ import {
   starViewRotationUniform,
 } from "./shaderUniforms.ts";
 import { F_HALF_TAN_INV, F_HALF_TAN_INV_GLSL, VIEW_UNIFORMS_GLSL, TARGET_VIEW_GLSL } from "./shaderLib.ts";
+import { LY_TO_SCENE } from "./constants.ts";
 
 // Hover affordance — matched instance gets its intensity multiplied so
 // the user sees a subtle brightness bump (no size change, since the
@@ -40,6 +41,12 @@ export function computeStarMinOrbit(radius: number, maxFraction = 0.15): number 
 //   appMag = absMag + 5·log10(camDist / 10pc)
 
 export const DISC_SCALE = 8.0;
+
+// Lifts near-camera star intensity so cluster members and foreground
+// stars read on dim/mobile displays without altering the distant field.
+const FOREGROUND_BOOST = 2.0;
+const FOREGROUND_NEAR = 0.5;
+const FOREGROUND_FAR = 100 * LY_TO_SCENE;
 
 // Tile binary format: 20 bytes per star. Matches scripts/build-catalog.py.
 export const BYTES_PER_STAR = 20;
@@ -89,7 +96,8 @@ export function computeStarScreenMetrics(
   // Match the shader's smoothstep(uMagLimit-1.5, uMagLimit, appMag).
   const t = Math.max(0, Math.min(1, (appMag - (magLimit - 1.5)) / 1.5));
   const tierFade = 1 - t * t * (3 - 2 * t);
-  const intensity = rawBrightness * tierFade;
+  const foregroundBoost = 1 + FOREGROUND_BOOST * (1 - THREE.MathUtils.smoothstep(safeDist, FOREGROUND_NEAR, FOREGROUND_FAR));
+  const intensity = rawBrightness * tierFade * foregroundBoost;
 
   const coronaPx = HALO_FLOOR_PX * Math.max(1.0, Math.min(2.5, 0.5 + 0.3 * rawBrightness));
   return { discPx, coronaPx, halfBillPx: discPx + coronaPx, intensity, rawBrightness };
@@ -117,6 +125,9 @@ const vertexShader = `
   ${F_HALF_TAN_INV_GLSL}
   const float DISC_SCALE = ${DISC_SCALE.toFixed(2)};
   const float HALO_FLOOR_PX = ${HALO_FLOOR_PX.toFixed(1)};
+  const float FOREGROUND_BOOST = ${FOREGROUND_BOOST.toFixed(2)};
+  const float FOREGROUND_NEAR = ${FOREGROUND_NEAR.toFixed(2)};
+  const float FOREGROUND_FAR = ${FOREGROUND_FAR.toFixed(2)};
   ${TARGET_VIEW_GLSL}
 
   void main() {
@@ -144,7 +155,8 @@ const vertexShader = `
       vec3 toHovered = instancePos - uLocalHoveredPos;
       if (dot(toHovered, toHovered) < 1e-10) hoverMul = uHoverBoost;
     }
-    vIntensity = rawBrightness * tierFade * hoverMul;
+    float foregroundBoost = 1.0 + FOREGROUND_BOOST * (1.0 - smoothstep(FOREGROUND_NEAR, FOREGROUND_FAR, camDist));
+    vIntensity = rawBrightness * tierFade * hoverMul * foregroundBoost;
 
     // Halo rim thickness — brightness-driven, bounded, additive to disc.
     // For a sub-pixel star this is the entire visible element.

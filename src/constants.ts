@@ -28,6 +28,8 @@ export const KM_PER_PC = 3.086e13;
 // One light-year, expressed in scene units. Conversion factor for
 // ly-denominated config values (cluster arrival/min radii, etc.).
 export const LY_TO_SCENE = SCALE / LY_PER_PARSEC;
+// One AU in scene units.
+export const SCENE_PER_AU = SCALE / AU_PER_PC;
 // Inside this camera-to-destination distance, projected label positions
 // barely shift frame-to-frame, so the collision pass re-engages during
 // the final deceleration of a transit instead of waiting for the

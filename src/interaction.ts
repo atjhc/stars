@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import type { Star, SystemGroup } from "./types.ts";
 import { camera, animateTo, setMinOrbitOverride } from "./scene.ts";
-import { LY_TO_SCENE } from "./constants.ts";
+import { LY_TO_SCENE, SOL_NAME } from "./constants.ts";
+import { inSolarSystemView } from "./planets.ts";
 import { addRecent } from "./recents.ts";
 import { refreshSearch } from "./search.ts";
 import { starRadiusScene } from "./color.ts";
@@ -35,7 +36,14 @@ export function showHover(target: THREE.Object3D) {
   if (lastHovered === target) return;
   setLastHoveredMesh(target);
   // Don't glow the focused star — it's already prominent at close zoom.
-  if (target === getSelectedMesh()) {
+  // Also don't disc-glow Sol while the camera is inside the Solar System
+  // but focused on a planet: the user is studying a planet and Sol's
+  // brightening reads as a distraction. The label still highlights via
+  // setLastHoveredMesh.
+  const suppressSolHoverGlow = (target.userData as Star).name === SOL_NAME
+    && inSolarSystemView()
+    && getSelectedMesh() !== target;
+  if (target === getSelectedMesh() || suppressSolHoverGlow) {
     setHoveredStar(null);
   } else {
     setHoveredStar(target.position);
