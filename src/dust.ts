@@ -1,27 +1,11 @@
 import * as THREE from "three";
-import { camera, scene, getRenderPixelRatio, qualityProfile, GAL_TO_SCENE } from "./scene.ts";
+import { camera, getRenderPixelRatio, qualityProfile, GAL_TO_SCENE } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
 import { isSkyboxVisible } from "./skybox.ts";
 // Float32 precision is adequate — dust spans ~6000 scene units.
 const dustCamPosUniform: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
-
-// Layer reserved for "things that occlude dust." The volumetric dust
-// pass runs to its own halfResRT *before* the main composer, so dust
-// can't read the main scene's depth — instead we do a depth-only
-// pre-pass into halfResRT that rasterises every mesh tagged with this
-// layer using their actual geometry. Dust then runs with depth test
-// enabled, so any pixel covered by a tagged mesh is automatically
-// skipped without a sphere-fit approximation. Planet bodies opt in
-// via `mesh.layers.enable(OCCLUDER_LAYER)` at init.
-export const OCCLUDER_LAYER = 5;
-const OCCLUDER_MATERIAL = new THREE.MeshBasicMaterial({ colorWrite: false });
-// Pushed by planets.ts each frame from its solar-system fade band:
-// false during interstellar views skips the otherwise-unconditional
-// scene traversal of the depth pre-pass.
-let occluderActive = false;
-export function setOccluderActive(v: boolean): void { occluderActive = v; }
 
 interface DustMeta {
   shape: [number, number, number];
@@ -150,12 +134,7 @@ function createEmissionMaterial(
     fragmentShader: EMISSION_FRAGMENT,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    // Per-pixel occlusion against any OCCLUDER_LAYER mesh: the pre-pass
-    // fills halfResRT's depth buffer with the body's exact silhouette,
-    // and any dust fragment whose back-of-volume depth is greater (i.e.
-    // farther) gets discarded. Default LessEqualDepth keeps sky pixels
-    // (cleared depth = 1.0) drawing.
-    depthTest: true,
+    depthTest: false,
     side: THREE.BackSide,
   });
 }
@@ -262,13 +241,6 @@ export function updateDust(): void {
 // Ray march to the half-res RT. Run every frame — the target-relative
 // math in the fragment shader keeps the output stable across frames
 // at deep zoom without any skip heuristic.
-//
-// A depth-only pre-pass runs first: every mesh tagged with
-// OCCLUDER_LAYER is rasterised into halfResRT's depth buffer using its
-// real geometry. The dust pass then runs with depth test enabled so
-// each dust fragment is discarded where a closer occluder fragment has
-// already written depth. Pixel-perfect against any silhouette without
-// the sphere-fit approximation that bled through irregular bodies.
 export function renderDustToRT(renderer: THREE.WebGLRenderer): void {
   if (!halfResRT) return;
   // Skip the bind+clear entirely when nothing consumes the RT. The
@@ -286,17 +258,7 @@ export function renderDustToRT(renderer: THREE.WebGLRenderer): void {
   renderer.clear(true, true, false);
   renderer.autoClear = false;
 
-  if (dustVisible) {
-    if (occluderActive) {
-      const savedMask = camera.layers.mask;
-      camera.layers.set(OCCLUDER_LAYER);
-      scene.overrideMaterial = OCCLUDER_MATERIAL;
-      renderer.render(scene, camera);
-      scene.overrideMaterial = null;
-      camera.layers.mask = savedMask;
-    }
-    renderer.render(emissionScene, camera);
-  }
+  if (dustVisible) renderer.render(emissionScene, camera);
 
   renderer.autoClear = prevAutoClear;
   renderer.setRenderTarget(prevTarget);

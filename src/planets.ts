@@ -9,7 +9,6 @@ import {
 } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
-import { OCCLUDER_LAYER, setOccluderActive } from "./dust.ts";
 import { pushFrameOccluder } from "./labelRegistry.ts";
 import { projectToLabelScreen } from "./scene.ts";
 import { registerLabelType, registerSearchKindAlias, type LabelTypeHandler } from "./labelRegistry.ts";
@@ -49,6 +48,20 @@ function makeFallbackTexture(color: THREE.Color): THREE.DataTexture {
   return tex;
 }
 const FALLBACK_TEXTURE = makeFallbackTexture(PLANET_FALLBACK_COLOR);
+const BLACK_TEXTURE = makeFallbackTexture(new THREE.Color(0, 0, 0));
+
+// Tunable constants (greppable so brightness can be adjusted without
+// editing shader strings).
+const NIGHT_LIGHTS_SCALE = 0.35;
+const PARENTSHINE_ANGULAR_BOOST = 3;
+const PARENTSHINE_INTENSITY_CAP = 0.08;
+
+function colorFromArrayOr(
+  arr: [number, number, number] | undefined,
+  fallback: [number, number, number],
+): THREE.Color {
+  return new THREE.Color().fromArray(arr ?? fallback);
+}
 
 // Bodies that ship a surface texture and the file extension to fetch.
 // Most are 2k JPEGs from Solar System Scope or Wikimedia photo mosaics;
@@ -98,10 +111,11 @@ function tryLoadTexture(url: string): Promise<THREE.Texture | null> {
 
 // Serialise texture loads — JPEG decode + GPU upload is main-thread
 // work, and firing 12 in parallel stalls the initial frame.
-const textureQueue: Array<{ url: string; mesh: THREE.Mesh }> = [];
+interface QueuedTexture { url: string; mesh: THREE.Mesh; uniform: string }
+const textureQueue: QueuedTexture[] = [];
 let textureProcessing = false;
-function enqueueTexture(url: string, mesh: THREE.Mesh): void {
-  textureQueue.push({ url, mesh });
+function enqueueTexture(url: string, mesh: THREE.Mesh, uniform = "uTexture"): void {
+  textureQueue.push({ url, mesh, uniform });
   pumpTextureQueue();
 }
 function pumpTextureQueue(): void {
@@ -112,7 +126,7 @@ function pumpTextureQueue(): void {
   tryLoadTexture(next.url).then((tex) => {
     textureProcessing = false;
     if (tex) {
-      (next.mesh.material as THREE.ShaderMaterial).uniforms.uTexture!.value = tex;
+      (next.mesh.material as THREE.ShaderMaterial).uniforms[next.uniform]!.value = tex;
       const onLoaded = next.mesh.userData.onTextureLoaded;
       if (typeof onLoaded === "function") onLoaded();
       kick();
@@ -162,6 +176,13 @@ interface PlanetEntry {
   parent?: string;
   aliases?: string[];
   radius_km: number;
+  // Atmosphere strength, dimensionless 0..1+. Drives twilight wrap on
+  // the body shader and the brightness of the halo shell. 0 = airless,
+  // ~0.1 = thin (Mars), ~0.5 = noticeable (Earth), ~1.0+ = dense
+  // (Venus, Titan, gas giants).
+  atmosphere?: number;
+  // Atmosphere tint as linear RGB. Defaults to pale blue if absent.
+  atmosphere_color?: [number, number, number];
   // Triaxial semi-axes [a, c, b] in km — a along mesh +X (longest
   // equatorial), c along mesh +Y (polar, shortest for Haumea-like
   // fast spinners), b along mesh +Z (intermediate equatorial). When
@@ -183,7 +204,7 @@ const KIND_LABEL: Record<PlanetKind, string> = {
   moon: "Moon",
 };
 
-interface PendingTexture { url: string; mesh: THREE.Mesh }
+interface PendingTexture { url: string; mesh: THREE.Mesh; uniform?: string }
 
 interface Planet {
   name: string;
@@ -353,21 +374,45 @@ varying vec3 vNormal;
 varying vec3 vViewDir;
 varying vec2 vUv;
 uniform sampler2D uTexture;
+// Defaults to a 1×1 black texture so bodies without a night map
+// contribute zero from this sampler.
+uniform sampler2D uNightTexture;
 uniform vec3 uSunDir;
 uniform float uIllumination;
+uniform float uAtmosphere;
+// Light reflected from the parent body (planetshine / earthshine).
+// Direction = world-space unit vector from the body toward the parent.
+// Color = parent tint × precomputed intensity (phase × angular size).
+// Both are zero for parentless planets.
+uniform vec3 uParentDir;
+uniform vec3 uParentShineColor;
 void main() {
   vec3 N = normalize(vNormal);
   vec3 V = normalize(vViewDir);
   float ndotl = dot(N, uSunDir);
-  // Power-curve diffuse: the geometric terminator stays at ndotl=0
-  // (subsolar still peaks at 1.0), but the curve approaches 0 with a
-  // horizontal tangent — brightness near the terminator drops smoothly
-  // rather than linearly with cosine, so the transition reads gradual.
-  float diff = pow(max(ndotl, 0.0), 1.5);
+  // Atmospheric wrap shifts the terminator inward so the night side
+  // near it picks up some light from multiple-scattering twilight.
+  float wrap = uAtmosphere * 0.15;
+  float wrapped = (ndotl + wrap) / (1.0 + wrap);
+  float diff = pow(max(wrapped, 0.0), 1.5);
   vec3 H = normalize(uSunDir + V);
-  float spec = pow(max(dot(N, H), 0.0), 20.0) * step(0.0, ndotl) * 0.07;
+  float spec = pow(max(dot(N, H), 0.0), 20.0) * max(ndotl, 0.0) * 0.07;
   vec3 albedo = texture2D(uTexture, vUv).rgb;
-  vec3 color = (albedo * (0.02 + 0.98 * diff) + vec3(spec)) * uIllumination;
+  float NdotV = max(dot(N, V), 0.0);
+  float limb = pow(1.0 - NdotV, 4.0) * max(ndotl, 0.0) * uAtmosphere * 0.6;
+  vec3 parentLight = albedo * uParentShineColor * max(dot(N, uParentDir), 0.0);
+  // Ambient floor scales with atmosphere — airless bodies have nearly
+  // black night sides; thicker atmospheres scatter some light into
+  // shadow. uAtmosphere ranges 0 (Moon, Mercury) to ~1.2 (Venus).
+  float ambient = 0.001 + 0.005 * uAtmosphere;
+  // Night-side emissive (city lights). Strongest where the surface is
+  // unlit; feathers across the terminator and is fully gone in
+  // daylight so it doesn't double up against direct illumination.
+  float nightMask = 1.0 - smoothstep(-0.1, 0.05, ndotl);
+  // The Black Marble source clips bright city centers to near-white
+  // and bloom amplifies them further; the scale tames that.
+  vec3 nightLights = texture2D(uNightTexture, vUv).rgb * nightMask * ${NIGHT_LIGHTS_SCALE.toFixed(2)};
+  vec3 color = (albedo * (ambient + (1.0 - ambient) * diff + limb) + parentLight + vec3(spec)) * uIllumination + nightLights;
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -515,6 +560,7 @@ function createPlanetMesh(
   sunDir: THREE.Vector3,
   illumination: number,
   axesNorm: THREE.Vector3 | null,
+  atmosphere: number,
 ): THREE.Mesh {
   // 64x32 segments cuts vertex count 4x vs 128x64. Round bodies still
   // look round; the silhouette has ~5.6° polygon edges that may be
@@ -524,8 +570,12 @@ function createPlanetMesh(
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uTexture: { value: FALLBACK_TEXTURE },
+      uNightTexture: { value: BLACK_TEXTURE },
       uSunDir: { value: sunDir },
       uIllumination: { value: illumination },
+      uAtmosphere: { value: atmosphere },
+      uParentDir: { value: new THREE.Vector3(0, 0, 0) },
+      uParentShineColor: { value: new THREE.Color(0, 0, 0) },
     },
     vertexShader: bodyVertex,
     fragmentShader: planetFragment,
@@ -633,7 +683,6 @@ const planetHandler: LabelTypeHandler = {
     const camDist = camera.position.length();
     const fade = solarSystemFade(camDist);
     const orbitOpacity = orbitFade(camDist);
-    setOccluderActive(fade > 0 || selectedPlanet !== null || hoveredPlanet !== null);
     const halfTan = Math.tan((camera.fov * Math.PI) / 360);
     const halfHeight = window.innerHeight / 2;
     const days = julianDaysSinceJ2000();
@@ -651,7 +700,7 @@ const planetHandler: LabelTypeHandler = {
       // First-visibility texture and shape-mesh loads — defers
       // ~10 MB of bandwidth for users who never enter the Solar System.
       if (p.pendingTextures.length > 0) {
-        for (const t of p.pendingTextures) enqueueTexture(t.url, t.mesh);
+        for (const t of p.pendingTextures) enqueueTexture(t.url, t.mesh, t.uniform);
         p.pendingTextures.length = 0;
       }
       if (p.pendingMeshUrl) {
@@ -872,6 +921,117 @@ function attachEarthClouds(earth: Planet, illumination: number): void {
     url: `${TILE_BASE_URL}planets/earth_clouds.jpg`,
     mesh: cloud,
   });
+  // Night-side city lights — same body mesh, separate uniform sampled
+  // only where the surface is unlit.
+  earth.pendingTextures.push({
+    url: `${TILE_BASE_URL}planets/earth_night.jpg`,
+    mesh: earth.mesh,
+    uniform: "uNightTexture",
+  });
+}
+
+// Front-side shell drawn slightly larger than the body. The fragment
+// shader integrates atmospheric column length along the view ray
+// through the shell-above-body, so intensity smoothly approaches zero
+// at the outer mesh silhouette (no hard cutoff) and peaks just outside
+// the body's silhouette where the slant column is thickest. Forward
+// scatter amplifies the halo at high phase angles (sun behind the
+// planet from the camera).
+const ATMO_SHELL_RATIO = 1.02;
+const atmoFragment = `
+varying vec3 vNormal;
+varying vec3 vViewDir;
+uniform vec3 uSunDir;
+uniform float uIllumination;
+uniform float uAtmosphere;
+uniform vec3 uAtmoColor;
+const float R = ${ATMO_SHELL_RATIO.toFixed(2)};
+void main() {
+  vec3 N = normalize(vNormal);
+  vec3 V = normalize(vViewDir);
+  float NdotV = max(dot(N, V), 0.0);
+  float ndotl = dot(N, uSunDir);
+
+  // Atmospheric chord length along the view ray. Two branches: ray
+  // bypasses the body (sees both halves of the annulus) vs. ray hits
+  // the body (back half occluded, only front contributes). Both go to
+  // zero at the outer mesh silhouette so there's no hard cutoff.
+  float rSqr = R * R * (1.0 - NdotV * NdotV);
+  float chord = (rSqr > 1.0)
+    ? 2.0 * R * NdotV
+    : R * NdotV - sqrt(max(0.0, 1.0 - rSqr));
+
+  // Perspective foreshortening makes NdotV → 0 with a near-vertical
+  // screen-space slope, so the mathematical zero still reads as a
+  // hard rim without this feather.
+  chord *= smoothstep(0.0, 0.3, NdotV);
+
+  float sunSide = clamp(ndotl + 0.1, 0.0, 1.0);
+  float forward = max(dot(uSunDir, -V), 0.0);
+
+  float haloIntensity = chord * sunSide * uAtmosphere * (1.5 + 4.5 * forward);
+
+  // Dedicated dayglow over the lit body (the thin-shell chord above
+  // the body is too small to read against albedo). Saturated at
+  // atmosphere=1 so Venus (atm 1.2) doesn't blow out the lit face.
+  float limbDist = max(0.0, 1.0 - rSqr);
+  float dayglowAtm = min(uAtmosphere, 1.0);
+  float dayglow = smoothstep(0.0, 0.7, limbDist) * max(ndotl, 0.0) * dayglowAtm * 0.35;
+
+  float intensity = haloIntensity + dayglow;
+  vec3 color = uAtmoColor * intensity * uIllumination;
+  gl_FragColor = vec4(color, intensity);
+}
+`;
+
+const DEFAULT_ATMO_COLOR: [number, number, number] = [0.45, 0.7, 1.0];
+const DEFAULT_PARENTSHINE_TINT: [number, number, number] = [0.8, 0.8, 0.8];
+
+// Earthshine / planetshine: dim reflection from the parent body onto
+// the moon's dark side. Phase modulates by how lit the parent appears
+// from the moon (full when the moon is between sun and parent, dark
+// when the moon is behind the parent from the sun). Angular size is
+// capped so close moons like Mimas don't blow out — Saturn fills ~36°
+// of Mimas's sky, far past the small-angle approximation.
+function applyParentShine(moon: Planet, parent: Planet): void {
+  const moonPos = moon.anchor.position;
+  const parentPos = parent.anchor.position;
+
+  const parentDir = new THREE.Vector3().subVectors(parentPos, moonPos).normalize();
+
+  const sunFromParent = parentPos.clone().normalize().negate();
+  const moonFromParent = new THREE.Vector3().subVectors(moonPos, parentPos).normalize();
+  const phase = (1 + sunFromParent.dot(moonFromParent)) * 0.5;
+
+  const distance = parentPos.distanceTo(moonPos);
+  const angularRatio = parent.sceneRadius / Math.max(distance, 1e-30);
+  const intensity = phase * Math.min(angularRatio * PARENTSHINE_ANGULAR_BOOST, PARENTSHINE_INTENSITY_CAP);
+
+  const tint = colorFromArrayOr(parent.entry.atmosphere_color, DEFAULT_PARENTSHINE_TINT);
+
+  const material = moon.mesh.material as THREE.ShaderMaterial;
+  material.uniforms.uParentDir!.value.copy(parentDir);
+  material.uniforms.uParentShineColor!.value.copy(tint).multiplyScalar(intensity);
+}
+
+function attachAtmosphereShell(planet: Planet, atmosphere: number, color: [number, number, number], illumination: number): void {
+  const geometry = new THREE.SphereGeometry(ATMO_SHELL_RATIO, 64, 32);
+  const sunDir = planet.anchor.position.clone().normalize().negate();
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uSunDir: { value: sunDir },
+      uIllumination: { value: illumination },
+      uAtmosphere: { value: atmosphere },
+      uAtmoColor: { value: new THREE.Color().fromArray(color) },
+    },
+    vertexShader: bodyVertex,
+    fragmentShader: atmoFragment,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const shell = new THREE.Mesh(geometry, material);
+  planet.mesh.add(shell);
 }
 
 export async function initPlanetLabels(): Promise<void> {
@@ -911,11 +1071,8 @@ export async function initPlanetLabels(): Promise<void> {
     const axesNorm = entry.axes_km
       ? new THREE.Vector3(...entry.axes_km).divideScalar(entry.radius_km)
       : null;
-    const mesh = createPlanetMesh(sceneRadius, sunDir, illumination, axesNorm);
+    const mesh = createPlanetMesh(sceneRadius, sunDir, illumination, axesNorm, entry.atmosphere ?? 0);
     mesh.position.copy(anchor.position);
-    // Add to OCCLUDER_LAYER so the dust pre-pass rasterises this body's
-    // silhouette into halfResRT's depth, blocking dust through it.
-    mesh.layers.enable(OCCLUDER_LAYER);
     scene.add(mesh);
 
     // For heliocentric bodies the orbit focus is Sol (origin); for
@@ -954,6 +1111,10 @@ export async function initPlanetLabels(): Promise<void> {
     };
     planets.push(planet);
     planetByName.set(name, planet);
+
+    if (entry.atmosphere && entry.atmosphere > 0) {
+      attachAtmosphereShell(planet, entry.atmosphere, entry.atmosphere_color ?? DEFAULT_ATMO_COLOR, illumination);
+    }
 
     // Push the live position back into the search index — build-catalog
     // bakes a build-time approximation, but URL focus restore via
@@ -1030,7 +1191,9 @@ export async function initPlanetLabels(): Promise<void> {
     };
     const parentScene = new THREE.Vector3();
     eclipticToScene(parentEcl, parentScene);
-    addBody(name, entry, state, helioEcl, parentScene);
+    const moon = addBody(name, entry, state, helioEcl, parentScene);
+    const parent = planetByName.get(entry.parent);
+    if (parent) applyParentShine(moon, parent);
   }
 
   registerLabelType(planetHandler);

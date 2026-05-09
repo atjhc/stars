@@ -95,6 +95,12 @@ TEXTURES = [
     # JPG has no alpha channel; the runtime cloud shader derives alpha
     # from the texture's luminance.
     ("earth_clouds","jpg", f"{SSS_BASE}/2k_earth_clouds.jpg",                    None),
+    # NASA Black Marble 2012 — public domain (US Government work). Used
+    # as an emissive layer on Earth's dark side. 3600×1800 source is
+    # downsampled to 2048×1024 to match the day map.
+    ("earth_night", "jpg",
+        "https://eoimages.gsfc.nasa.gov/images/imagerecords/79000/79765/dnb_land_ocean_ice.2012.3600x1800.jpg",
+        "downsample_2k"),
     ("luna",        "jpg", f"{SSS_BASE}/2k_moon.jpg",                           None),
     ("mars",        "jpg", f"{SSS_BASE}/2k_mars.jpg",                           None),
     ("jupiter",     "jpg", f"{SSS_BASE}/2k_jupiter.jpg",                        None),
