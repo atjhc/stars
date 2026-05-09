@@ -892,8 +892,16 @@ const lensingPass = new ShaderPass({
 
       float b = dist / uShadowRadius;
 
-      // Bend every pixel's sight line around the body.
-      float deflection = uSchwarzRadius / max(dist, uShadowRadius * 0.5);
+      // Bend every pixel's sight line around the body. Weak-field
+      // term (1/b) handles the background warp far from the shadow;
+      // a Bozza-style log divergence at the shadow edge concentrates
+      // background light into a thin ring (the photon-sphere "fold"
+      // visible in NASA visualizations), scaled by uShadowRadius so
+      // the ring width stays proportional to the shadow.
+      float weakDefl = uSchwarzRadius / max(dist, uShadowRadius * 0.5);
+      float bDist = max(b - 1.0, 0.001);
+      float strongDefl = uShadowRadius * 0.3 * max(0.0, -log(bDist) - 1.0);
+      float deflection = max(weakDefl, strongDefl);
       vec2 deflectDir = normalize(corrected);
       vec2 uvDeflect = vec2(deflectDir.x / uAspect, deflectDir.y) * deflection;
       vec2 bentUV = clamp(uv - uvDeflect, 0.0, 1.0);

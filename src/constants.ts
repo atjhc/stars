@@ -32,6 +32,9 @@ export const R_SUN_SCENE = (696_000 / KM_PER_PC) * SCALE;
 export const LY_TO_SCENE = SCALE / LY_PER_PARSEC;
 // One AU in scene units.
 export const SCENE_PER_AU = SCALE / AU_PER_PC;
+// km per scene unit — used for converting orbit/anchor distances into
+// human-scale km thresholds (BH/NS label fades, etc.).
+export const SCENE_UNIT_TO_KM = KM_PER_PC / SCALE;
 // Inside this camera-to-destination distance, projected label positions
 // barely shift frame-to-frame, so the collision pass re-engages during
 // the final deceleration of a transit instead of waiting for the

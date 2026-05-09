@@ -8,7 +8,7 @@ import {
   distanceFromCamera, animation, getRenderPixelRatio,
 } from "./scene.ts";
 import {
-  SCALE, TILE_BASE_URL, KM_PER_PC,
+  SCALE, TILE_BASE_URL, KM_PER_PC, SCENE_UNIT_TO_KM,
   DEEP_ZOOM_MIN_ORBIT, formatAstroDistance, solDistanceFade,
 } from "./constants.ts";
 import {
@@ -44,6 +44,14 @@ const NS_SUBTITLE_COLOR = "rgba(170,170,170,0.9)";
 // this small — bloom inflates even a 1-px point into a recognizable
 // halo, so a larger floor makes distant NSes read as nearby stars.
 const DISC_FLOOR_PX = 1.2;
+
+// Close-camera label fade, expressed as multiples of the NS surface
+// radius. Same multipliers as black holes (which scale by shadow
+// radius); for a typical 12 km NS the label fades from ~180,000 km
+// down to ~60 km of camera distance, mirroring the visible-feature
+// proximity range.
+const LABEL_FADE_FAR_FEATURE_RADII = 15000;
+const LABEL_FADE_NEAR_FEATURE_RADII = 5;
 
 interface NeutronStarEntry {
   aliases?: string[];
@@ -361,7 +369,17 @@ const nsHandler: LabelTypeHandler = {
       const isActive = ns === selectedNS || ns === hoveredNS;
       const camDist = ns === selectedNS ? orbitRadius : distanceFromCamera(ns.anchor.position);
       const solDist = ns.anchor.position.length();
-      const opacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
+      const camDistKm = camDist * SCENE_UNIT_TO_KM;
+      // Log-space fade: zooming feels exponential, so the smoothstep
+      // operates on log(camDist) for a roughly uniform dim per zoom
+      // decade rather than a cliff at the lower end.
+      const closeFade = THREE.MathUtils.smoothstep(
+        Math.log(Math.max(camDistKm, 1)),
+        Math.log(LABEL_FADE_NEAR_FEATURE_RADII * ns.entry.radius_km),
+        Math.log(LABEL_FADE_FAR_FEATURE_RADII * ns.entry.radius_km),
+      );
+      const baseOpacity = isActive ? 1.0 : solDistanceFade(solDist, maxSolDist);
+      const opacity = baseOpacity * closeFade;
       if (hideForSolarView && !isActive) {
         hideCanvasLabel(canvasIdFor(ns.name));
       } else {

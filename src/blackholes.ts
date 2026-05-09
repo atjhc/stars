@@ -5,7 +5,7 @@ import {
   distanceFromCamera, animation,
 } from "./scene.ts";
 import {
-  TILE_BASE_URL, RS_KM_PER_MSUN, KM_PER_PC, SCALE,
+  TILE_BASE_URL, RS_KM_PER_MSUN, KM_PER_PC, SCALE, SCENE_UNIT_TO_KM,
   DEEP_ZOOM_MIN_ORBIT, formatAstroDistance, solDistanceFade,
 } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
@@ -121,6 +121,17 @@ function buildDetailHtml(bh: BlackHoleLabel): string {
 // through the photon sphere).
 const BH_SHADOW_TO_RS = 2.6;
 
+// Close-camera label fade, expressed as multiples of the BH's shadow
+// radius. Above ~15,000 shadow-radii out the label is fully visible;
+// by ~5 it's gone, so the floating text doesn't sit on top of the
+// rendered shadow disc at deep zoom. For Gaia BH2 (shadow ≈ 68 km)
+// these land at ~1,000,000 km and ~340 km respectively; the
+// shadow-relative scaling makes the fade window track each BH's
+// physical size — the more massive BH3 (shadow ≈ 251 km) fades from
+// ~3.8 M km down to ~1.3 k km on the same multipliers.
+const LABEL_FADE_FAR_SHADOW_RADII = 15000;
+const LABEL_FADE_NEAR_SHADOW_RADII = 5;
+
 
 const bhHandler: LabelTypeHandler = {
   type: "blackhole",
@@ -162,10 +173,21 @@ const bhHandler: LabelTypeHandler = {
         continue;
       }
       const trueDist = bh === selectedBH ? orbitRadius : distanceFromCamera(bh.anchor.position);
-      const opacity = isActive ? 1.0 : solDistanceFade(bh.anchor.position.length(), maxSolDist);
+      const shadowKm = BH_SHADOW_TO_RS * RS_KM_PER_MSUN * bh.entry.mass_msun;
+      const camDistKm = trueDist * SCENE_UNIT_TO_KM;
+      // Log-space fade: zooming in feels exponential, so a linear input
+      // smoothstep concentrates almost all of the visible change into
+      // the last decade before NEAR. Switching to log(camDist) spreads
+      // the dim across the full multi-decade window.
+      const closeFade = THREE.MathUtils.smoothstep(
+        Math.log(Math.max(camDistKm, 1)),
+        Math.log(LABEL_FADE_NEAR_SHADOW_RADII * shadowKm),
+        Math.log(LABEL_FADE_FAR_SHADOW_RADII * shadowKm),
+      );
+      const baseOpacity = isActive ? 1.0 : solDistanceFade(bh.anchor.position.length(), maxSolDist);
       updateCanvasLabel(canvasIdFor(bh.name), {
         hidden: false,
-        opacityTarget: opacity,
+        opacityTarget: baseOpacity * closeFade,
         pinned: isActive,
         subtitles: isActive ? [formatAstroDistance(trueDist)] : [],
       });
