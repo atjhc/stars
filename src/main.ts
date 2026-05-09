@@ -483,6 +483,7 @@ function handleSearchSelect(entry: SearchEntry): Promise<void> {
     return Promise.resolve();
   }
   if (entry.k === "c" || entry.k === "s") {
+    clearAllSelections();
     if (trySelectSystem(entry.n)) {
       scheduleUrlWrite();
       return Promise.resolve();
