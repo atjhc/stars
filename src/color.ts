@@ -1,8 +1,7 @@
 import * as THREE from "three";
-import { SCALE } from "./constants.ts";
+import { R_SUN_SCENE } from "./constants.ts";
 
 const T_SUN = 5778;
-const R_SUN_SCENE = 2.254e-8 * SCALE; // solar radius in scene units
 
 // B-V color index → blackbody temperature (Ballesteros' approximation).
 function bvToTemp(ci: number): number {

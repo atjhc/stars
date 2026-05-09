@@ -24,6 +24,8 @@ export const AU_PER_LY = 63241;
 export const AU_PER_PC = AU_PER_LY * LY_PER_PARSEC;
 export const KM_PER_AU = 1.496e8;
 export const KM_PER_PC = 3.086e13;
+// Solar radius (~696,000 km) in scene units.
+export const R_SUN_SCENE = (696_000 / KM_PER_PC) * SCALE;
 
 // One light-year, expressed in scene units. Conversion factor for
 // ly-denominated config values (cluster arrival/min radii, etc.).

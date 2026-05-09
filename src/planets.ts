@@ -4,7 +4,7 @@ import {
   orbitRadius, distanceFromCamera,
 } from "./scene.ts";
 import {
-  TILE_BASE_URL, KM_PER_PC, SCALE, SCENE_PER_AU,
+  TILE_BASE_URL, KM_PER_PC, SCALE, SCENE_PER_AU, R_SUN_SCENE,
   formatAstroDistance,
 } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
@@ -55,6 +55,43 @@ const BLACK_TEXTURE = makeFallbackTexture(new THREE.Color(0, 0, 0));
 const NIGHT_LIGHTS_SCALE = 0.35;
 const PARENTSHINE_ANGULAR_BOOST = 3;
 const PARENTSHINE_INTENSITY_CAP = 0.08;
+
+// Per-body family scope is parent + siblings + children, so 8 is
+// roomy — Saturn's family (parent + 7 moons) is the largest.
+const MAX_OCCLUDERS = 8;
+
+function makeOccluderArray(): THREE.Vector4[] {
+  const arr: THREE.Vector4[] = [];
+  for (let i = 0; i < MAX_OCCLUDERS; i++) arr.push(new THREE.Vector4());
+  return arr;
+}
+
+const SHADOW_GLSL = `
+const int MAX_OCCLUDERS = ${MAX_OCCLUDERS};
+uniform vec4 uOccluders[MAX_OCCLUDERS]; // xyz: world center, w: scene-unit radius
+uniform int uOccluderCount;
+uniform float uSunAngularRadius;
+float sunVisibility(vec3 fragWorldPos) {
+  vec3 rayDir = normalize(-fragWorldPos);
+  float visibility = 1.0;
+  for (int i = 0; i < MAX_OCCLUDERS; i++) {
+    if (i >= uOccluderCount) break;
+    vec4 occ = uOccluders[i];
+    vec3 toCenter = occ.xyz - fragWorldPos;
+    float t = dot(toCenter, rayDir);
+    if (t <= 0.0) continue;
+    vec3 perpVec = toCenter - rayDir * t;
+    float perpSqr = dot(perpVec, perpVec);
+    // Penumbra scales with distance to occluder × sun's angular radius.
+    // Compare squared distances to avoid a sqrt per occluder per pixel.
+    float penumbra = uSunAngularRadius * t;
+    float inner = max(occ.w - penumbra, 0.0);
+    float outer = occ.w + penumbra;
+    visibility *= smoothstep(inner * inner, outer * outer, perpSqr);
+  }
+  return visibility;
+}
+`;
 
 function colorFromArrayOr(
   arr: [number, number, number] | undefined,
@@ -213,6 +250,10 @@ interface Planet {
   mesh: THREE.Mesh;
   orbitLine: THREE.Line;
   sceneRadius: number;
+  // Materials that should receive sunVisibility() uniforms for this
+  // body. Each entry can name extra occluders (e.g. rings list Saturn
+  // itself, since Saturn isn't in its own family scope).
+  shadowReceivers: Array<{ material: THREE.ShaderMaterial; extra?: Planet[] }>;
   // Time-independent pole orientation; spin = W0 + W_dot·days around
   // mesh-local +Y per frame. Precession is sub-degree on decade
   // horizons so qBase is built once at init.
@@ -360,10 +401,12 @@ function createOrbitLine(
 const bodyVertex = `
 varying vec3 vNormal;
 varying vec3 vViewDir;
+varying vec3 vWorldPos;
 varying vec2 vUv;
 void main() {
   vNormal = normalize(mat3(modelMatrix) * normal);
   vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+  vWorldPos = worldPos;
   vViewDir = cameraPosition - worldPos;
   vUv = uv;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -372,6 +415,7 @@ void main() {
 const planetFragment = `
 varying vec3 vNormal;
 varying vec3 vViewDir;
+varying vec3 vWorldPos;
 varying vec2 vUv;
 uniform sampler2D uTexture;
 // Defaults to a 1×1 black texture so bodies without a night map
@@ -380,6 +424,7 @@ uniform sampler2D uNightTexture;
 uniform vec3 uSunDir;
 uniform float uIllumination;
 uniform float uAtmosphere;
+${SHADOW_GLSL}
 // Light reflected from the parent body (planetshine / earthshine).
 // Direction = world-space unit vector from the body toward the parent.
 // Color = parent tint × precomputed intensity (phase × angular size).
@@ -397,6 +442,9 @@ void main() {
   float diff = pow(max(wrapped, 0.0), 1.5);
   vec3 H = normalize(uSunDir + V);
   float spec = pow(max(dot(N, H), 0.0), 20.0) * max(ndotl, 0.0) * 0.07;
+  float shadow = sunVisibility(vWorldPos);
+  diff *= shadow;
+  spec *= shadow;
   vec3 albedo = texture2D(uTexture, vUv).rgb;
   float NdotV = max(dot(N, V), 0.0);
   float limb = pow(1.0 - NdotV, 4.0) * max(ndotl, 0.0) * uAtmosphere * 0.6;
@@ -576,6 +624,9 @@ function createPlanetMesh(
       uAtmosphere: { value: atmosphere },
       uParentDir: { value: new THREE.Vector3(0, 0, 0) },
       uParentShineColor: { value: new THREE.Color(0, 0, 0) },
+      uOccluders: { value: makeOccluderArray() },
+      uOccluderCount: { value: 0 },
+      uSunAngularRadius: { value: 0 },
     },
     vertexShader: bodyVertex,
     fragmentShader: planetFragment,
@@ -803,6 +854,7 @@ const SATURN_RING_OUTER_KM = 136800;
 const ringVertex = `
 varying float vRadial;
 varying vec3 vNormal;
+varying vec3 vWorldPos;
 uniform float uInnerRadius;
 uniform float uOuterRadius;
 void main() {
@@ -811,15 +863,18 @@ void main() {
   // Mesh-local face normal is +Y after the geometry rotation below;
   // mat3(modelMatrix) rotates it into world via qBase.
   vNormal = normalize(mat3(modelMatrix) * vec3(0.0, 1.0, 0.0));
+  vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
 const ringFragment = `
 varying float vRadial;
 varying vec3 vNormal;
+varying vec3 vWorldPos;
 uniform sampler2D uTexture;
 uniform vec3 uSunDir;
 uniform float uIllumination;
+${SHADOW_GLSL}
 void main() {
   vec4 t = texture2D(uTexture, vec2(vRadial, 0.5));
   if (t.a < 0.01) discard;
@@ -827,7 +882,7 @@ void main() {
   // Two-sided: flip the normal to match the visible face so each side
   // is lit when its face is toward the sun.
   if (!gl_FrontFacing) N = -N;
-  float diff = max(dot(N, uSunDir), 0.0);
+  float diff = max(dot(N, uSunDir), 0.0) * sunVisibility(vWorldPos);
   vec3 color = t.rgb * (0.10 + 0.90 * diff) * uIllumination;
   gl_FragColor = vec4(color, t.a);
 }
@@ -850,6 +905,9 @@ function attachSaturnRings(saturn: Planet, illumination: number): void {
       uInnerRadius: { value: innerScene },
       uOuterRadius: { value: outerScene },
       uIllumination: { value: illumination },
+      uOccluders: { value: makeOccluderArray() },
+      uOccluderCount: { value: 0 },
+      uSunAngularRadius: { value: 0 },
     },
     vertexShader: ringVertex,
     fragmentShader: ringFragment,
@@ -866,6 +924,9 @@ function attachSaturnRings(saturn: Planet, illumination: number): void {
   ring.visible = false;
   ring.frustumCulled = false;
   scene.add(ring);
+  // Rings need Saturn itself in the occluder list — that's the whole
+  // point of ring shadows. Saturn's body family scope excludes Saturn.
+  saturn.shadowReceivers.push({ material, extra: [saturn] });
 
   ring.userData.onTextureLoaded = () => { ring.visible = true; };
   saturn.pendingTextures.push({
@@ -1014,6 +1075,38 @@ function applyParentShine(moon: Planet, parent: Planet): void {
   material.uniforms.uParentShineColor!.value.copy(tint).multiplyScalar(intensity);
 }
 
+// Family scope: parent (planet shadowing moon), siblings (moon shadowing
+// moon), children (moon shadowing planet). Self is excluded so a body
+// can't shadow itself.
+function familyOccluders(body: Planet): Planet[] {
+  const result: Planet[] = [];
+  const myParent = body.entry.parent;
+  for (const other of planets) {
+    if (other === body) continue;
+    const otherParent = other.entry.parent;
+    if (other.name === myParent) result.push(other);
+    else if (myParent && otherParent === myParent) result.push(other);
+    else if (otherParent === body.name) result.push(other);
+  }
+  return result;
+}
+
+function applyShadowUniforms(planet: Planet): void {
+  const family = familyOccluders(planet);
+  const sunAngularRadius = R_SUN_SCENE / Math.max(planet.anchor.position.length(), 1e-30);
+  for (const receiver of planet.shadowReceivers) {
+    const occluders = receiver.extra ? [...receiver.extra, ...family] : family;
+    const count = Math.min(occluders.length, MAX_OCCLUDERS);
+    const arr = receiver.material.uniforms.uOccluders!.value as THREE.Vector4[];
+    for (let i = 0; i < count; i++) {
+      const o = occluders[i]!;
+      arr[i]!.set(o.anchor.position.x, o.anchor.position.y, o.anchor.position.z, o.sceneRadius);
+    }
+    receiver.material.uniforms.uOccluderCount!.value = count;
+    receiver.material.uniforms.uSunAngularRadius!.value = sunAngularRadius;
+  }
+}
+
 function attachAtmosphereShell(planet: Planet, atmosphere: number, color: [number, number, number], illumination: number): void {
   const geometry = new THREE.SphereGeometry(ATMO_SHELL_RATIO, 64, 32);
   const sunDir = planet.anchor.position.clone().normalize().negate();
@@ -1107,6 +1200,7 @@ export async function initPlanetLabels(): Promise<void> {
 
     const planet: Planet = {
       name, entry, anchor, mesh, orbitLine, sceneRadius,
+      shadowReceivers: [{ material: mesh.material as THREE.ShaderMaterial }],
       qBase, W0_rad, W_dot_rad_per_day, pendingTextures, pendingMeshUrl,
     };
     planets.push(planet);
@@ -1195,6 +1289,10 @@ export async function initPlanetLabels(): Promise<void> {
     const parent = planetByName.get(entry.parent);
     if (parent) applyParentShine(moon, parent);
   }
+
+  // Bake family-scoped occluder lists into each body's shadow receivers
+  // now that all bodies have positions. Static for the session.
+  for (const planet of planets) applyShadowUniforms(planet);
 
   registerLabelType(planetHandler);
   // Sub-kinds dispatch to the same handler but get their own search
