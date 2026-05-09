@@ -16,6 +16,7 @@ import {
   registerCanvasLabel, updateCanvasLabel, hideCanvasLabel,
 } from "./labelCanvas.ts";
 import { computeStarMinOrbit } from "./stars.ts";
+import { rebaseAroundPosition } from "./starfield.ts";
 import { getSearchIndex } from "./catalog.ts";
 import { inSolarSystemView } from "./planets.ts";
 
@@ -220,6 +221,7 @@ const bhHandler: LabelTypeHandler = {
       : computeStarMinOrbit(shadowRadius, 0.15);
     const lookAt = resolveArrivalLookAt(bh.entry.arrivalLookAt);
     animateTo(bh.anchor.position, arrivalRadius, lookAt);
+    rebaseAroundPosition(bh.anchor.position);
     setLabelsDirty(true);
     return true;
   },

@@ -100,6 +100,23 @@ export function rebaseForTarget(tilePath: string, worldPos: THREE.Vector3) {
   rebaseTileToOrigin(tilePath, worldPos);
 }
 
+// Rebase whichever tile encloses `worldPos`, used when the focus target
+// isn't a star (black hole, nebula, etc.) but stars near it would
+// otherwise render with Float32 jitter from the huge camera-relative
+// origin. Picking the bbox-containing tile (not just nearby) is
+// important: rebasing the wrong tile leaves the actually-enclosing
+// tile's stars at large instancePos values, which is exactly the
+// jitter we're trying to fix.
+export function rebaseAroundPosition(worldPos: THREE.Vector3): void {
+  for (const [path, s] of tileStatic) {
+    if (s.cullDist === null) continue;  // always-loaded bucket has no spatial bbox
+    if (s.box.containsPoint(worldPos)) {
+      rebaseForTarget(path, worldPos);
+      return;
+    }
+  }
+}
+
 // Per-frame update: set each tile's uLocalTarget = target - tileOrigin.
 // Called after updateCamera() in the render loop.
 function setTileLocalTarget(tile: LoadedTile) {
@@ -129,6 +146,7 @@ const fadingOutTiles = new Map<string, LoadedTile>();
 const loadingTiles = new Set<string>();
 interface TileStatic {
   sphere: THREE.Sphere;
+  box: THREE.Box3;
   cullDist: number | null;  // null = always-loaded bucket (bright)
 }
 const tileStatic = new Map<string, TileStatic>();
@@ -399,8 +417,13 @@ function precomputeTileSpheres() {
       (tile.max[1] - tile.min[1]) / 2,
       (tile.max[2] - tile.min[2]) / 2,
     );
+    const box = new THREE.Box3(
+      new THREE.Vector3(tile.min[0], tile.min[1], tile.min[2]),
+      new THREE.Vector3(tile.max[0], tile.max[1], tile.max[2]),
+    );
     tileStatic.set(path, {
       sphere: new THREE.Sphere(center, halfSize.length()),
+      box,
       cullDist: meta.buckets[tile.bucket]?.cullDist ?? null,
     });
   }
