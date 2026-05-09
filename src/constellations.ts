@@ -11,6 +11,8 @@ import { isFavorite } from "./favorites.ts";
 import {
   registerCanvasLabel, updateCanvasLabel,
 } from "./labelCanvas.ts";
+import { makeFade, setFadeTarget, snapFade, tickFade } from "./fade.ts";
+import { registerKeepFrame, kick } from "./renderLoop.ts";
 
 // -- Visual constants --------------------------------------------------
 
@@ -59,14 +61,16 @@ const instancesByName = new Map<string, ConstellationInstance>();
 let selectedConstellation: ConstellationInstance | null = null;
 let hoveredConstellation: ConstellationInstance | null = null;
 // Two independent toggles. C / URL controls the feature itself
-// (lines + labels). L (via the label registry) only governs labels.
-// Mesh visibility = featureEnabled; label hidden = !featureEnabled
-// || !labelsEnabledExternally.
-let featureEnabled = true;
+// (lines + labels) via featureFade. L (via the label registry) only
+// governs labels through labelsEnabledExternally. Mesh visibility is
+// driven from featureFade.current; label hidden = !labelsEnabledExternally.
 let labelsEnabledExternally = true;
+const featureFade = makeFade(1);
 let lastFade = -1;
 let lastSelected: ConstellationInstance | null = null;
 let lastHovered: ConstellationInstance | null = null;
+
+registerKeepFrame(() => featureFade.current !== featureFade.target);
 
 // -- Helpers ------------------------------------------------------------
 
@@ -152,8 +156,14 @@ const constellationHandler: LabelTypeHandler = {
   },
 
   update() {
-    if (!featureEnabled) return;
-    const fade = cameraFade();
+    tickFade(featureFade);
+    // No early return when featureFade is 0 — the per-instance loop
+    // below is what flips mesh.visible to false. With an early
+    // return, URL-restored "constellations off" leaves the meshes
+    // at Three.js's default visible=true and the lines render
+    // anyway. The lastFade memo still skips the loop after the
+    // first frame in steady state.
+    const fade = cameraFade() * featureFade.current;
     const fadeQ = Math.round(fade * 200);
     if (fadeQ === lastFade && selectedConstellation === lastSelected && hoveredConstellation === lastHovered) return;
     lastFade = fadeQ;
@@ -336,7 +346,7 @@ export async function initConstellations(): Promise<void> {
     console.warn(`[constellations] unresolved stars: ${[...unresolved].join(", ")}`);
   }
 
-  // featureEnabled may already be `false`; apply it now that instances exist.
+  // featureFade.target may already be 0; apply it now that instances exist.
   applyVisibility();
   registerLabelType(constellationHandler);
   console.log(
@@ -347,33 +357,36 @@ export async function initConstellations(): Promise<void> {
 
 function applyVisibility(): void {
   // Force update() to re-run so its memo doesn't keep stale fade
-  // state when feature/label visibility flips.
+  // state when feature/label visibility flips. Mesh.visible is
+  // driven by update() through featureFade so toggling the C key
+  // produces a smooth opacity ramp instead of an instant pop.
   lastFade = -1;
   for (const ci of instances) {
-    ci.mesh.visible = featureEnabled;
     updateCanvasLabel(ci.canvasKey, {
-      hidden: !featureEnabled || !labelsEnabledExternally,
+      hidden: !labelsEnabledExternally,
     });
   }
   setLabelsDirty(true);
 }
 
-export function setConstellationsVisible(v: boolean): void {
-  featureEnabled = v;
+export function setConstellationsVisible(v: boolean, immediate = false): void {
+  if (immediate) snapFade(featureFade, v);
+  else setFadeTarget(featureFade, v);
   applyVisibility();
+  kick();
 }
 
 export function toggleConstellations(): void {
-  setConstellationsVisible(!featureEnabled);
+  setConstellationsVisible(featureFade.target !== 1);
 }
 
 export function constellationsVisible(): boolean {
-  return featureEnabled;
+  return featureFade.target === 1;
 }
 
 // Stars that belong to at least one constellation. Populated at init.
 const constellationStarNames = new Set<string>();
 
 export function isConstellationStar(name: string): boolean {
-  return featureEnabled && constellationStarNames.has(name);
+  return featureFade.target === 1 && constellationStarNames.has(name);
 }

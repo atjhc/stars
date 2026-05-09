@@ -3,7 +3,8 @@ import type { Star, SystemGroup } from "./types.ts";
 import { CLICK_THRESHOLD, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS, ANIM_DURATION, SOL_NAME } from "./constants.ts";
 import {
   scene, camera, renderer, composer, lensingPass,
-  gridMesh, handleResize, bloomPass,
+  handleResize, bloomPass,
+  setGridVisible, isGridVisible, toggleGrid, updateGrid,
   beginBloomRender, endBloomRender,
   updateCamera, applyOrbitDrag, applyRollDelta, lookToward, onWheel, tickAnimation,
   orbitRadius, getOrbitPhi, getOrbitTheta, getOrbitRoll, target,
@@ -404,7 +405,7 @@ window.addEventListener("keydown", (e) => {
     doUpdateLabelVisibility();
     scheduleUrlWrite();
   } else if (e.key === "g") {
-    gridMesh.visible = !gridMesh.visible;
+    toggleGrid();
     scheduleUrlWrite();
   } else if (e.key === "c") {
     toggleConstellations();
@@ -556,10 +557,10 @@ onDetailStarClick((name) => {
   const parsed = parseUrlState(window.location.search);
   const urlToggles = parsed.toggles;
   if (urlToggles?.labels !== undefined) labelsVisible = urlToggles.labels;
-  if (urlToggles?.grid !== undefined) gridMesh.visible = urlToggles.grid;
-  if (urlToggles?.constellations !== undefined) setConstellationsVisible(urlToggles.constellations);
+  if (urlToggles?.grid !== undefined) setGridVisible(urlToggles.grid, true);
+  if (urlToggles?.constellations !== undefined) setConstellationsVisible(urlToggles.constellations, true);
   if (urlToggles?.nebulae !== undefined) setDustVisible(urlToggles.nebulae);
-  if (urlToggles?.orbits !== undefined) setOrbitsVisible(urlToggles.orbits);
+  if (urlToggles?.orbits !== undefined) setOrbitsVisible(urlToggles.orbits, true);
   if (urlToggles?.skybox !== undefined) setSkyboxVisible(urlToggles.skybox);
   if (parsed.mag !== undefined) {
     setMagLimit(parsed.mag);
@@ -570,7 +571,7 @@ doUpdateLabelVisibility();
 
 setupLayersControl([
   { id: "labels", isOn: () => labelsVisible, toggle: () => { labelsVisible = !labelsVisible; doUpdateLabelVisibility(); } },
-  { id: "grid", isOn: () => gridMesh.visible, toggle: () => { gridMesh.visible = !gridMesh.visible; } },
+  { id: "grid", isOn: isGridVisible, toggle: toggleGrid },
   { id: "constellations", isOn: constellationsVisible, toggle: toggleConstellations },
   { id: "nebulae", isOn: isDustVisible, toggle: () => { toggleDust(); doUpdateLabelVisibility(); } },
   { id: "orbits", isOn: getOrbitsVisible, toggle: toggleOrbits },
@@ -686,7 +687,7 @@ initUrlState({
     focus: currentFocusName(),
     toggles: {
       labels: labelsVisible,
-      grid: gridMesh.visible,
+      grid: isGridVisible(),
       constellations: constellationsVisible(),
       nebulae: isDustVisible(),
       orbits: getOrbitsVisible(),
@@ -755,6 +756,7 @@ function animateInner(now: number) {
   updateDeepZoom();
   updateTileTargets(getHoveredWorldPos());
   checkCameraMoved();
+  updateGrid();
   statsPhase("updateStarfield", updateStarfield);
   statsPhase("updateDust", updateDust);
   // Cleared once before any pusher runs; planets push during

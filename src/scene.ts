@@ -10,6 +10,7 @@ import {
   starCameraOffsetUniform, starViewRotationUniform,
 } from "./shaderUniforms.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
+import { makeFade, setFadeTarget, snapFade, tickFade } from "./fade.ts";
 import { scheduleUrlWrite } from "./urlState.ts";
 
 export const scene = new THREE.Scene();
@@ -124,6 +125,7 @@ const gridShaderMat = new THREE.ShaderMaterial({
     uColor: { value: new THREE.Color(0x4d7fc4) },
     uOrbitRadius: { value: 1.0 },
     uSide: { value: 1.0 },
+    uOpacity: { value: 1.0 },
   },
   vertexShader: `
     uniform float uSide;
@@ -136,6 +138,7 @@ const gridShaderMat = new THREE.ShaderMaterial({
   fragmentShader: `
     uniform vec3 uColor;
     uniform float uOrbitRadius;
+    uniform float uOpacity;
     varying vec2 vUv2;
 
     // 1.0 on a grid line, 0.0 elsewhere. fwidth keeps the line constant
@@ -167,7 +170,7 @@ const gridShaderMat = new THREE.ShaderMaterial({
       // Radial fade — keeps the visible grid disc ~30% of view.
       alpha *= 1.0 - smoothstep(uOrbitRadius * 0.3, uOrbitRadius * 0.6, length(vUv2));
 
-      alpha *= 0.3;
+      alpha *= 0.3 * uOpacity;
       if (alpha < 0.01) discard;
       gl_FragColor = vec4(uColor, alpha);
     }
@@ -188,8 +191,29 @@ gridMesh.visible = false;
 gridMesh.frustumCulled = false;
 scene.add(gridMesh);
 
+// Grid visibility fades through uOpacity rather than a hard mesh.visible
+// flip — keeps the toggle in step with the constellation/orbit fades.
+const gridFade = makeFade(0);
+registerKeepFrame(() => gridFade.current !== gridFade.target);
+
+export function setGridVisible(v: boolean, immediate = false): void {
+  if (immediate) snapFade(gridFade, v);
+  else setFadeTarget(gridFade, v);
+  kick();
+}
+export function isGridVisible(): boolean { return gridFade.target === 1; }
+export function toggleGrid(): void { setGridVisible(gridFade.target !== 1); }
+
 const _gridScratch = new THREE.Vector3();
-function updateGrid() {
+// Called every frame from the render loop so the toggle's fade
+// animation ticks even when the camera is at rest. Geometry updates
+// (position, scale, uniforms) are cheap, so we run them regardless of
+// whether the camera moved this frame.
+export function updateGrid() {
+  tickFade(gridFade);
+  gridMesh.visible = gridFade.current > 0;
+  if (!gridMesh.visible) return;
+  gridShaderMat.uniforms.uOpacity.value = gridFade.current;
   // Always refresh — toggling visibility doesn't run updateCamera,
   // and we want the next render to use current target/orbit state.
   _gridScratch.copy(target).addScaledVector(galUp, -target.dot(galUp));
@@ -366,10 +390,9 @@ export function updateCamera() {
   starViewRotationUniform.value.set(xx, xy, xz, yx, yy, yz, zx, zy, zz);
 
   _decomposedDirty = true;
-
-  updateGrid();
 }
 updateCamera();
+updateGrid();
 
 export let animation: {
   from: THREE.Vector3;

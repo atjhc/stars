@@ -9,6 +9,7 @@ import {
 } from "./constants.ts";
 import { setLabelsDirty } from "./systemStore.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
+import { makeFade, setFadeTarget, snapFade, tickFade } from "./fade.ts";
 import { pushFrameOccluder } from "./labelRegistry.ts";
 import { projectToLabelScreen } from "./scene.ts";
 import { registerLabelType, registerSearchKindAlias, type LabelTypeHandler } from "./labelRegistry.ts";
@@ -704,14 +705,16 @@ const planets: Planet[] = [];
 const planetByName = new Map<string, Planet>();
 let selectedPlanet: Planet | null = null;
 let hoveredPlanet: Planet | null = null;
-let orbitsVisible = true;
+const orbitsFade = makeFade(1);
+registerKeepFrame(() => orbitsFade.current !== orbitsFade.target);
 
-export function setOrbitsVisible(v: boolean): void {
-  orbitsVisible = v;
+export function setOrbitsVisible(v: boolean, immediate = false): void {
+  if (immediate) snapFade(orbitsFade, v);
+  else setFadeTarget(orbitsFade, v);
   kick();
 }
-export function getOrbitsVisible(): boolean { return orbitsVisible; }
-export function toggleOrbits(): void { setOrbitsVisible(!orbitsVisible); }
+export function getOrbitsVisible(): boolean { return orbitsFade.target === 1; }
+export function toggleOrbits(): void { setOrbitsVisible(orbitsFade.target !== 1); }
 
 // Search-index kinds that route to the planet handler. Keep in sync
 // with the registerSearchKindAlias calls at end of initPlanetLabels.
@@ -802,6 +805,7 @@ const planetHandler: LabelTypeHandler = {
     const halfHeight = window.innerHeight / 2;
     const days = julianDaysSinceJ2000();
     planetPicks.length = 0;
+    tickFade(orbitsFade);
     // Iterate selected/hovered planets first so their pending textures
     // win the race for the texture loader. The single in-flight slot
     // is locked once a load starts; if Mercury wins the iteration just
@@ -815,8 +819,9 @@ const planetHandler: LabelTypeHandler = {
     }
     for (const p of ordered) {
       const orbitMat = p.orbitLine.material as THREE.LineBasicMaterial;
-      orbitMat.opacity = ORBIT_BASE_OPACITY * orbitOpacity;
-      p.orbitLine.visible = orbitsVisible && orbitOpacity > 0;
+      const orbitMul = orbitOpacity * orbitsFade.current;
+      orbitMat.opacity = ORBIT_BASE_OPACITY * orbitMul;
+      p.orbitLine.visible = orbitMul > 0;
 
       const isActive = p === selectedPlanet || p === hoveredPlanet;
       if (fade <= 0 && !isActive) {
