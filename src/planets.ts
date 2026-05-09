@@ -147,7 +147,9 @@ function tryLoadTexture(url: string): Promise<THREE.Texture | null> {
 }
 
 // Serialise texture loads — JPEG decode + GPU upload is main-thread
-// work, and firing 12 in parallel stalls the initial frame.
+// work, and firing 12 in parallel stalls the initial frame. Per-frame
+// iteration in update() puts the focused planet first, so a freshly-
+// focused body's textures always reach this queue ahead of its peers.
 interface QueuedTexture { url: string; mesh: THREE.Mesh; uniform: string }
 const textureQueue: QueuedTexture[] = [];
 let textureProcessing = false;
@@ -800,7 +802,18 @@ const planetHandler: LabelTypeHandler = {
     const halfHeight = window.innerHeight / 2;
     const days = julianDaysSinceJ2000();
     planetPicks.length = 0;
+    // Iterate selected/hovered planets first so their pending textures
+    // win the race for the texture loader. The single in-flight slot
+    // is locked once a load starts; if Mercury wins the iteration just
+    // because it's earlier in planets[], a freshly-focused Earth has
+    // to wait for Mercury's JPEG decode before its own surface paints.
+    const ordered: Planet[] = [];
+    if (selectedPlanet) ordered.push(selectedPlanet);
+    if (hoveredPlanet && hoveredPlanet !== selectedPlanet) ordered.push(hoveredPlanet);
     for (const p of planets) {
+      if (p !== selectedPlanet && p !== hoveredPlanet) ordered.push(p);
+    }
+    for (const p of ordered) {
       const orbitMat = p.orbitLine.material as THREE.LineBasicMaterial;
       orbitMat.opacity = ORBIT_BASE_OPACITY * orbitOpacity;
       p.orbitLine.visible = orbitsVisible && orbitOpacity > 0;
