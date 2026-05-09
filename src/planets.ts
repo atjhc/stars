@@ -437,7 +437,10 @@ void main() {
   float ndotl = dot(N, uSunDir);
   // Atmospheric wrap shifts the terminator inward so the night side
   // near it picks up some light from multiple-scattering twilight.
-  float wrap = uAtmosphere * 0.15;
+  // Tight band — for Earth (atm=0.5) this extends ~2.9° past the
+  // terminator, leaving deep-night fragments dark enough for the
+  // city-light emissive to read clearly.
+  float wrap = uAtmosphere * 0.10;
   float wrapped = (ndotl + wrap) / (1.0 + wrap);
   float diff = pow(max(wrapped, 0.0), 1.5);
   vec3 H = normalize(uSunDir + V);
@@ -452,7 +455,10 @@ void main() {
   // Ambient floor scales with atmosphere — airless bodies have nearly
   // black night sides; thicker atmospheres scatter some light into
   // shadow. uAtmosphere ranges 0 (Moon, Mercury) to ~1.2 (Venus).
-  float ambient = 0.001 + 0.005 * uAtmosphere;
+  // Kept low so deep-night Earth/Venus stay dark enough for the
+  // night-light emissive (Earth) to be visible against the surface
+  // and so Venus reads as a near-black silhouette on the dark side.
+  float ambient = 0.001 + 0.002 * uAtmosphere;
   // Night-side emissive (city lights). Strongest where the surface is
   // unlit; feathers across the terminator and is fully gone in
   // daylight so it doesn't double up against direct illumination.
@@ -882,8 +888,16 @@ void main() {
   // Two-sided: flip the normal to match the visible face so each side
   // is lit when its face is toward the sun.
   if (!gl_FrontFacing) N = -N;
-  float diff = max(dot(N, uSunDir), 0.0) * sunVisibility(vWorldPos);
-  vec3 color = t.rgb * (0.10 + 0.90 * diff) * uIllumination;
+  float shadow = sunVisibility(vWorldPos);
+  float diff = max(dot(N, uSunDir), 0.0) * shadow;
+  // Translucent ambient: thin ring particles forward-scatter some
+  // sunlight to the unlit face, so removing the sun (Saturn's
+  // shadow) dims both sides — without this, the shadow only appears
+  // on the lit side because the unlit face's ambient floor is the
+  // same in and out of shadow. Floor at 0.02 keeps deep-shadow
+  // regions from going pure black.
+  float ambient = 0.02 + 0.08 * shadow;
+  vec3 color = t.rgb * (ambient + 0.90 * diff) * uIllumination;
   gl_FragColor = vec4(color, t.a);
 }
 `;
@@ -952,7 +966,10 @@ void main() {
   vec3 cloud = texture2D(uTexture, vUv).rgb;
   float alpha = cloud.r;
   if (alpha < 0.04) discard;
-  vec3 color = cloud * (0.02 + 0.98 * diff) * uIllumination;
+  // Low ambient floor — without this, the cloud layer's brightness
+  // dominates the dark-side appearance and washes out the city
+  // lights below. Daylight side is unaffected (diff ≈ 1 → ~1.0).
+  vec3 color = cloud * (0.003 + 0.997 * diff) * uIllumination;
   gl_FragColor = vec4(color, alpha);
 }
 `;
