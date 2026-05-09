@@ -444,7 +444,11 @@ void main() {
   float wrapped = (ndotl + wrap) / (1.0 + wrap);
   float diff = pow(max(wrapped, 0.0), 1.5);
   vec3 H = normalize(uSunDir + V);
-  float spec = pow(max(dot(N, H), 0.0), 20.0) * max(ndotl, 0.0) * 0.07;
+  // Specular gated by atmosphere: airless rocky bodies (Eros, Phobos,
+  // Moon, Mercury, ...) get none, so the bright lobe doesn't jump
+  // across faceted mesh triangles as the body rotates. Atmospheric
+  // and water bodies still reflect.
+  float spec = pow(max(dot(N, H), 0.0), 20.0) * max(ndotl, 0.0) * 0.07 * uAtmosphere;
   float shadow = sunVisibility(vWorldPos);
   diff *= shadow;
   spec *= shadow;
@@ -543,6 +547,53 @@ async function loadShapeMesh(url: string, mesh: THREE.Mesh, radiusKm: number): P
     uvs[i * 2 + 1] = 0.5 + Math.asin(y / Math.max(r, 1e-30)) / Math.PI;
   }
 
+  // Compute vertex normals BEFORE duplication, with position-welded
+  // indices. Two issues motivate this:
+  //   1. computeVertexNormals averages face normals per vertex *index*;
+  //      duplicating UVs first leaves duplicates with partial face
+  //      sums, producing brightness banding at the UV seam when the
+  //      body rotates.
+  //   2. Some source meshes (Thomas's Deimos lat/lon/radius grid)
+  //      already store duplicate-position vertices for the lon=0/360
+  //      ring. Without welding those, normals at the canonical vertex
+  //      and its position-duplicate diverge for the same physical
+  //      reason, producing the same banding even when UVs are intact.
+  // Welding maps every position-duplicate to the first occurrence,
+  // computes normals on the welded mesh, then propagates canonical
+  // normals back to all duplicates so dupVertex can carry them
+  // forward into the final UV-corrected geometry.
+  const QUANT = 1e5;
+  const canonicalOf = new Uint32Array(nv);
+  const seenPos = new Map<string, number>();
+  for (let i = 0; i < nv; i++) {
+    const qx = Math.round(positions[i * 3 + 0]! * QUANT);
+    const qy = Math.round(positions[i * 3 + 1]! * QUANT);
+    const qz = Math.round(positions[i * 3 + 2]! * QUANT);
+    const key = `${qx},${qy},${qz}`;
+    const existing = seenPos.get(key);
+    if (existing !== undefined) {
+      canonicalOf[i] = existing;
+    } else {
+      seenPos.set(key, i);
+      canonicalOf[i] = i;
+    }
+  }
+  const weldedIndices = new Uint32Array(ni);
+  for (let i = 0; i < ni; i++) weldedIndices[i] = canonicalOf[srcIndices[i]!]!;
+  const preGeometry = new THREE.BufferGeometry();
+  preGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), 3));
+  preGeometry.setIndex(new THREE.BufferAttribute(weldedIndices, 1));
+  preGeometry.computeVertexNormals();
+  const preNormalsArr = preGeometry.attributes.normal!.array as Float32Array;
+  const normals: number[] = new Array(nv * 3);
+  for (let i = 0; i < nv; i++) {
+    const c = canonicalOf[i]!;
+    normals[i * 3 + 0] = preNormalsArr[c * 3 + 0]!;
+    normals[i * 3 + 1] = preNormalsArr[c * 3 + 1]!;
+    normals[i * 3 + 2] = preNormalsArr[c * 3 + 2]!;
+  }
+  preGeometry.dispose();
+
   // Step 2: per-triangle UV repair. Linearly-interpolated equirectangular
   // UVs smear across the longitude seam (lon=180°, u jumps ~1↔0) and
   // at poles (u is undefined; atan2(0,0) collapses to 0.5). Duplicate
@@ -565,6 +616,11 @@ async function loadShapeMesh(url: string, mesh: THREE.Mesh, radiusKm: number): P
       positions[origIdx * 3 + 2]!,
     );
     uvs.push(newU, uvs[origIdx * 2 + 1]!);
+    normals.push(
+      normals[origIdx * 3 + 0]!,
+      normals[origIdx * 3 + 1]!,
+      normals[origIdx * 3 + 2]!,
+    );
     return idx;
   };
 
@@ -600,8 +656,8 @@ async function loadShapeMesh(url: string, mesh: THREE.Mesh, radiusKm: number): P
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), 3));
   geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
+  geometry.setAttribute("normal", new THREE.BufferAttribute(new Float32Array(normals), 3));
   geometry.setIndex(new THREE.BufferAttribute(newIndices, 1));
-  geometry.computeVertexNormals();
 
   const old = mesh.geometry;
   mesh.geometry = geometry;
