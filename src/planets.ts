@@ -757,9 +757,21 @@ function removeGlow(p: Planet) {
   setLabelsDirty(true);
 }
 
+// Reference body for the panel's distance reading. Camera distance is
+// useless on URL restore (it's whatever orbitRadius defaulted to) and
+// changes constantly while orbiting — Earth (and Sol for Earth itself)
+// gives a stable, astronomically meaningful number.
+function distanceFromReference(p: Planet): { name: string; sceneUnits: number } | null {
+  if (p.name === "Earth") return { name: "Sol", sceneUnits: p.anchor.position.length() };
+  const earth = planetByName.get("Earth");
+  if (!earth || earth === p) return null;
+  return { name: "Earth", sceneUnits: p.anchor.position.distanceTo(earth.anchor.position) };
+}
+
 function buildDetailHtml(p: Planet): string {
   const e = p.entry;
-  const dist = p === selectedPlanet ? orbitRadius : distanceFromCamera(p.anchor.position);
+  const ref = distanceFromReference(p);
+  const distLine = ref ? `From ${ref.name}: ${formatAstroDistance(ref.sceneUnits)}<br>` : "";
   const aliasLine = e.aliases && e.aliases.length > 0
     ? `<div class="star-aliases">${e.aliases.join(" · ")}</div>` : "";
   const wikiLink = e.wikipedia
@@ -772,8 +784,7 @@ function buildDetailHtml(p: Planet): string {
     ${aliasLine}
     <div class="detail-body">
       <div class="star-detail">
-        Distance: ${formatAstroDistance(dist)}<br>
-        Semi-major axis: ${e.elements.a_au[0].toFixed(3)} AU<br>
+        ${distLine}Semi-major axis: ${e.elements.a_au[0].toFixed(3)} AU<br>
         Radius: ${e.radius_km.toLocaleString()} km<br>
         Type: ${KIND_LABEL[e.kind ?? "planet"]}
       </div>
