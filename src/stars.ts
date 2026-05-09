@@ -48,6 +48,20 @@ const FOREGROUND_BOOST = 2.0;
 const FOREGROUND_NEAR = 0.5;
 const FOREGROUND_FAR = 100 * LY_TO_SCENE;
 
+// Soft saturation on vIntensity: pass-through below INTENSITY_KNEE,
+// then exponential approach to (KNEE + HEADROOM) so the curve never
+// plateaus. Closer-to-star always means brighter, even when the raw
+// distance-modulus value is deep in the saturation region — Mercury
+// stays brighter than Earth stays brighter than Mars by a hair, which
+// matches expectations as you fly in. C¹ continuous at the knee.
+const INTENSITY_KNEE = 2.5;
+const INTENSITY_HEADROOM = 3.0;
+
+function softSaturate(x: number, knee: number, range: number): number {
+  const over = Math.max(x - knee, 0);
+  return Math.min(x, knee) + range * (1 - Math.exp(-over / range));
+}
+
 // Tile binary format: 20 bytes per star. Matches scripts/build-catalog.py.
 export const BYTES_PER_STAR = 20;
 
@@ -106,7 +120,7 @@ export function computeStarScreenMetrics(
   const t = Math.max(0, Math.min(1, (appMag - (magLimit - 1.5)) / 1.5));
   const tierFade = 1 - t * t * (3 - 2 * t);
   const foregroundBoost = 1 + FOREGROUND_BOOST * (1 - THREE.MathUtils.smoothstep(safeDist, FOREGROUND_NEAR, FOREGROUND_FAR));
-  const intensity = rawBrightness * tierFade * foregroundBoost;
+  const intensity = softSaturate(rawBrightness * tierFade * foregroundBoost, INTENSITY_KNEE, INTENSITY_HEADROOM);
 
   const coronaPx = HALO_FLOOR_PX * Math.max(1.0, Math.min(2.5, 0.5 + 0.3 * rawBrightness));
   return { discPx, coronaPx, halfBillPx: discPx + coronaPx, intensity, rawBrightness };
@@ -138,6 +152,13 @@ const vertexShader = `
   const float FOREGROUND_BOOST = ${FOREGROUND_BOOST.toFixed(2)};
   const float FOREGROUND_NEAR = ${FOREGROUND_NEAR.toFixed(2)};
   const float FOREGROUND_FAR = ${FOREGROUND_FAR.toFixed(2)};
+  const float INTENSITY_KNEE = ${INTENSITY_KNEE.toFixed(2)};
+  const float INTENSITY_HEADROOM = ${INTENSITY_HEADROOM.toFixed(2)};
+
+  float softSaturate(float x, float knee, float range) {
+    float over = max(x - knee, 0.0);
+    return min(x, knee) + range * (1.0 - exp(-over / range));
+  }
   ${TARGET_VIEW_GLSL}
 
   void main() {
@@ -177,7 +198,7 @@ const vertexShader = `
       if (dot(toHovered, toHovered) < 1e-10) hoverMul = uHoverBoost;
     }
     float foregroundBoost = 1.0 + FOREGROUND_BOOST * (1.0 - smoothstep(FOREGROUND_NEAR, FOREGROUND_FAR, camDist));
-    vIntensity = rawBrightness * tierFade * hoverMul * foregroundBoost;
+    vIntensity = softSaturate(rawBrightness * tierFade * hoverMul * foregroundBoost, INTENSITY_KNEE, INTENSITY_HEADROOM);
 
     // Halo rim thickness — brightness-driven, bounded, additive to disc.
     // For a sub-pixel star this is the entire visible element.
