@@ -64,11 +64,36 @@ describe("filterSearch", () => {
     expect(results[0]).toBe(alcyone);
   });
 
-  it("searching 'Sirius' returns every member of the binary", () => {
+  it("searching 'Sirius' returns the system aggregate first, then every member", () => {
     const results = filterSearch("Sirius", index);
-    expect(results.length).toBe(2);
-    const names = results.map((r) => r.n).sort();
-    expect(names).toEqual(["Sirius A", "Sirius B"]);
+    expect(results.length).toBe(3);
+    expect(results[0].n).toBe("Sirius");
+    expect(results[0].k).toBe("s");
+    expect(results[0].sy).toBe("Sirius");
+    const memberNames = results.slice(1).map((r) => r.n).sort();
+    expect(memberNames).toEqual(["Sirius A", "Sirius B"]);
+  });
+
+  it("system aggregate is not synthesized when only one member matches", () => {
+    const results = filterSearch("Sirius A", index);
+    const aggregates = results.filter((r) => r.k === "s");
+    expect(aggregates.length).toBe(0);
+  });
+
+  it("system aggregate is suppressed when a cluster/nebula already covers the system", () => {
+    // 'Tau' matches Hyades members but not the cluster entry — even so,
+    // the cluster row exists in the index and already provides a way to
+    // focus the system, so pass 4 must not emit a redundant 's' aggregate.
+    const results = filterSearch("Tau", index);
+    expect(results.filter((r) => r.k === "s").length).toBe(0);
+  });
+
+  it("aggregate position is the centroid of matched members", () => {
+    const a = makeEntry({ n: "Foo A", t: "tile", i: 1, sy: "Foo", p: [0, 0, 0] });
+    const b = makeEntry({ n: "Foo B", t: "tile", i: 2, sy: "Foo", p: [4, 6, 8] });
+    const results = filterSearch("Foo", [a, b]);
+    const aggregate = results.find((r) => r.k === "s")!;
+    expect(aggregate.p).toEqual([2, 3, 4]);
   });
 
   it("searching 'Vega' returns Vega (no system dedup)", () => {

@@ -92,7 +92,7 @@ export interface SearchEntry {
   sp?: string;                  // spectral type
   a?: string[];                 // aliases
   sy?: string;                  // system name
-  k?: "c" | "n" | "b" | "ns" | "x";  // kind: "c" cluster, "n" nebula, "b" black hole, "ns" neutron star, "x" constellation
+  k?: "c" | "n" | "b" | "ns" | "x" | "s";  // kind: "c" cluster, "n" nebula, "b" black hole, "ns" neutron star, "x" constellation, "s" star system aggregate (synthesized at search time)
 }
 
 import { TILE_BASE_URL } from "./constants.ts";

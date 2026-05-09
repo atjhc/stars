@@ -21,6 +21,20 @@ export function getSearchKindLabel(kind: string): string | undefined {
 kindKeywords.set("c", ["star cluster", "cluster"]);
 kindLabels.set("c", "Star Cluster");
 
+// Names of systems already covered by a built-in cluster/nebula/BH/NS
+// aggregate row in the index. Memoized by index identity — the index is
+// loaded once at boot and reassigned only on full reload, so this Set
+// is rebuilt at most once per session.
+const kindedSystemsByIndex = new WeakMap<SearchEntry[], Set<string>>();
+function getKindedSystems(index: SearchEntry[]): Set<string> {
+  let set = kindedSystemsByIndex.get(index);
+  if (set) return set;
+  set = new Set();
+  for (const e of index) if (e.k && e.k !== "s") set.add(e.n);
+  kindedSystemsByIndex.set(index, set);
+  return set;
+}
+
 export function filterSearch(query: string, index: SearchEntry[], excludeKinds?: Set<string>): SearchEntry[] {
   const q = query.toLowerCase().trim();
   if (q.length === 0) return [];
@@ -93,8 +107,43 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
     if (add(entry)) break;
   }
 
-  // Sort by: exact match > prefix > substring > alias, then by name length.
+  // Pass 4: synthesize a system-aggregate entry for any system whose
+  // starlike (no-kind) members appear at least twice in the results.
+  // Selecting it focuses the SystemGroup as a whole rather than a
+  // specific component. Skipped for systems that already have a
+  // cluster/nebula/black-hole/neutron-star aggregate entry in the
+  // index, since selecting that entry already focuses the system.
+  const membersBySystem = new Map<string, SearchEntry[]>();
+  for (const e of results) {
+    if (e.k || !e.sy) continue;
+    const list = membersBySystem.get(e.sy);
+    if (list) list.push(e); else membersBySystem.set(e.sy, [e]);
+  }
+  const kindedSystems = getKindedSystems(index);
+  for (const [sy, members] of membersBySystem) {
+    if (members.length < 2) continue;
+    if (kindedSystems.has(sy)) continue;
+    const inv = 1 / members.length;
+    let px = 0, py = 0, pz = 0, mg = members[0].mg, M = members[0].M, d = 0;
+    for (const m of members) {
+      px += m.p[0]; py += m.p[1]; pz += m.p[2]; d += m.d;
+      if (m.mg < mg) mg = m.mg;
+      if (m.M < M) M = m.M;
+    }
+    if (add({ n: sy, sy, p: [px * inv, py * inv, pz * inv], mg, M, d: d * inv, k: "s" })) break;
+  }
+
+  // Sort by: aggregate-before-component for the same system, then exact
+  // match > prefix > substring > alias, then by name length. The system
+  // tiebreaker keeps "Alpha Centauri" above "Alpha Centauri A/B/C" even
+  // when both share the same query rank (e.g. substring match on
+  // "centauri").
   results.sort((a, b) => {
+    if (a.sy && a.sy === b.sy) {
+      const aAgg = a.k === "s" ? 0 : 1;
+      const bAgg = b.k === "s" ? 0 : 1;
+      if (aAgg !== bAgg) return aAgg - bAgg;
+    }
     const ra = rank(a), rb = rank(b);
     if (ra !== rb) return ra - rb;
     return a.n.length - b.n.length;
