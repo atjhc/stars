@@ -81,17 +81,26 @@ export interface StarScreenMetrics {
   intensity: number;   // vIntensity equivalent on CPU
   rawBrightness: number;
 }
+const ZERO_METRICS: StarScreenMetrics = {
+  discPx: 0, coronaPx: 0, halfBillPx: 0, intensity: 0, rawBrightness: 0,
+};
+
 export function computeStarScreenMetrics(
   radius: number,
   absMag: number,
   camDist: number,
 ): StarScreenMetrics {
   const safeDist = Math.max(camDist, 1e-20);
+  const appMag = apparentMag(absMag, safeDist);
+  const magLimit = magLimitUniform.value;
+  // Mirrors the vertex shader's hard cull — past the mag limit, the GPU
+  // emits no fragments, so occluder / label-margin consumers must also
+  // see zeroed extents to avoid reserving real estate for invisible stars.
+  if (appMag >= magLimit) return ZERO_METRICS;
+
   const angRadius = (radius * DISC_SCALE) / safeDist;
   const discPx = angRadius * F_HALF_TAN_INV * halfViewportPxUniform.value;
 
-  const appMag = apparentMag(absMag, safeDist);
-  const magLimit = magLimitUniform.value;
   const rawBrightness = Math.max(0.1, (magLimit - appMag) * 0.25);
   // Match the shader's smoothstep(uMagLimit-1.5, uMagLimit, appMag).
   const t = Math.max(0, Math.min(1, (appMag - (magLimit - 1.5)) / 1.5));
@@ -118,6 +127,7 @@ const vertexShader = `
 
   varying vec3 vColor;
   varying float vIntensity;
+  varying float vTierFade;
   varying float vDiscPx;
   varying float vHalfBillboardPx;
   varying vec2 vUv;
@@ -147,8 +157,19 @@ const vertexShader = `
 
     // Apparent magnitude via distance modulus.
     float appMag = instanceAbsMag + 1.50515 * log2(camDist * (1.0 / 30.0));
+
+    // Hard cull beyond the mag limit. The smoothstep tierFade fades the
+    // glow over the last 1.5 mag, but discMask is geometric — without
+    // this cull, sub-pixel stars past the limit still paint disc color
+    // because smoothstep clamps to a non-zero coverage at small radii.
+    if (appMag >= uMagLimit) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      return;
+    }
+
     float rawBrightness = max(0.1, (uMagLimit - appMag) * 0.25);
     float tierFade = 1.0 - smoothstep(uMagLimit - 1.5, uMagLimit, appMag);
+    vTierFade = tierFade;
 
     float hoverMul = 1.0;
     if (uHoveredActive > 0.5) {
@@ -176,6 +197,7 @@ const fragmentShader = `
 
   varying vec3 vColor;
   varying float vIntensity;
+  varying float vTierFade;
   varying float vDiscPx;
   varying float vHalfBillboardPx;
   varying vec2 vUv;
@@ -192,7 +214,7 @@ const fragmentShader = `
 
     // Disc: limb-darkened physical body at LDR saturation. Bounded
     // intensity (~1.0) keeps bloom contribution low — edges stay crisp.
-    float discMask = smoothstep(vDiscPx + 0.5, vDiscPx - 0.5, rPx);
+    float discMask = smoothstep(vDiscPx + 0.5, vDiscPx - 0.5, rPx) * vTierFade;
     float r2 = (vDiscPx > 0.0) ? (rPx * rPx) / (vDiscPx * vDiscPx) : 1.0;
     float inside = max(0.0, 1.0 - r2);
     float limbDark = 1.0 - 0.6 * (1.0 - sqrt(inside));
