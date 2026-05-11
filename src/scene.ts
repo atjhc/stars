@@ -854,14 +854,12 @@ const cropPass = new ShaderPass({
 composer.addPass(cropPass);
 
 // Screen-space gravitational lensing pass (enabled during deep zoom).
-// Samples dust at the bent UV too so background nebulae warp with the
-// scene.
+// Dust is already composited into tDiffuse by the in-scene upscale mesh
+// (see dust.ts), so bending tDiffuse bends the background nebulae for
+// free — no separate dust sample needed here.
 const lensingPass = new ShaderPass({
   uniforms: {
     tDiffuse: { value: null },
-    tDust: { value: null },
-    uDustActive: { value: 0 },
-    uDustScale: { value: 1.0 },
     uBHScreen: { value: new THREE.Vector2(0.5, 0.5) },
     uShadowRadius: { value: 0.0 },
     uSchwarzRadius: { value: 0.0 },
@@ -882,9 +880,6 @@ const lensingPass = new ShaderPass({
   `,
   fragmentShader: `
     uniform sampler2D tDiffuse;
-    uniform sampler2D tDust;
-    uniform float uDustActive;
-    uniform float uDustScale;
     uniform vec2 uBHScreen;
     uniform float uShadowRadius;
     uniform float uSchwarzRadius;
@@ -893,18 +888,11 @@ const lensingPass = new ShaderPass({
     uniform float uBodyEmissive;
     varying vec2 vUv;
 
-    vec3 sampleDust(vec2 uv) {
-      if (uDustActive < 0.5) return vec3(0.0);
-      vec2 dustUv = (uv - 0.5) * uDustScale + 0.5;
-      vec2 m = step(vec2(0.0), dustUv) * step(dustUv, vec2(1.0));
-      return texture2D(tDust, dustUv).rgb * (m.x * m.y);
-    }
-
     void main() {
       vec2 uv = vUv;
 
       if (uShadowRadius <= 0.0) {
-        gl_FragColor = vec4(texture2D(tDiffuse, uv).rgb + sampleDust(uv), 1.0);
+        gl_FragColor = texture2D(tDiffuse, uv);
         return;
       }
 
@@ -928,7 +916,7 @@ const lensingPass = new ShaderPass({
       vec2 deflectDir = normalize(corrected);
       vec2 uvDeflect = vec2(deflectDir.x / uAspect, deflectDir.y) * deflection;
       vec2 bentUV = clamp(uv - uvDeflect, 0.0, 1.0);
-      vec3 bent = texture2D(tDiffuse, bentUV).rgb + sampleDust(bentUV);
+      vec3 bent = texture2D(tDiffuse, bentUV).rgb;
 
       // Black holes: the interior is the event horizon (shadow).
       // The shadow mask goes from 0 at b < 0.95 (pure black) to 1
