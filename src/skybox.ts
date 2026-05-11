@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { scene, BLOOM_OVERSCAN, GAL_TO_SCENE } from "./scene.ts";
 import { TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
+import { composerNdcToHalfResUvGlsl } from "./shaderLib.ts";
 
 // Panorama is in galactic equirect, so we rotate scene-space view
 // directions into the galactic frame before sampling.
@@ -27,12 +28,13 @@ const FRAGMENT = `
 uniform sampler2D uTexture;
 uniform sampler2D uDustTex;
 uniform float uHasDust;
-uniform float uOverscanRecip;
 uniform mat3 uSceneToGal;
 uniform float uIntensity;
 uniform float uMagLimit;
 varying vec3 vDir;
 varying vec4 vClipPos;
+
+${composerNdcToHalfResUvGlsl(BLOOM_OVERSCAN)}
 
 const float PI = 3.14159265359;
 
@@ -61,12 +63,9 @@ void main() {
   // Foreground dust extinction. The dust ray-march writes integrated
   // optical depth into halfResRT's alpha channel; multiply through by
   // exp(-tau) so dense local clouds silhouette against the panorama.
-  // The composer's bloom-overscan FOV is BLOOM_OVERSCAN× wider than
-  // the dust render's FOV, so we map composer NDC to dust UV by
-  // scaling around centre. uOverscanRecip = 1 / BLOOM_OVERSCAN.
   if (uHasDust > 0.5) {
     vec2 ndc = vClipPos.xy / vClipPos.w;
-    vec2 dustUv = ndc * (0.5 * uOverscanRecip) + 0.5;
+    vec2 dustUv = composerNdcToHalfResUv(ndc);
     if (all(greaterThanEqual(dustUv, vec2(0.0))) && all(lessThanEqual(dustUv, vec2(1.0)))) {
       float tau = texture2D(uDustTex, dustUv).a;
       col *= exp(-tau);
@@ -99,7 +98,6 @@ export async function initSkybox(): Promise<void> {
       uTexture: { value: texture },
       uDustTex: { value: null },
       uHasDust: { value: 0 },
-      uOverscanRecip: { value: 1 / BLOOM_OVERSCAN },
       uSceneToGal: { value: SCENE_TO_GAL },
       uIntensity: { value: 0.09 },
       uMagLimit: magLimitUniform,

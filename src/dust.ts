@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { camera, getRenderPixelRatio, qualityProfile, GAL_TO_SCENE, scene, BLOOM_OVERSCAN } from "./scene.ts";
+import { composerNdcToHalfResUvGlsl } from "./shaderLib.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
@@ -212,18 +213,15 @@ export async function initDust(): Promise<void> {
   // (depthWrite:false) don't.
   // The mesh samples halfResRT — already raymarched at half-res before
   // composer.render() — so this is just an upscale, not a re-march.
-  // The composer renders with a BLOOM_OVERSCAN-widened FOV; the visible
-  // viewport's NDC range is [-1/BLOOM_OVERSCAN, +1/BLOOM_OVERSCAN], so
-  // we scale clip-space xy by BLOOM_OVERSCAN to map composer NDC to
-  // halfResRT UV. Pixels in the overscan band sample outside [0,1] and
-  // get clamped to halfResRT's edge — negligible, since the dust there
-  // would also be cropped out.
+  // Pixels in the overscan band fall outside [0,1] and are discarded
+  // below — negligible, since the dust there would also be cropped out.
   const inSceneDustMaterial = new THREE.ShaderMaterial({
     uniforms: { tDust: { value: halfResRT.texture } },
     vertexShader: `
+      ${composerNdcToHalfResUvGlsl(BLOOM_OVERSCAN)}
       varying vec2 vDustUv;
       void main() {
-        vDustUv = position.xy * float(${(0.5 * BLOOM_OVERSCAN).toFixed(6)}) + 0.5;
+        vDustUv = composerNdcToHalfResUv(position.xy);
         gl_Position = vec4(position.xy, 1.0, 1.0);
       }
     `,

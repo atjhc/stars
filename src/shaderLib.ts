@@ -29,3 +29,18 @@ export const TARGET_VIEW_GLSL = `
     return uStarViewRotation * camRel;
   }
 `;
+
+// GLSL helper: map a point in composer NDC space to UV in a half-res RT
+// that was rendered at the *unwidened* (visible-viewport) FOV. The
+// composer renders with a BLOOM_OVERSCAN-widened FOV, so the visible
+// viewport's NDC range is [-1/BLOOM_OVERSCAN, +1/BLOOM_OVERSCAN].
+// Scaling by BLOOM_OVERSCAN/2 maps those endpoints to the [0,1] texture
+// edges. Currently used to sample halfResRT (dust). Callers pass
+// BLOOM_OVERSCAN in so this module stays a leaf (no scene.ts dep).
+export function composerNdcToHalfResUvGlsl(overscan: number): string {
+  return `
+    vec2 composerNdcToHalfResUv(vec2 ndc) {
+      return ndc * float(${(overscan * 0.5).toFixed(7)}) + 0.5;
+    }
+  `;
+}
