@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { camera, getRenderPixelRatio, qualityProfile, GAL_TO_SCENE } from "./scene.ts";
+import { camera, getRenderPixelRatio, qualityProfile, GAL_TO_SCENE, scene, BLOOM_OVERSCAN } from "./scene.ts";
 import { SCALE, TILE_BASE_URL } from "./constants.ts";
 import { magLimitUniform } from "./starfield.ts";
 import { registerKeepFrame } from "./renderLoop.ts";
@@ -26,9 +26,7 @@ registerKeepFrame(() => fadeStartMs >= 0);
 // is inherently smooth, so half-res + bilinear upscale is nearly
 // indistinguishable from full-res at ~4× less GPU cost.
 let halfResRT: THREE.WebGLRenderTarget | null = null;
-let blitMaterial: THREE.ShaderMaterial | null = null;
-const blitScene = new THREE.Scene();
-const blitCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+let inSceneDustMesh: THREE.Mesh | null = null;
 
 
 const SHARED_VERTEX = `
@@ -206,23 +204,50 @@ export async function initDust(): Promise<void> {
   const [hw, hh] = computeDustRTSize();
   halfResRT = new THREE.WebGLRenderTarget(hw, hh, { type: THREE.HalfFloatType });
 
-  // Fullscreen blit quad to upscale the half-res result. RT contains
-  // premultiplied RGB; AdditiveBlending + premultipliedAlpha maps to
-  // (ONE, ONE) so we don't re-multiply by alpha. Matches the lensing
-  // shader's tDust sampling so crossing the deep-zoom boundary doesn't
-  // change dust brightness.
-  blitMaterial = new THREE.ShaderMaterial({
-    uniforms: { tDiffuse: { value: halfResRT.texture } },
-    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv); }`,
+  // In-scene depth-tested upscale mesh. Rendered as part of the main
+  // RenderPass so the GPU's hardware depth test occludes dust behind
+  // planet meshes. The quad is positioned at NDC z = far plane so the
+  // depth test passes wherever no opaque geometry wrote a closer Z;
+  // planets (which write depth) hide dust on their pixels, while stars
+  // (depthWrite:false) don't.
+  // The mesh samples halfResRT — already raymarched at half-res before
+  // composer.render() — so this is just an upscale, not a re-march.
+  // The composer renders with a BLOOM_OVERSCAN-widened FOV; the visible
+  // viewport's NDC range is [-1/BLOOM_OVERSCAN, +1/BLOOM_OVERSCAN], so
+  // we scale clip-space xy by BLOOM_OVERSCAN to map composer NDC to
+  // halfResRT UV. Pixels in the overscan band sample outside [0,1] and
+  // get clamped to halfResRT's edge — negligible, since the dust there
+  // would also be cropped out.
+  const inSceneDustMaterial = new THREE.ShaderMaterial({
+    uniforms: { tDust: { value: halfResRT.texture } },
+    vertexShader: `
+      varying vec2 vDustUv;
+      void main() {
+        vDustUv = position.xy * float(${(0.5 * BLOOM_OVERSCAN).toFixed(6)}) + 0.5;
+        gl_Position = vec4(position.xy, 1.0, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D tDust;
+      varying vec2 vDustUv;
+      void main() {
+        if (any(lessThan(vDustUv, vec2(0.0))) || any(greaterThan(vDustUv, vec2(1.0)))) discard;
+        gl_FragColor = texture2D(tDust, vDustUv);
+      }
+    `,
     blending: THREE.AdditiveBlending,
-    premultipliedAlpha: true,
     depthWrite: false,
-    depthTest: false,
+    depthTest: true,
+    transparent: true,
   });
-  const blitQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blitMaterial);
-  blitScene.add(blitQuad);
+  inSceneDustMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), inSceneDustMaterial);
+  inSceneDustMesh.frustumCulled = false;
+  // High render order so it draws after all opaque geometry; planets
+  // have already written depth by then.
+  inSceneDustMesh.renderOrder = 1000;
+  scene.add(inSceneDustMesh);
 
+  syncInSceneDustVisibility();
   console.log(`Dust volume: ${xSize}×${ySize}×${zSize} @ ${meta.resolution_pc} pc/voxel, bbox ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}`);
   fadeStartMs = performance.now();
 }
@@ -264,20 +289,8 @@ export function renderDustToRT(renderer: THREE.WebGLRenderer): void {
   renderer.setRenderTarget(prevTarget);
 }
 
-// Additive blit of halfResRT onto the screen. Used when lensing isn't
-// active — when it is, the lensing pass samples tDust itself.
-export function compositeDustToScreen(renderer: THREE.WebGLRenderer): void {
-  if (!emissionMesh || !wantVisible || !halfResRT || !blitMaterial) return;
-  blitMaterial.uniforms.tDiffuse.value = halfResRT.texture;
-  renderer.setRenderTarget(null);
-  const prev = renderer.autoClear;
-  renderer.autoClear = false;
-  renderer.render(blitScene, blitCamera);
-  renderer.autoClear = prev;
-}
-
-export function getDustTexture(): THREE.Texture | null {
-  return (emissionMesh && wantVisible && halfResRT) ? halfResRT.texture : null;
+function syncInSceneDustVisibility(): void {
+  if (inSceneDustMesh) inSceneDustMesh.visible = wantVisible && emissionMesh != null;
 }
 
 // Always-on accessor for the dust RT, used by the skybox shader to
@@ -307,6 +320,14 @@ export function handleDustResize(): void {
   halfResRT.setSize(hw, hh);
 }
 
-export function setDustVisible(v: boolean): void { wantVisible = v; }
-export function isDustVisible(): boolean { return wantVisible; }
-export function toggleDust(): void { wantVisible = !wantVisible; }
+export function setDustVisible(v: boolean): void {
+  wantVisible = v;
+  syncInSceneDustVisibility();
+}
+export function isDustVisible(): boolean {
+  return wantVisible;
+}
+export function toggleDust(): void {
+  wantVisible = !wantVisible;
+  syncInSceneDustVisibility();
+}

@@ -34,7 +34,7 @@ import { setupSearch } from "./search.ts";
 import { updateLabels, checkCameraMoved } from "./labels.ts";
 import { initConstellations, toggleConstellations, setConstellationsVisible, constellationsVisible } from "./constellations.ts";
 import {
-  initDust, updateDust, renderDustToRT, compositeDustToScreen, getDustTexture,
+  initDust, updateDust, renderDustToRT,
   getDustExtinctionTexture,
   toggleDust, setDustVisible, isDustVisible, handleDustResize,
 } from "./dust.ts";
@@ -774,24 +774,19 @@ function animateInner(now: number) {
   finalizeLensingFrame();
   statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem));
 
-  // Main scene pass (lensing pass is in the composer, auto-enabled by blackholes.ts).
-  // Dust is ray-marched into its half-res RT first. When lensing is
-  // active (BH selected), the lensing shader samples tDust at the bent
-  // UV so the nebula warps with the scene. Otherwise it's blitted onto
-  // the screen additively after the composer.
+  // Main scene pass (lensing pass is in the composer, auto-enabled by
+  // blackholes.ts). Dust is ray-marched to a half-res RT first, then
+  // the in-scene depth-tested upscale mesh inside the main scene
+  // samples it during composer.render() — so dust ends up in tDiffuse
+  // with planet occlusion via hardware depth test, and lensing bends
+  // it along with the rest of the scene.
   statsPhase("sceneRender", () => {
     drainGpuQueries();
     gpuPhase("gpu.dustRT", () => renderDustToRT(renderer));
-    if (lensingPass.enabled) {
-      const dustTex = getDustTexture();
-      lensingPass.uniforms.tDust!.value = dustTex;
-      lensingPass.uniforms.uDustActive!.value = dustTex ? 1 : 0;
-    }
     updateLensFlares(window.innerWidth, window.innerHeight);
     beginBloomRender();
     composer.render();
     endBloomRender();
-    if (!lensingPass.enabled) gpuPhase("gpu.dustComposite", () => compositeDustToScreen(renderer));
     // Render NS markers after the composer so the lensing pass
     // never sees the body in tDiffuse and can't bend it into an
     // Einstein ring around itself.

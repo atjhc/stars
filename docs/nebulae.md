@@ -190,15 +190,26 @@ The script downloads the source FITS automatically on first run.
    - The RT is cleared every frame regardless of dust visibility, so
      toggling nebulae off cleanly removes both emission and extinction
 
-3. **Upscale blit**: render a fullscreen quad that samples the
-   half-res texture's RGB with bilinear filtering, using additive
-   blending to composite emission onto the post-bloom starfield.
-   Volumetric glow is inherently smooth, so half-res is nearly
-   indistinguishable.
+3. **In-scene upscale mesh**: a fullscreen NDC-quad lives in the
+   main scene with `depthTest:true`. Its vertex shader writes
+   `gl_Position.z = w = 1.0` (depth = 1.0 = far plane) so the GPU's
+   hardware depth test occludes the quad wherever opaque geometry
+   (planets) wrote a closer Z. The fragment samples halfResRT with
+   bilinear filtering and additive-blends onto the scene. Stars use
+   `depthWrite:false` so they don't contribute to the occlusion
+   mask. The composer's BLOOM_OVERSCAN-widened FOV is accounted for
+   by scaling clip-space XY by `BLOOM_OVERSCAN` to map composer NDC
+   to halfResRT UV; fragments in the overscan band fall outside
+   `[0,1]` and self-mask.
 
-4. Render order: skybox (samples halfResRT.a as `exp(-τ)` extinction
-   over the panorama) → stars → bloom compositor → dust emission
-   blit → canvas labels.
+4. Since dust is now inside `tDiffuse` after the main render pass,
+   the lensing shader bends it along with the rest of the scene for
+   free — no separate `tDust` sample at the bent UV is needed.
+
+5. Render order: skybox (samples halfResRT.a as `exp(-τ)` extinction
+   over the panorama) → stars → planets (depthWrite) → in-scene dust
+   upscale (depthTest, renderOrder 1000) → bloom compositor → canvas
+   labels.
 
 ### Labels (`src/nebulaeLabels.ts`)
 
