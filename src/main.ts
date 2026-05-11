@@ -72,6 +72,13 @@ import { animateTo } from "./scene.ts";
 import { focusTarget } from "./systemDispatch.ts";
 import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
 import { initGpuTimer, gpuPhase, drainGpuQueries, wrapComposerPasses } from "./gpuTimer.ts";
+import { lensFlarePass, updateLensFlares } from "./lensflare.ts";
+
+// Append AFTER bloom + crop + lensing so the flare renders in sRGB
+// against the already-bloomed scene. Pre-bloom placement caused the
+// bloom kernel (which uses pixel-radius offsets) to ovoid-stretch the
+// flare on wide screens; in sRGB additive there's no kernel to distort.
+composer.addPass(lensFlarePass);
 
 // Wait for DOM
 await new Promise<void>((resolve) => {
@@ -780,6 +787,7 @@ function animateInner(now: number) {
       lensingPass.uniforms.tDust!.value = dustTex;
       lensingPass.uniforms.uDustActive!.value = dustTex ? 1 : 0;
     }
+    updateLensFlares(window.innerWidth, window.innerHeight);
     beginBloomRender();
     composer.render();
     endBloomRender();
