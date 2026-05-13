@@ -342,9 +342,12 @@ export function focusExoplanetByName(name: string): boolean {
 
 const exoplanetHandler: LabelTypeHandler = {
   type: "exoplanet",
-  // No selection-state machinery (no glow / no detail panel of its own);
-  // the click just retargets the camera. The host's detail panel stays
-  // open so the planet list remains accessible.
+  // Overlay — picking a planet must not clear the host-star focus, or
+  // updateExoplanets would tear the system down the very next frame
+  // (when getSelectedMesh() returns null). Same model constellations
+  // use: the click retargets the camera while the underlying star
+  // selection (and the URL's focus= param) stays intact.
+  overlay: true,
   setVisible() { /* labels follow the global toggle via labelCanvas */ },
   update() { /* per-frame work happens in updateExoplanets() */ },
   selectByName(name) { return focusExoplanetByName(name); },
