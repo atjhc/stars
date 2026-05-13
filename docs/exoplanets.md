@@ -101,6 +101,16 @@ scroll-zoom in or click an entry in the detail panel's "Confirmed
 planets" list — `focusExoplanetByName` animates the camera to a few
 planet radii out.
 
+### Labels
+
+Each mounted planet also registers a canvas label (`kind: "exoplanet"`)
+anchored at the planet's world position. Opacity fades over the same
+900–1000 AU camera-to-host band that gates Sol's planet labels, so
+labels appear naturally as the user scroll-zooms into the system and
+hide once they've receded into interstellar view. An `exoplanet`
+label-type handler routes canvas-label clicks to `focusExoplanetByName`
+— same animation as clicking the detail-panel row.
+
 ### Detail panel
 
 Selecting a host star with planets adds a "Confirmed planets (N)"
@@ -115,12 +125,8 @@ routes to `focusExoplanetByName`.
   of confirmed exomoons, but mass/orbit data is too noisy for v1).
 - No axial rotation — rotational periods are known for fewer than a
   dozen planets, all from spectroscopy of hot Jupiters.
-- No selection / click on the planet body itself in the scene — the
-  detail-panel list is the navigation surface.
-- No exoplanet labels in the canvas overlay. Adding them would feed
-  the existing label registry but they'd compete with star labels at
-  every zoom level since the host is always brighter; deferred until
-  a clear UI story exists.
+- No selection / click on the planet body itself in the scene —
+  canvas labels and the detail-panel list are the navigation surfaces.
 - Hosts whose AT-HYG entry has no traditional identifier (HD / HIP /
   Gliese / Bayer / Flamsteed / IAU proper) are skipped. Most are
   Kepler / TESS targets that the user can't reach in Drake anyway.

@@ -9,11 +9,15 @@
 // measure — but the placement is stable across reloads.
 
 import * as THREE from "three";
-import { scene, animateTo, setMinOrbitOverride } from "./scene.ts";
+import { scene, camera, animateTo, setMinOrbitOverride } from "./scene.ts";
 import { KM_PER_PC, SCALE, SCENE_PER_AU, TILE_BASE_URL } from "./constants.ts";
 import { kick } from "./renderLoop.ts";
 import { getSelectedMesh } from "./systemStore.ts";
 import type { Star } from "./types.ts";
+import {
+  registerCanvasLabel, unregisterCanvasLabel, updateCanvasLabel,
+} from "./labelCanvas.ts";
+import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 
 const EARTH_RADIUS_KM = 6378;
 const RE_TO_SCENE = (EARTH_RADIUS_KM / KM_PER_PC) * SCALE;
@@ -84,26 +88,45 @@ let currentGroup: THREE.Group | null = null;
 let currentPlanets: MountedPlanet[] = [];
 let currentEntry: SystemEntry | null = null;
 
+function canvasIdFor(name: string): string { return `exoplanet:${name}`; }
+
+// Tear down the scene group + labels; currentMesh is owned by
+// updateExoplanets() and tracks selection changes independently.
 function teardown(): void {
-  if (!currentGroup) return;
-  scene.remove(currentGroup);
-  currentGroup.traverse((o) => {
-    if ((o as THREE.Mesh).geometry) (o as THREE.Mesh).geometry.dispose();
-    const m = (o as THREE.Mesh).material as THREE.Material | undefined;
-    if (m && typeof (m as THREE.Material).dispose === "function") m.dispose();
-  });
+  for (const p of currentPlanets) unregisterCanvasLabel(canvasIdFor(p.name));
+  if (currentGroup) {
+    scene.remove(currentGroup);
+    currentGroup.traverse((o) => {
+      if ((o as THREE.Mesh).geometry) (o as THREE.Mesh).geometry.dispose();
+      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (m && typeof (m as THREE.Material).dispose === "function") m.dispose();
+    });
+  }
   currentGroup = null;
-  currentMesh = null;
   currentPlanets = [];
   currentEntry = null;
 }
 
+// Match docs/planets.md: Sol fades planet labels out over the
+// 900–1000 AU band from the camera. Reusing the same band keeps the
+// "you're in a planetary system" zoom range consistent across hosts.
+const LABEL_FADE_NEAR_AU = 900;
+const LABEL_FADE_FAR_AU = 1000;
+
 export function updateExoplanets(): void {
   const mesh = getSelectedMesh();
-  if (mesh === currentMesh) return;
-  currentMesh = mesh;
-  if (!mesh) { teardown(); return; }
-  void mountFor(mesh);
+  if (mesh !== currentMesh) {
+    currentMesh = mesh;
+    teardown();
+    if (mesh) void mountFor(mesh);
+    return;
+  }
+  if (currentPlanets.length === 0 || !currentGroup) return;
+  const camDistAu = camera.position.distanceTo(currentGroup.position) / SCENE_PER_AU;
+  const fade = 1 - THREE.MathUtils.smoothstep(camDistAu, LABEL_FADE_NEAR_AU, LABEL_FADE_FAR_AU);
+  for (const p of currentPlanets) {
+    updateCanvasLabel(canvasIdFor(p.name), { opacityTarget: fade });
+  }
 }
 
 async function mountFor(mesh: THREE.Object3D): Promise<void> {
@@ -112,10 +135,9 @@ async function mountFor(mesh: THREE.Object3D): Promise<void> {
   if (!d) return;
   const star = mesh.userData as Star;
   const gid = resolveGaiaId(d, star);
-  if (!gid) { teardown(); return; }
+  if (!gid) return;
   const entry = d.by_gaia[gid];
-  if (!entry) { teardown(); return; }
-  teardown();
+  if (!entry) return;
   currentGroup = buildSystem(entry, mesh.position);
   currentEntry = entry;
   scene.add(currentGroup);
@@ -144,15 +166,29 @@ function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
     const body = buildBody(p, pos);
     group.add(body);
     const radius = p.radius_re * RE_TO_SCENE;
-    currentPlanets.push({
-      name: p.name,
-      worldPos: hostPos.clone().add(pos),
-      radius,
-      data: p,
+    const worldPos = hostPos.clone().add(pos);
+    currentPlanets.push({ name: p.name, worldPos, radius, data: p });
+    registerCanvasLabel({
+      id: canvasIdFor(p.name),
+      kind: "exoplanet",
+      anchor: worldPos,
+      text: p.name,
+      font: EXO_LABEL_FONT,
+      color: EXO_LABEL_COLOR,
+      // Same band that Sol's planets occupy. Higher than BH/NS; lower
+      // than Sol planets (we're never on screen with them — Sol's
+      // planets only render inside Sol's system).
+      rank: 1900,
+      marginTop: 10,
+      opacityTarget: 0,
+      payload: { name: p.name },
     });
   }
   return group;
 }
+
+const EXO_LABEL_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const EXO_LABEL_COLOR = "rgba(170,200,235,0.9)";
 
 interface Orient { i: number; node: number; peri: number }
 
@@ -303,3 +339,19 @@ export function focusExoplanetByName(name: string): boolean {
   kick();
   return true;
 }
+
+const exoplanetHandler: LabelTypeHandler = {
+  type: "exoplanet",
+  // No selection-state machinery (no glow / no detail panel of its own);
+  // the click just retargets the camera. The host's detail panel stays
+  // open so the planet list remains accessible.
+  setVisible() { /* labels follow the global toggle via labelCanvas */ },
+  update() { /* per-frame work happens in updateExoplanets() */ },
+  selectByName(name) { return focusExoplanetByName(name); },
+  clearSelection() { /* no internal selection state */ },
+  getSelectedName() { return null; },
+  setHoverByName() { /* no hover state */ },
+  handleClick() { return false; },
+  detailHtml() { return null; },
+};
+registerLabelType(exoplanetHandler);
