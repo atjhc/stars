@@ -428,6 +428,29 @@ uniform vec3 uSunDir;
 uniform float uIllumination;
 uniform float uAtmosphere;
 ${SHADOW_GLSL}
+// Ring shadow cast onto the body — Saturn only. Inactive (early-out)
+// when uRingOuter == 0. Sun-side surface fragments cast a ray toward
+// the sun, intersect the ring plane, and sample the ring alpha texture
+// at the hit radius.
+uniform sampler2D uRingTexture;
+uniform vec3 uRingCenter;
+uniform vec3 uRingNormal;
+uniform float uRingInner;
+uniform float uRingOuter;
+float ringShadow(vec3 fragPos) {
+  if (uRingOuter <= 0.0) return 1.0;
+  float denom = dot(uSunDir, uRingNormal);
+  if (abs(denom) < 1e-6) return 1.0;
+  float t = dot(uRingCenter - fragPos, uRingNormal) / denom;
+  if (t <= 0.0) return 1.0;
+  vec3 hit = fragPos + uSunDir * t;
+  vec3 local = hit - uRingCenter;
+  vec3 radial = local - dot(local, uRingNormal) * uRingNormal;
+  float r = length(radial);
+  if (r < uRingInner || r > uRingOuter) return 1.0;
+  float u = (r - uRingInner) / (uRingOuter - uRingInner);
+  return 1.0 - texture2D(uRingTexture, vec2(u, 0.5)).a;
+}
 // Light reflected from the parent body (planetshine / earthshine).
 // Direction = world-space unit vector from the body toward the parent.
 // Color = parent tint × precomputed intensity (phase × angular size).
@@ -452,7 +475,7 @@ void main() {
   // across faceted mesh triangles as the body rotates. Atmospheric
   // and water bodies still reflect.
   float spec = pow(max(dot(N, H), 0.0), 20.0) * max(ndotl, 0.0) * 0.07 * uAtmosphere;
-  float shadow = sunVisibility(vWorldPos);
+  float shadow = sunVisibility(vWorldPos) * ringShadow(vWorldPos);
   diff *= shadow;
   spec *= shadow;
   vec3 albedo = texture2D(uTexture, vUv).rgb;
@@ -692,6 +715,11 @@ function createPlanetMesh(
       uOccluders: { value: makeOccluderArray() },
       uOccluderCount: { value: 0 },
       uSunAngularRadius: { value: 0 },
+      uRingTexture: { value: BLACK_TEXTURE },
+      uRingCenter: { value: new THREE.Vector3() },
+      uRingNormal: { value: new THREE.Vector3(0, 1, 0) },
+      uRingInner: { value: 0 },
+      uRingOuter: { value: 0 },
     },
     vertexShader: bodyVertex,
     fragmentShader: planetFragment,
@@ -1027,7 +1055,22 @@ function attachSaturnRings(saturn: Planet, illumination: number): void {
   // point of ring shadows. Saturn's body family scope excludes Saturn.
   saturn.shadowReceivers.push({ material, extra: [saturn] });
 
-  ring.userData.onTextureLoaded = () => { ring.visible = true; };
+  // Wire ring geometry into Saturn's body material so the body shader
+  // can cast a ring shadow back onto the planet. uRingOuter stays at 0
+  // (early-out) until the alpha texture has loaded — without it the
+  // shader would sample the opaque fallback and stamp a black disc.
+  const bodyMat = saturn.mesh.material as THREE.ShaderMaterial;
+  const ringNormalWorld = new THREE.Vector3(0, 1, 0);
+  if (saturn.qBase) ringNormalWorld.applyQuaternion(saturn.qBase);
+  bodyMat.uniforms.uRingCenter!.value.copy(saturn.anchor.position);
+  bodyMat.uniforms.uRingNormal!.value.copy(ringNormalWorld);
+  bodyMat.uniforms.uRingInner!.value = innerScene;
+
+  ring.userData.onTextureLoaded = () => {
+    ring.visible = true;
+    bodyMat.uniforms.uRingTexture!.value = material.uniforms.uTexture!.value;
+    bodyMat.uniforms.uRingOuter!.value = outerScene;
+  };
   saturn.pendingTextures.push({
     url: `${TILE_BASE_URL}planets/saturn_ring.png`,
     mesh: ring,

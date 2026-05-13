@@ -165,6 +165,20 @@ trans-Neptunian dwarfs below 35% (Pluto ~34%, Eris ~27%) without
 going invisibly dark. Saturn's rings reuse the body's illumination
 value so they fade with distance the same way.
 
+### Ring shadows
+
+Saturn's body shader carries a `ringShadow()` pass alongside the
+generic sphere-occluder `sunVisibility()`: from each surface fragment
+it ray-marches toward the sun, intersects the ring plane analytically,
+and samples the ring alpha texture at the hit radius. Rings receive
+Saturn's shadow through the standard sphere-occluder path (Saturn is
+added to the rings' occluder list); rings shadowing the body needs the
+ring-plane intersection because a flat annulus can't be approximated
+by a sphere. The body uniforms (`uRingCenter`, `uRingNormal`,
+`uRingInner`, `uRingOuter`, `uRingTexture`) stay at their defaults
+(`uRingOuter = 0` → early-out) for every body except Saturn, so the
+extra branch is free elsewhere.
+
 ## Surface textures
 
 Equirectangular surface maps come from a mix of sources, all fetched
