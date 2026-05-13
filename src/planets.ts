@@ -428,10 +428,8 @@ uniform vec3 uSunDir;
 uniform float uIllumination;
 uniform float uAtmosphere;
 ${SHADOW_GLSL}
-// Ring shadow cast onto the body — Saturn only. Inactive (early-out)
-// when uRingOuter == 0. Sun-side surface fragments cast a ray toward
-// the sun, intersect the ring plane, and sample the ring alpha texture
-// at the hit radius.
+// uRingOuter == 0 is the inactive sentinel — every body but Saturn
+// stays on that path (one branch, no plane math, no texture sample).
 uniform sampler2D uRingTexture;
 uniform vec3 uRingCenter;
 uniform vec3 uRingNormal;
@@ -717,7 +715,7 @@ function createPlanetMesh(
       uSunAngularRadius: { value: 0 },
       uRingTexture: { value: BLACK_TEXTURE },
       uRingCenter: { value: new THREE.Vector3() },
-      uRingNormal: { value: new THREE.Vector3(0, 1, 0) },
+      uRingNormal: { value: Y_AXIS.clone() },
       uRingInner: { value: 0 },
       uRingOuter: { value: 0 },
     },
@@ -1060,7 +1058,7 @@ function attachSaturnRings(saturn: Planet, illumination: number): void {
   // (early-out) until the alpha texture has loaded — without it the
   // shader would sample the opaque fallback and stamp a black disc.
   const bodyMat = saturn.mesh.material as THREE.ShaderMaterial;
-  const ringNormalWorld = new THREE.Vector3(0, 1, 0);
+  const ringNormalWorld = Y_AXIS.clone();
   if (saturn.qBase) ringNormalWorld.applyQuaternion(saturn.qBase);
   bodyMat.uniforms.uRingCenter!.value.copy(saturn.anchor.position);
   bodyMat.uniforms.uRingNormal!.value.copy(ringNormalWorld);
