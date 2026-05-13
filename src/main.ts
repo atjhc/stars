@@ -73,6 +73,7 @@ import { focusTarget } from "./systemDispatch.ts";
 import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
 import { initGpuTimer, gpuPhase, drainGpuQueries, wrapComposerPasses } from "./gpuTimer.ts";
 import { lensFlarePass, updateLensFlares } from "./lensflare.ts";
+import { updateExoplanets } from "./exoplanets.ts";
 
 // Append AFTER bloom + crop + lensing so the flare renders in sRGB
 // against the already-bloomed scene. Pre-bloom placement caused the
@@ -771,6 +772,7 @@ function animateInner(now: number) {
   // updateAllLabels, stars push during updateLabels.
   clearFrameOccluders();
   statsPhase("updateAllLabels", updateAllLabels);
+  updateExoplanets();
   finalizeLensingFrame();
   statsPhase("updateLabels", () => updateLabels(labelsVisible, notableObjects, tier1Meshes, systemGroups, meshToSystem));
 

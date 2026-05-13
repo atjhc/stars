@@ -4,6 +4,7 @@ import { systemDetailHtml } from "./systemDispatch.ts";
 import { getActiveDetailHtml } from "./labelRegistry.ts";
 import { isFavorite, toggleFavorite } from "./favorites.ts";
 import { registerPanel, setOpenPanel, closePanel } from "./panelManager.ts";
+import { exoplanetsDetailHtml, focusExoplanetByName } from "./exoplanets.ts";
 
 const detail = document.getElementById("detail")!;
 const detailBtn = document.getElementById("detail-btn")!;
@@ -38,6 +39,13 @@ detail.addEventListener("click", (e) => {
     e.stopPropagation();
     const name = starLink.getAttribute("data-star");
     if (name && starClickCallback) starClickCallback(name);
+    return;
+  }
+  const exoRow = (e.target as HTMLElement).closest("[data-exoplanet-name]");
+  if (exoRow) {
+    e.stopPropagation();
+    const name = exoRow.getAttribute("data-exoplanet-name");
+    if (name) focusExoplanetByName(name);
     return;
   }
 });
@@ -110,6 +118,7 @@ export function updateDetailPanel() {
         Spectral: ${star.spect || "\u2014"}<br>
         Luminosity: ${star.lum.toFixed(3)} L\u2609
       </div>
+      ${exoplanetsDetailHtml(star)}
       ${renderNotes(star.notes)}
       ${renderWikiLink(star.wikipedia)}
     </div>
