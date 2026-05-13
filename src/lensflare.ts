@@ -69,11 +69,6 @@ const ORB_BOOST = 6.0;
 // log(2.512) — flux ratio per magnitude in natural log space.
 const POGSON = Math.log(2.512);
 
-const flaresUniform: THREE.IUniform<THREE.Vector4[]> = {
-  value: Array.from({ length: MAX_FLARES }, () => new THREE.Vector4()),
-};
-const aspectUniform: THREE.IUniform<number> = { value: 1 };
-
 const fragmentShader = `
   precision highp float;
   uniform sampler2D tDiffuse;
@@ -183,8 +178,10 @@ const fragmentShader = `
 export const lensFlarePass = new ShaderPass({
   uniforms: {
     tDiffuse: { value: null },
-    uFlares: flaresUniform,
-    uAspect: aspectUniform,
+    uFlares: {
+      value: Array.from({ length: MAX_FLARES }, () => new THREE.Vector4()),
+    },
+    uAspect: { value: 1 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -195,6 +192,10 @@ export const lensFlarePass = new ShaderPass({
   `,
   fragmentShader,
 });
+// Read back the cloned uniforms — ShaderPass deep-clones via UniformsUtils,
+// so updating the originals passed into the constructor has no effect.
+const flaresUniform = lensFlarePass.uniforms.uFlares as THREE.IUniform<THREE.Vector4[]>;
+const aspectUniform = lensFlarePass.uniforms.uAspect as THREE.IUniform<number>;
 
 interface Candidate {
   x: number;
