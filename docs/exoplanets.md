@@ -81,13 +81,18 @@ is the correct per-planet sun bearing.
 
 ### Orbit orientation
 
-Inclination, longitude of node, and argument of periastron are random
-when not measured — but **seeded random** from the planet name, so the
-geometry is stable across reloads. Most exoplanets only have a
-semi-major axis and eccentricity; inclination is constrained for
-transiting planets but unknown for RV detections, and node is almost
-always unknown. The seeded random expresses "we don't know" rather
-than locking everything to the same arbitrary plane.
+Each system gets a single random invariable-plane normal (seeded by
+the host name); every planet's orbital plane is that normal tilted by
+a small Gaussian perturbation (σ ≈ 2.5°, clamped at ±20°) — modelled
+on Sol's planetary dispersion, where most bodies sit within a few
+degrees of the invariable plane and a single outlier (Pluto-class
+~17°) reaches further. Argument of periastron is the measured
+`pl_orblper` when available and per-planet seeded random otherwise.
+
+The composition is implemented as a quaternion chain
+`plane × tilt × peri` so the orbit's local frame (periapsis +X, normal
++Y) lifts directly into world space without separate i/Ω/ω
+bookkeeping.
 
 ### Sizes
 

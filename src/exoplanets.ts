@@ -157,12 +157,13 @@ function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
   group.position.copy(hostPos);
   group.frustumCulled = false;
   currentPlanets = [];
+  const plane = systemPlaneQuaternion(entry.host);
   for (const p of entry.planets) {
     if (p.a_au === null || p.a_au <= 0) continue;
-    const orient = orbitOrientation(p);
+    const q = planetOrbitQuaternion(plane, p);
     const phase = seededRng(p.name + "/phase")() * Math.PI * 2;
-    const pos = orbitPositionAt(p, orient, phase);
-    group.add(buildOrbitLine(p, orient));
+    const pos = orbitPositionAt(p, q, phase);
+    group.add(buildOrbitLine(p, q));
     const body = buildBody(p, pos);
     group.add(body);
     const radius = p.radius_re * RE_TO_SCENE;
@@ -190,40 +191,69 @@ function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
 const EXO_LABEL_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const EXO_LABEL_COLOR = "rgba(170,200,235,0.9)";
 
-interface Orient { i: number; node: number; peri: number }
+// Per-planet tilt from the shared system plane. σ ≈ 2.5° matches the
+// Solar System's invariable-plane dispersion (Mercury 7°, others 1-3°),
+// clamped at ±20° so an unlucky tail draw stays inside the
+// envelope spanned by Pluto-like outliers without flipping the orbit
+// upside down.
+const TILT_SIGMA_DEG = 2.5;
+const TILT_CLAMP_DEG = 20;
 
-function orbitOrientation(p: ExoPlanet): Orient {
-  // Use the measured angles when present, fall back to a per-planet
-  // seeded random so unknown orientations don't lock every system into
-  // the same arbitrary plane.
-  const rng = seededRng(p.name + "/orient");
-  const i = (p.incl_deg !== null ? p.incl_deg : rng() * 180) * Math.PI / 180;
-  const node = rng() * Math.PI * 2;
-  const peri = (p.lper_deg !== null ? p.lper_deg * Math.PI / 180 : rng() * Math.PI * 2) + node;
-  return { i, node, peri };
+function systemPlaneQuaternion(hostName: string): THREE.Quaternion {
+  const rng = seededRng(hostName + "/plane");
+  // Uniform sample on the sphere → orientation of the system's
+  // shared orbital plane normal.
+  const u = rng() * 2 - 1;
+  const phi = rng() * Math.PI * 2;
+  const s = Math.sqrt(1 - u * u);
+  const normal = new THREE.Vector3(s * Math.cos(phi), u, s * Math.sin(phi));
+  return new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
 }
 
-function orbitPositionAt(p: ExoPlanet, o: Orient, nu: number): THREE.Vector3 {
+// q maps mesh-local frame (orbit in XZ, normal +Y, periapsis +X) to
+// world. Composed plane × tilt × peri-rotation.
+function planetOrbitQuaternion(plane: THREE.Quaternion, p: ExoPlanet): THREE.Quaternion {
+  const rng = seededRng(p.name + "/orient");
+  // Gaussian tilt magnitude, clamped. Axis of tilt is random around the
+  // local +Y so the perturbation can point any direction off the plane.
+  let tiltDeg = boxMuller(rng) * TILT_SIGMA_DEG;
+  tiltDeg = Math.max(-TILT_CLAMP_DEG, Math.min(TILT_CLAMP_DEG, tiltDeg));
+  const tiltAzimuth = rng() * Math.PI * 2;
+  const tiltAxis = new THREE.Vector3(Math.cos(tiltAzimuth), 0, Math.sin(tiltAzimuth));
+  const qTilt = new THREE.Quaternion().setFromAxisAngle(tiltAxis, tiltDeg * Math.PI / 180);
+  // Argument of periastron in the planet's plane. Use the measured
+  // value when present; the Archive's lper is per-planet so it doesn't
+  // need a system-wide reference to be meaningful.
+  const periAngle = p.lper_deg !== null
+    ? p.lper_deg * Math.PI / 180
+    : rng() * Math.PI * 2;
+  const qPeri = new THREE.Quaternion().setFromAxisAngle(
+    new THREE.Vector3(0, 1, 0), periAngle,
+  );
+  return plane.clone().multiply(qTilt).multiply(qPeri);
+}
+
+// Box-Muller for a standard normal, clamped to a well-defined range.
+function boxMuller(rng: () => number): number {
+  const u1 = Math.max(rng(), 1e-10);
+  const u2 = rng();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+function orbitPositionAt(p: ExoPlanet, q: THREE.Quaternion, nu: number): THREE.Vector3 {
   const a = p.a_au * SCENE_PER_AU;
   const e = p.e ?? 0;
   const r = (a * (1 - e * e)) / (1 + e * Math.cos(nu));
-  const omega = o.peri - o.node;
-  const angle = nu + omega;
-  const ca = Math.cos(angle), sa = Math.sin(angle);
-  const cn = Math.cos(o.node), sn = Math.sin(o.node);
-  const ci = Math.cos(o.i), si = Math.sin(o.i);
-  return new THREE.Vector3(
-    r * (cn * ca - sn * sa * ci),
-    r * sa * si,
-    -r * (sn * ca + cn * sa * ci),
-  );
+  // Local frame: periapsis along +X, orbital normal +Y, perpendicular
+  // (90° true anomaly) along +Z.
+  return new THREE.Vector3(r * Math.cos(nu), 0, r * Math.sin(nu)).applyQuaternion(q);
 }
 
-function buildOrbitLine(p: ExoPlanet, o: Orient): THREE.Line {
+function buildOrbitLine(p: ExoPlanet, q: THREE.Quaternion): THREE.Line {
   const positions = new Float32Array((ORBIT_SEGMENTS + 1) * 3);
   for (let k = 0; k <= ORBIT_SEGMENTS; k++) {
     const nu = (k / ORBIT_SEGMENTS) * Math.PI * 2;
-    const v = orbitPositionAt(p, o, nu);
+    const v = orbitPositionAt(p, q, nu);
     positions[k * 3] = v.x;
     positions[k * 3 + 1] = v.y;
     positions[k * 3 + 2] = v.z;
