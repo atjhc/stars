@@ -171,7 +171,10 @@ export function setupSearch(onSelect: (entry: SearchEntry) => void, onPreview?: 
   selectResult = (index: number) => {
     if (index < 0 || index >= filteredEntries.length) return;
     const entry = filteredEntries[index];
-    addRecent(entry.sy ?? entry.n);
+    // Exoplanets carry sy = host name, but the recents UI should
+    // surface the planet itself (it's the navigation target the user
+    // picked). Other systems-of-stars use sy for the system aggregate.
+    addRecent(entry.k === "ep" ? entry.n : (entry.sy ?? entry.n));
     onSelect(entry);
     closeSearch();
   };

@@ -134,6 +134,30 @@ section listing each planet's class, semi-major axis, and Earth-radii.
 Each row is a click target; the click delegate in `src/detail.ts`
 routes to `focusExoplanetByName`.
 
+When a specific planet is selected (via canvas label, detail-panel
+row, or search), the exoplanet handler's `detailHtml()` returns a
+full-planet detail card (class, radius, mass, semi-major axis, period,
+eccentricity, equilibrium temperature, discovery year + method) and
+the label-registry overlay priority puts it above the host's panel.
+Deselecting the planet (clicking empty space, picking a different
+star) reverts to the host-star panel.
+
+### Search
+
+Every planet emits its own `SearchEntry` with `k: "ep"`, injected into
+the runtime index after `dist/tiles/exoplanets.json` loads. The entry
+uses the host star's position / magnitudes / distance — at
+search-select time `handleSearchSelect` recurses on the host entry
+first (which selects the host and triggers `mountFor`), awaits
+`whenExoplanetMounted(hostName)`, then dispatches the exoplanet
+handler's `selectByName` to retarget the camera at the planet.
+Recent-search entries record the planet name, not the host.
+
+`searchFilter`'s dedup logic excludes `"ep"` from
+"system-aggregating" kinds — clusters, nebulae, and black holes hide
+sibling members behind a single aggregate row, but every confirmed
+planet should remain individually visible alongside the host star.
+
 ## What v1 does not do
 
 - No surface textures or visual differentiation beyond class tint.
@@ -142,7 +166,8 @@ routes to `focusExoplanetByName`.
 - No axial rotation — rotational periods are known for fewer than a
   dozen planets, all from spectroscopy of hot Jupiters.
 - No selection / click on the planet body itself in the scene —
-  canvas labels and the detail-panel list are the navigation surfaces.
+  canvas labels, the search index, and the detail-panel list are the
+  navigation surfaces.
 - Hosts whose AT-HYG entry has no traditional identifier (HD / HIP /
   Gliese / Bayer / Flamsteed / IAU proper) are skipped. Most are
   Kepler / TESS targets that the user can't reach in Drake anyway.

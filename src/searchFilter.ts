@@ -46,12 +46,15 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
   function add(entry: SearchEntry): boolean {
     if (seen.has(entry)) return false;
     if (entry.sy && seenSystems.has(entry.sy)) return false;
-    // Only cluster / nebula / black-hole entries aggregate their
-    // members into one search row — so only they dedupe later star
-    // members sharing their sy. Multi-star systems (binary/trinary)
-    // have no such aggregate entry, so every member stays visible and
-    // renders as "System · Member" in the result list.
-    if (entry.sy && entry.k) seenSystems.add(entry.sy);
+    // Cluster / nebula / black-hole / neutron-star entries aggregate
+    // their members into one search row — so only they dedupe later
+    // star members sharing their sy. Multi-star systems (binary/
+    // trinary) have no such aggregate entry, so every member stays
+    // visible and renders as "System · Member" in the result list.
+    // Exoplanets ("ep") use sy to link a planet back to its host star
+    // (for the search-select two-step), not to aggregate siblings, so
+    // they're excluded from the dedup.
+    if (entry.sy && entry.k && entry.k !== "ep") seenSystems.add(entry.sy);
     seen.add(entry);
     results.push(entry);
     return results.length >= MAX_SEARCH_RESULTS;

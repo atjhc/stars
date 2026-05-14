@@ -73,7 +73,7 @@ import { focusTarget } from "./systemDispatch.ts";
 import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
 import { initGpuTimer, gpuPhase, drainGpuQueries, wrapComposerPasses } from "./gpuTimer.ts";
 import { lensFlarePass, updateLensFlares } from "./lensflare.ts";
-import { updateExoplanets } from "./exoplanets.ts";
+import { updateExoplanets, whenExoplanetMounted } from "./exoplanets.ts";
 
 // Append AFTER bloom + crop + lensing so the flare renders in sRGB
 // against the already-bloomed scene. Pre-bloom placement caused the
@@ -479,6 +479,18 @@ function trySelectSystem(name: string, subsetNames?: string[]): boolean {
 
 function handleSearchSelect(entry: SearchEntry): Promise<void> {
   pendingSystemSelect = null;
+  // Exoplanets piggy-back on the host star's selection: navigating
+  // first to the host triggers mountFor() (async), and only then can
+  // the planet body be picked from the mounted system. Without this
+  // two-step, selectByType("exoplanet", …) would fail because
+  // currentPlanets is empty until mount completes.
+  if (entry.k === "ep" && entry.sy) {
+    const hostEntry = getSearchIndex().find((e) => e.n === entry.sy);
+    if (!hostEntry) return Promise.resolve();
+    return handleSearchSelect(hostEntry)
+      .then(() => whenExoplanetMounted(entry.sy!))
+      .then(() => { selectByType("exoplanet", entry.n); scheduleUrlWrite(); });
+  }
   // Constellations span the sky — no meaningful point to fly to.
   if (entry.k !== "x") {
     animateTo(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));

@@ -9,10 +9,18 @@
 // measure — but the placement is stable across reloads.
 
 import * as THREE from "three";
-import { scene, camera, animateTo, setMinOrbitOverride } from "./scene.ts";
-import { KM_PER_PC, SCALE, SCENE_PER_AU, TILE_BASE_URL } from "./constants.ts";
+import {
+  scene, camera, animateTo, setMinOrbitOverride,
+  distanceFromCamera, projectToLabelScreen,
+} from "./scene.ts";
+import {
+  KM_PER_PC, SCALE, SCENE_PER_AU, TILE_BASE_URL, formatAstroDistance,
+} from "./constants.ts";
 import { kick } from "./renderLoop.ts";
 import { getSelectedMesh } from "./systemStore.ts";
+import { whenSearchIndexReady, type SearchEntry } from "./catalog.ts";
+import { pushFrameOccluder } from "./labelRegistry.ts";
+import { starLabelMargin } from "./labels.ts";
 import type { Star } from "./types.ts";
 import {
   registerCanvasLabel, unregisterCanvasLabel, updateCanvasLabel,
@@ -88,6 +96,14 @@ let currentMesh: THREE.Object3D | null = null;
 let currentGroup: THREE.Group | null = null;
 let currentPlanets: MountedPlanet[] = [];
 let currentEntry: SystemEntry | null = null;
+const mountedByHost = new Map<string, MountedPlanet[]>();
+const mountResolvers = new Map<string, Array<() => void>>();
+
+// Currently selected exoplanet (clicked via label / search / detail row).
+// Overlay-mode selection: distinct from the host-star focus, lives only
+// here. Active state drives label pinning + subtitle, and gives the
+// detail panel something to render in place of the host's panel.
+let selectedExoplanet: MountedPlanet | null = null;
 
 function canvasIdFor(name: string): string { return `exoplanet:${name}`; }
 
@@ -103,9 +119,14 @@ function teardown(): void {
       if (m && typeof (m as THREE.Material).dispose === "function") m.dispose();
     });
   }
+  if (currentMesh) {
+    const starName = (currentMesh.userData as Star | undefined)?.name;
+    if (starName) mountedByHost.delete(starName);
+  }
   currentGroup = null;
   currentPlanets = [];
   currentEntry = null;
+  selectedExoplanet = null;
 }
 
 // Match docs/planets.md: Sol fades planet labels out over the
@@ -113,6 +134,8 @@ function teardown(): void {
 // "you're in a planetary system" zoom range consistent across hosts.
 const LABEL_FADE_NEAR_AU = 900;
 const LABEL_FADE_FAR_AU = 1000;
+
+const tmpScreen = { x: 0, y: 0, behind: false };
 
 export function updateExoplanets(): void {
   const mesh = getSelectedMesh();
@@ -125,8 +148,28 @@ export function updateExoplanets(): void {
   if (currentPlanets.length === 0 || !currentGroup) return;
   const camDistAu = camera.position.distanceTo(currentGroup.position) / SCENE_PER_AU;
   const fade = 1 - THREE.MathUtils.smoothstep(camDistAu, LABEL_FADE_NEAR_AU, LABEL_FADE_FAR_AU);
+  const halfTan = Math.tan((camera.fov * Math.PI) / 360);
+  const halfHeight = window.innerHeight / 2;
   for (const p of currentPlanets) {
-    updateCanvasLabel(canvasIdFor(p.name), { opacityTarget: fade });
+    const isActive = p === selectedExoplanet;
+    const trueDist = distanceFromCamera(p.worldPos);
+    const discPx = (p.radius / Math.max(trueDist, 1e-30)) * halfHeight / halfTan;
+    // Mirrors planetHandler.update() — the disc occluder also gates
+    // label collision against the body, and the pixel-floor click
+    // radius keeps small bodies hittable on high-DPI displays.
+    if (discPx > 2) {
+      projectToLabelScreen(p.worldPos, tmpScreen);
+      if (!tmpScreen.behind) {
+        pushFrameOccluder({ cx: tmpScreen.x, cy: tmpScreen.y, radius: discPx });
+      }
+    }
+    updateCanvasLabel(canvasIdFor(p.name), {
+      hidden: false,
+      opacityTarget: isActive ? 1.0 : fade,
+      pinned: isActive,
+      subtitles: isActive ? [formatAstroDistance(trueDist)] : [],
+      marginTop: starLabelMargin(discPx, discPx),
+    });
   }
 }
 
@@ -150,7 +193,35 @@ async function mountFor(mesh: THREE.Object3D): Promise<void> {
   let minR = Infinity;
   for (const p of currentPlanets) if (p.radius > 0) minR = Math.min(minR, p.radius);
   if (Number.isFinite(minR)) setMinOrbitOverride(minR * 2);
+  // Key by the star's runtime name, not the Archive's `host` field —
+  // search entries (and whenExoplanetMounted callers) use the catalog's
+  // primary name (e.g. "Chalawan"), not the Archive's loose alias
+  // ("47 UMa"). Same scheme keeps mount lookups consistent regardless
+  // of which alias kicked off the selection.
+  const starName = (mesh.userData as Star).name;
+  if (starName) {
+    mountedByHost.set(starName, currentPlanets);
+    const waiters = mountResolvers.get(starName);
+    if (waiters) {
+      mountResolvers.delete(starName);
+      for (const r of waiters) r();
+    }
+  }
   kick();
+}
+
+// Resolves the next time the named host's system is mounted (or
+// immediately if it already is). Used by search-select: clicking an
+// exoplanet entry first selects the host star, which kicks off
+// mountFor() asynchronously — the caller awaits this before asking
+// the handler to focus the individual planet.
+export function whenExoplanetMounted(hostName: string): Promise<void> {
+  if (mountedByHost.has(hostName)) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const arr = mountResolvers.get(hostName) ?? [];
+    arr.push(resolve);
+    mountResolvers.set(hostName, arr);
+  });
 }
 
 function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
@@ -164,7 +235,7 @@ function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
     const q = planetOrbitQuaternion(plane, p);
     const phase = seededRng(p.name + "/phase")() * Math.PI * 2;
     const pos = orbitPositionAt(p, q, phase, new THREE.Vector3());
-    group.add(buildOrbitLine(p, q));
+    group.add(buildOrbitLine(p, q, phase));
     const body = buildBody(p, pos);
     group.add(body);
     const radius = p.radius_re * RE_TO_SCENE;
@@ -252,14 +323,14 @@ function orbitPositionAt(
   return out.set(r * Math.cos(nu), 0, r * Math.sin(nu)).applyQuaternion(q);
 }
 
-function buildOrbitLine(p: ExoPlanet, q: THREE.Quaternion): THREE.Line {
-  // Static-phase here (currentNu = 0): exoplanets don't propagate
-  // around their orbit at runtime, so the "head" of the trail just
-  // sits at the planet's deterministic phase. The fading head-to-tail
-  // walk still reads as motion direction.
+function buildOrbitLine(p: ExoPlanet, q: THREE.Quaternion, phase: number): THREE.Line {
+  // Trail head sits at the body's current true anomaly so the bright
+  // tip and the planet line up; the alpha then fades back along the
+  // direction of orbital motion. Phase is the same seeded value used
+  // for the body's position, so the two stay synced.
   return buildOrbitTrail((nu, out) => {
     orbitPositionAt(p, q, nu, out);
-  }, 0);
+  }, phase);
 }
 
 // Per-class 1×1 tinted textures, reused across every planet of that
@@ -347,27 +418,129 @@ export function exoplanetsDetailHtml(star: Star): string {
 export function focusExoplanetByName(name: string): boolean {
   const planet = currentPlanets.find((p) => p.name === name);
   if (!planet) return false;
-  // 6 × planet radius reads with the planet roughly half the viewport.
+  selectedExoplanet = planet;
+  // Min 3R fills ~70% of FOV (matches planetHandler); arrive at 6R.
+  setMinOrbitOverride(planet.radius * 3);
   animateTo(planet.worldPos, planet.radius * 6);
   kick();
   return true;
 }
 
+function buildPlanetDetailHtml(p: ExoPlanet, hostName: string): string {
+  const cls = CLASS_LABEL[p.class] ?? p.class;
+  const a = p.a_au !== null ? `${p.a_au.toFixed(p.a_au < 1 ? 3 : 2)} AU` : "?";
+  const r = `${p.radius_re.toFixed(2)} R⊕`;
+  const massRow = p.mass_me !== null
+    ? `<br>Mass: ${p.mass_me.toFixed(p.mass_me < 1 ? 3 : 2)} M⊕`
+    : "";
+  const periodRow = p.period_days !== null
+    ? `<br>Period: ${formatPeriod(p.period_days)}`
+    : "";
+  const eccRow = p.e !== null && p.e > 0
+    ? `<br>Eccentricity: ${p.e.toFixed(3)}`
+    : "";
+  const eqtRow = p.eqt_k !== null
+    ? `<br>Equilibrium temp: ${Math.round(p.eqt_k)} K`
+    : "";
+  const discRow = p.disc_year !== null
+    ? `<br>Discovered: ${p.disc_year}${p.disc_method ? ` (${p.disc_method})` : ""}`
+    : "";
+  return `
+    <div class="star-name">${p.name}</div>
+    <div class="star-aliases">Exoplanet · orbits ${hostName}</div>
+    <div class="detail-body">
+      <div class="star-detail">
+        Class: ${cls}<br>
+        Radius: ${r}${massRow}<br>
+        Semi-major axis: ${a}${periodRow}${eccRow}${eqtRow}${discRow}
+      </div>
+    </div>`;
+}
+
+function formatPeriod(days: number): string {
+  if (days < 2) return `${(days * 24).toFixed(1)} hr`;
+  if (days < 365) return `${days.toFixed(1)} d`;
+  return `${(days / 365.25).toFixed(2)} yr`;
+}
+
 const exoplanetHandler: LabelTypeHandler = {
   type: "exoplanet",
-  // Overlay — picking a planet must not clear the host-star focus, or
-  // updateExoplanets would tear the system down the very next frame
-  // (when getSelectedMesh() returns null). Same model constellations
-  // use: the click retargets the camera while the underlying star
-  // selection (and the URL's focus= param) stays intact.
+  searchKind: "ep",
+  searchKeywords: ["exoplanet", "planet"],
+  searchLabel: "Exoplanet",
+  // Overlay — selecting an exoplanet must not clear the host-star focus,
+  // or updateExoplanets would tear the system down the very next frame
+  // (when getSelectedMesh() returns null). The constellation handler uses
+  // the same pattern.
   overlay: true,
-  setVisible() { /* labels follow the global toggle via labelCanvas */ },
+  setVisible(v) {
+    for (const p of currentPlanets) {
+      updateCanvasLabel(canvasIdFor(p.name),
+        v ? { hidden: false, opacityTarget: 1.0 } : { hidden: true });
+    }
+  },
   update() { /* per-frame work happens in updateExoplanets() */ },
   selectByName(name) { return focusExoplanetByName(name); },
-  clearSelection() { /* no internal selection state */ },
-  getSelectedName() { return null; },
-  setHoverByName() { /* no hover state */ },
-  handleClick() { return false; },
-  detailHtml() { return null; },
+  clearSelection() {
+    if (selectedExoplanet) {
+      selectedExoplanet = null;
+      setMinOrbitOverride(null);
+    }
+  },
+  getSelectedName() { return selectedExoplanet?.name ?? null; },
+  setHoverByName() { /* no hover state in v1 */ },
+  handleClick(div) {
+    const name = div.getAttribute("data-label-name");
+    return name ? focusExoplanetByName(name) : false;
+  },
+  detailHtml() {
+    if (!selectedExoplanet || !currentEntry) return null;
+    return buildPlanetDetailHtml(selectedExoplanet.data, currentEntry.host);
+  },
 };
 registerLabelType(exoplanetHandler);
+
+// Inject search entries for every planet of every host star whose AT-HYG
+// entry is in the search index. The host's position (and magnitudes /
+// distance) doubles as the planet's search position — at search-select
+// time we navigate to the host first, then to the planet after mount.
+void loadData().then(async (d) => {
+  if (!d) return;
+  const index = await whenSearchIndexReady();
+  // Invert d.aliases (name → gaia) into gaia → names[]; index lookup by
+  // any alias the catalog might surface as a star's primary `n`.
+  const namesByGaia = new Map<string, string[]>();
+  for (const [name, gid] of Object.entries(d.aliases)) {
+    const arr = namesByGaia.get(gid) ?? [];
+    arr.push(name);
+    namesByGaia.set(gid, arr);
+  }
+  const indexByName = new Map<string, SearchEntry>();
+  for (const e of index) if (e.n) indexByName.set(e.n, e);
+  let added = 0;
+  for (const [gid, sys] of Object.entries(d.by_gaia)) {
+    let hostEntry: SearchEntry | undefined;
+    for (const n of namesByGaia.get(gid) ?? []) {
+      const e = indexByName.get(n);
+      if (e) { hostEntry = e; break; }
+    }
+    if (!hostEntry) continue;
+    for (const p of sys.planets) {
+      index.push({
+        n: p.name,
+        p: hostEntry.p,
+        mg: hostEntry.mg,
+        M: hostEntry.M,
+        d: hostEntry.d,
+        // sy must be the host's *primary* catalog name (what
+        // SearchEntry.n holds), not the Archive's hostname — that's
+        // what main.ts's handleSearchSelect looks up to pre-mount the
+        // system. e.g. "Chalawan", not "47 UMa".
+        sy: hostEntry.n,
+        k: "ep",
+      });
+      added++;
+    }
+  }
+  if (added > 0) console.log(`Exoplanets: +${added} search entries`);
+});
