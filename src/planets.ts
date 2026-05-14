@@ -23,6 +23,7 @@ import {
   orbitState, helioEcliptic,
   type PlanetElements, type OrbitState, type Vec3,
 } from "./keplerian.ts";
+import { buildOrbitTrail, ORBIT_BASE_OPACITY } from "./orbitLine.ts";
 
 const PLANET_CANVAS_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const PLANET_CANVAS_COLOR = "rgba(220,200,160,0.85)";
@@ -35,8 +36,10 @@ const PLANET_FALLBACK_COLOR = new THREE.Color(0.55, 0.55, 0.55);
 
 // 1×1 grey for bodies whose texture hasn't loaded (or doesn't exist).
 // Same shader path as textured planets so async loads can swap the
-// uniform without forcing a shader recompile.
-function makeFallbackTexture(color: THREE.Color): THREE.DataTexture {
+// uniform without forcing a shader recompile. Exported so other planet
+// modules (exoplanets) can build their own class-tinted fill texture
+// without recompiling a shader either.
+export function makeFallbackTexture(color: THREE.Color): THREE.DataTexture {
   const data = new Uint8Array([
     Math.round(color.r * 255),
     Math.round(color.g * 255),
@@ -186,7 +189,6 @@ const SOLAR_SYSTEM_FADE_START = 900 * SCENE_PER_AU;
 // Solar-System scale cues during the transition to interstellar views.
 export const ORBIT_FADE_END = 3000 * SCENE_PER_AU;
 const ECLIPTIC_OBLIQUITY = (23.4393 * Math.PI) / 180;
-const ORBIT_BASE_OPACITY = 0.7;
 
 function solarSystemFade(camDistFromSol: number): number {
   return 1 - THREE.MathUtils.smoothstep(camDistFromSol, SOLAR_SYSTEM_FADE_START, SOLAR_SYSTEM_LABEL_DIST);
@@ -343,23 +345,15 @@ function createOrbitLine(
   planetScenePos: THREE.Vector3,
   orbitFocusScene: THREE.Vector3,
 ): THREE.Line {
-  const segments = 16384;
-  const positions = new Float32Array(segments * 3);
-  // RGBA Uint8 (normalized) — Three.js auto-enables USE_COLOR_ALPHA
-  // when the color attribute has itemSize 4, multiplying vertex alpha
-  // into the fragment alongside material.opacity. Saves the custom
-  // shader and ~75% memory vs Float32 alpha + default RGB color.
-  const colors = new Uint8Array(segments * 4);
-  const step = (Math.PI * 2) / segments;
+  // Hoisted out of the per-vertex closure — calling helioEclipticAt
+  // would recompute these 16k times. Float64 on the JS side, then
+  // dropped to Float32 when written into the geometry buffer.
   const e = state.e;
   const semiLatus = state.a * (1 - e * e);
-  // Hoisted out of the per-vertex loop — calling helioEclipticAt
-  // would recompute these 16k times.
   const omega = state.long_peri - state.long_node;
   const cn = Math.cos(state.long_node), sn = Math.sin(state.long_node);
   const ci = Math.cos(state.i), si = Math.sin(state.i);
-  for (let i = 0; i < segments; i++) {
-    const nu = state.nu - i * step;
+  return buildOrbitTrail((nu, out) => {
     const r = semiLatus / (1 + e * Math.cos(nu));
     const angle = nu + omega;
     const ca = Math.cos(angle), sa = Math.sin(angle);
@@ -368,26 +362,12 @@ function createOrbitLine(
     const ez = r * sa * si;
     const eq_y = ey * COS_OBL - ez * SIN_OBL;
     const eq_z = ey * SIN_OBL + ez * COS_OBL;
-    positions[i * 3 + 0] = orbitFocusScene.x + ex * SCENE_PER_AU - planetScenePos.x;
-    positions[i * 3 + 1] = orbitFocusScene.y + eq_z * SCENE_PER_AU - planetScenePos.y;
-    positions[i * 3 + 2] = orbitFocusScene.z + -eq_y * SCENE_PER_AU - planetScenePos.z;
-    colors[i * 4 + 0] = 0x4d;
-    colors[i * 4 + 1] = 0x7f;
-    colors[i * 4 + 2] = 0xc4;
-    colors[i * 4 + 3] = Math.round(255 * (1 - i / segments));
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 4, true));
-  const material = new THREE.LineBasicMaterial({
-    vertexColors: true,
-    transparent: true,
-    opacity: ORBIT_BASE_OPACITY,
-    depthWrite: false,
-  });
-  const line = new THREE.Line(geometry, material);
-  line.frustumCulled = false;
-  return line;
+    out.set(
+      orbitFocusScene.x + ex * SCENE_PER_AU - planetScenePos.x,
+      orbitFocusScene.y + eq_z * SCENE_PER_AU - planetScenePos.y,
+      orbitFocusScene.z + -eq_y * SCENE_PER_AU - planetScenePos.z,
+    );
+  }, state.nu);
 }
 
 // gl_Position must route through `modelViewMatrix` (Float64 on the
@@ -668,7 +648,7 @@ async function loadShapeMesh(url: string, mesh: THREE.Mesh, radiusKm: number): P
   kick();
 }
 
-function createPlanetMesh(
+export function createPlanetMesh(
   sceneRadius: number,
   sunDir: THREE.Vector3,
   illumination: number,

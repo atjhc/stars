@@ -18,10 +18,11 @@ import {
   registerCanvasLabel, unregisterCanvasLabel, updateCanvasLabel,
 } from "./labelCanvas.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
+import { createPlanetMesh, makeFallbackTexture } from "./planets.ts";
+import { buildOrbitTrail } from "./orbitLine.ts";
 
 const EARTH_RADIUS_KM = 6378;
 const RE_TO_SCENE = (EARTH_RADIUS_KM / KM_PER_PC) * SCALE;
-const ORBIT_SEGMENTS = 128;
 
 // Loose mass-radius bin tints — matched to scripts/fetch-exoplanets.py
 // composition_class(). Earth-tone rocky, water-world blue-grey, pale
@@ -162,7 +163,7 @@ function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
     if (p.a_au === null || p.a_au <= 0) continue;
     const q = planetOrbitQuaternion(plane, p);
     const phase = seededRng(p.name + "/phase")() * Math.PI * 2;
-    const pos = orbitPositionAt(p, q, phase);
+    const pos = orbitPositionAt(p, q, phase, new THREE.Vector3());
     group.add(buildOrbitLine(p, q));
     const body = buildBody(p, pos);
     group.add(body);
@@ -240,68 +241,50 @@ function boxMuller(rng: () => number): number {
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
-function orbitPositionAt(p: ExoPlanet, q: THREE.Quaternion, nu: number): THREE.Vector3 {
+function orbitPositionAt(
+  p: ExoPlanet, q: THREE.Quaternion, nu: number, out: THREE.Vector3,
+): THREE.Vector3 {
   const a = p.a_au * SCENE_PER_AU;
   const e = p.e ?? 0;
   const r = (a * (1 - e * e)) / (1 + e * Math.cos(nu));
   // Local frame: periapsis along +X, orbital normal +Y, perpendicular
   // (90° true anomaly) along +Z.
-  return new THREE.Vector3(r * Math.cos(nu), 0, r * Math.sin(nu)).applyQuaternion(q);
+  return out.set(r * Math.cos(nu), 0, r * Math.sin(nu)).applyQuaternion(q);
 }
 
 function buildOrbitLine(p: ExoPlanet, q: THREE.Quaternion): THREE.Line {
-  const positions = new Float32Array((ORBIT_SEGMENTS + 1) * 3);
-  for (let k = 0; k <= ORBIT_SEGMENTS; k++) {
-    const nu = (k / ORBIT_SEGMENTS) * Math.PI * 2;
-    const v = orbitPositionAt(p, q, nu);
-    positions[k * 3] = v.x;
-    positions[k * 3 + 1] = v.y;
-    positions[k * 3 + 2] = v.z;
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const material = new THREE.LineBasicMaterial({
-    color: 0x4d7fc4,
-    transparent: true,
-    opacity: 0.35,
-    depthWrite: false,
-  });
-  const line = new THREE.Line(geometry, material);
-  line.frustumCulled = false;
-  return line;
+  // Static-phase here (currentNu = 0): exoplanets don't propagate
+  // around their orbit at runtime, so the "head" of the trail just
+  // sits at the planet's deterministic phase. The fading head-to-tail
+  // walk still reads as motion direction.
+  return buildOrbitTrail((nu, out) => {
+    orbitPositionAt(p, q, nu, out);
+  }, 0);
+}
+
+// Per-class 1×1 tinted textures, reused across every planet of that
+// class so we're not re-uploading a 4-byte DataTexture per body.
+const classTextures = new Map<string, THREE.DataTexture>();
+function classTexture(cls: string): THREE.DataTexture {
+  let tex = classTextures.get(cls);
+  if (tex) return tex;
+  const rgb = CLASS_TINT[cls] ?? [0.5, 0.5, 0.5];
+  tex = makeFallbackTexture(new THREE.Color(rgb[0], rgb[1], rgb[2]));
+  classTextures.set(cls, tex);
+  return tex;
 }
 
 function buildBody(p: ExoPlanet, pos: THREE.Vector3): THREE.Mesh {
+  // Reuse Sol's body shader (createPlanetMesh) so exoplanets get the
+  // same diffuse + specular + ambient-wrap shading. Uniforms not used
+  // for v1 — surface texture, atmosphere, parent shine, sphere
+  // occluders — default to their no-op values.
   const radius = p.radius_re * RE_TO_SCENE;
-  const geometry = new THREE.SphereGeometry(radius, 32, 16);
-  const tint = CLASS_TINT[p.class] ?? [0.5, 0.5, 0.5];
-  // Host star is at the group origin; the planet sits at local-frame
-  // `pos`. Sun direction (planet → host) is therefore -pos.
+  // Host is at the group origin; planet sits at local-frame `pos`.
+  // Sun direction (planet → host) is therefore -pos.
   const sunDir = pos.clone().normalize().negate();
-  const material = new THREE.ShaderMaterial({
-    uniforms: {
-      uTint: { value: new THREE.Color(tint[0], tint[1], tint[2]) },
-      uSunDir: { value: sunDir },
-    },
-    vertexShader: `
-      varying vec3 vNormal;
-      void main() {
-        vNormal = normalize(mat3(modelMatrix) * normal);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 uTint;
-      uniform vec3 uSunDir;
-      varying vec3 vNormal;
-      void main() {
-        float ndotl = max(dot(normalize(vNormal), uSunDir), 0.0);
-        float diff = pow(ndotl, 1.2);
-        gl_FragColor = vec4(uTint * (0.04 + 0.96 * diff), 1.0);
-      }
-    `,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
+  const mesh = createPlanetMesh(radius, sunDir, /* illumination */ 1, null, /* atmosphere */ 0);
+  (mesh.material as THREE.ShaderMaterial).uniforms.uTexture!.value = classTexture(p.class);
   mesh.position.copy(pos);
   mesh.frustumCulled = false;
   return mesh;

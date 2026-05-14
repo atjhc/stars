@@ -73,11 +73,22 @@ selected star changes, the previous group is torn down and (if the new
 host has matched planets) a new group is built at the host's scene
 position.
 
-Each planet renders as a `SphereGeometry(radius)` with a tiny sun-lit
-shader — no `SHADOW_GLSL`, no atmosphere shell, no surface texture, no
-night side. Orbit ellipses render as `LineBasicMaterial`. The host
-star is the local origin of the group, so `uSunDir = -normalize(localPos)`
-is the correct per-planet sun bearing.
+Planet bodies share Sol's shader: `createPlanetMesh` (exported from
+`src/planets.ts`) builds the sphere geometry, attaches the same
+`planetFragment` shader, and wires the uniforms exoplanets don't use
+(`uNightTexture`, `uAtmosphere`, `uParentDir`, occluder array, ring
+shadow) to their no-op defaults. The class colour is delivered through
+a 1×1 tinted `uTexture` built by `makeFallbackTexture` and cached
+per-class.
+
+Orbit ellipses likewise reuse Sol's comet-trail line — `buildOrbitTrail`
+in `src/orbitLine.ts` is the shared 16k-segment walker, parameterized
+on a `(ν, out) => void` position callback so Sol can plug in its
+Keplerian state and ecliptic→equatorial transform while exoplanets
+plug in their quaternion-based position math.
+
+The host star is the local origin of the group, so
+`uSunDir = -normalize(localPos)` is the correct per-planet sun bearing.
 
 ### Orbit orientation
 
