@@ -16,7 +16,8 @@ import * as THREE from "three";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { camera, projectToScreenUV } from "./scene.ts";
 import type { ScreenUV } from "./scene.ts";
-import { notableObjects } from "./starfield.ts";
+import { notableObjects, isNotableObject } from "./starfield.ts";
+import { getSelectedMesh } from "./systemStore.ts";
 import { apparentMag } from "./stars.ts";
 import { starRadiusScene } from "./color.ts";
 import { F_HALF_TAN_INV } from "./shaderLib.ts";
@@ -207,6 +208,38 @@ interface Candidate {
 const candidates: Candidate[] = [];
 const screenUV: ScreenUV = { u: 0, v: 0, behind: false };
 
+function consider(obj: THREE.Object3D): void {
+  const star = obj.userData as Star;
+  if (star.absmag === undefined || star.lum === undefined || star.ci === undefined) return;
+
+  projectToScreenUV(obj.position, screenUV);
+  if (screenUV.behind) return;
+  // No on-screen bounds check — when the source slides just off-frame
+  // the f0 halo and ghost chain still extend onto the visible viewport,
+  // so cutting them off abruptly looks wrong. Far-off sources contribute
+  // negligibly because of f0's 1/r falloff.
+
+  const camDist = Math.max(camera.position.distanceTo(obj.position), 1e-20);
+  const mag = apparentMag(star.absmag, camDist);
+  if (mag > FLARE_MAG_CUTOFF) return;
+
+  const flux = Math.exp(POGSON * (FLARE_REF_MAG - mag));
+  const intensity = Math.min(INTENSITY_CEILING, flux);
+
+  const radius = starRadiusScene(star.lum, star.ci);
+  const discPx = (radius / camDist) * F_HALF_TAN_INV * halfViewportPxUniform.value;
+  const sizeRaw = Math.sqrt(discPx / REFERENCE_DISC_PX);
+  const size = Math.min(MAX_SIZE, Math.max(MIN_SIZE, sizeRaw));
+
+  candidates.push({
+    x: screenUV.u,
+    y: screenUV.v,
+    intensity,
+    size,
+    rank: intensity * size,
+  });
+}
+
 export function updateLensFlares(width: number, height: number): void {
   let n = 0;
 
@@ -214,37 +247,13 @@ export function updateLensFlares(width: number, height: number): void {
     aspectUniform.value = width / height;
     candidates.length = 0;
 
-    for (const obj of notableObjects) {
-      const star = obj.userData as Star;
-      if (star.absmag === undefined || star.lum === undefined || star.ci === undefined) continue;
-
-      projectToScreenUV(obj.position, screenUV);
-      if (screenUV.behind) continue;
-      // No on-screen bounds check — when the source slides just off-frame
-      // the f0 halo and ghost chain still extend onto the visible viewport,
-      // so cutting them off abruptly looks wrong. Far-off sources contribute
-      // negligibly because of f0's 1/r falloff.
-
-      const camDist = Math.max(camera.position.distanceTo(obj.position), 1e-20);
-      const mag = apparentMag(star.absmag, camDist);
-      if (mag > FLARE_MAG_CUTOFF) continue;
-
-      const flux = Math.exp(POGSON * (FLARE_REF_MAG - mag));
-      const intensity = Math.min(INTENSITY_CEILING, flux);
-
-      const radius = starRadiusScene(star.lum, star.ci);
-      const discPx = (radius / camDist) * F_HALF_TAN_INV * halfViewportPxUniform.value;
-      const sizeRaw = Math.sqrt(discPx / REFERENCE_DISC_PX);
-      const size = Math.min(MAX_SIZE, Math.max(MIN_SIZE, sizeRaw));
-
-      candidates.push({
-        x: screenUV.u,
-        y: screenUV.v,
-        intensity,
-        size,
-        rank: intensity * size,
-      });
-    }
+    // notableObjects covers tier-0 stars (Sol + ~270 bright named stars).
+    // Also consider the currently-focused star — non-tier-0 exoplanet
+    // hosts (Chalawan, Tau Ceti, …) aren't in notableObjects, so without
+    // this the flare never fires when zooming inside their systems.
+    const selected = getSelectedMesh();
+    for (const obj of notableObjects) consider(obj);
+    if (selected && !isNotableObject(selected)) consider(selected);
 
     candidates.sort((a, b) => b.rank - a.rank);
     n = Math.min(MAX_FLARES, candidates.length);

@@ -81,8 +81,11 @@ function updateSearchResults(query: string) {
         if (!seen.has(e.n)) { seen.add(e.n); filteredEntries.push(e); }
         continue;
       }
-      // System/cluster favorited — show one representative entry
-      if (e.sy && isFavorite(e.sy) && !seen.has(e.sy)) {
+      // System/cluster favorited — show one representative entry.
+      // Skipped for exoplanets: their `sy` is the host star (for the
+      // search-select two-step), not an aggregate the user would
+      // favorite, so a favorited host shouldn't drag every planet in.
+      if (e.k !== "ep" && e.sy && isFavorite(e.sy) && !seen.has(e.sy)) {
         // Find the cluster/nebula entry if it exists, otherwise use this one
         const clusterEntry = all.find((c) => c.n === e.sy && (c.k === "c" || c.k === "n"));
         seen.add(e.sy);
@@ -127,7 +130,9 @@ function renderSearchResults() {
   filteredEntries.forEach((entry, i) => {
     const li = document.createElement("li");
 
-    const bookmarkName = entry.sy ?? entry.n;
+    // Exoplanets bookmark by planet name; everything else by system
+    // (the system row stands in for any constituent star).
+    const bookmarkName = entry.k === "ep" ? entry.n : (entry.sy ?? entry.n);
     const bmSuffix = activeTab !== "favorites" && isFavorite(bookmarkName) ? " ★" : "";
 
     const kindLabel = entry.k ? getSearchKindLabel(entry.k) : undefined;
@@ -171,7 +176,10 @@ export function setupSearch(onSelect: (entry: SearchEntry) => void, onPreview?: 
   selectResult = (index: number) => {
     if (index < 0 || index >= filteredEntries.length) return;
     const entry = filteredEntries[index];
-    addRecent(entry.sy ?? entry.n);
+    // Exoplanets carry sy = host name, but the recents UI should
+    // surface the planet itself (it's the navigation target the user
+    // picked). Other systems-of-stars use sy for the system aggregate.
+    addRecent(entry.k === "ep" ? entry.n : (entry.sy ?? entry.n));
     onSelect(entry);
     closeSearch();
   };

@@ -43,18 +43,21 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
   const seen = new Set<SearchEntry>();
   const seenSystems = new Set<string>();
 
-  function add(entry: SearchEntry): boolean {
+  function add(entry: SearchEntry, uncapped = false): boolean {
     if (seen.has(entry)) return false;
     if (entry.sy && seenSystems.has(entry.sy)) return false;
-    // Only cluster / nebula / black-hole entries aggregate their
-    // members into one search row — so only they dedupe later star
-    // members sharing their sy. Multi-star systems (binary/trinary)
-    // have no such aggregate entry, so every member stays visible and
-    // renders as "System · Member" in the result list.
-    if (entry.sy && entry.k) seenSystems.add(entry.sy);
+    // Cluster / nebula / black-hole / neutron-star entries aggregate
+    // their members into one search row — so only they dedupe later
+    // star members sharing their sy. Multi-star systems (binary/
+    // trinary) have no such aggregate entry, so every member stays
+    // visible and renders as "System · Member" in the result list.
+    // Exoplanets ("ep") use sy to link a planet back to its host star
+    // (for the search-select two-step), not to aggregate siblings, so
+    // they're excluded from the dedup.
+    if (entry.sy && entry.k && entry.k !== "ep") seenSystems.add(entry.sy);
     seen.add(entry);
     results.push(entry);
-    return results.length >= MAX_SEARCH_RESULTS;
+    return !uncapped && results.length >= MAX_SEARCH_RESULTS;
   }
 
   const nameOrSysMatch = (e: SearchEntry) =>
@@ -70,11 +73,6 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
     if (kw.some((w) => w.startsWith(q))) kindKeywordHit.add(k);
   }
 
-  function kindMatch(e: SearchEntry): boolean {
-    if (kindKeywordHit.has(e.k!)) return true;
-    return nameOrSysMatch(e) || aliasMatch(e);
-  }
-
   // Rank: 0 = exact name, 1 = name prefix, 2 = name/sys substring, 3 = alias
   function rank(e: SearchEntry): number {
     const nl = e.n.toLowerCase();
@@ -84,12 +82,16 @@ export function filterSearch(query: string, index: SearchEntry[], excludeKinds?:
     return 3;
   }
 
-  // Pass 1: cluster, nebula, black hole, and neutron-star entries.
+  // Pass 1: kinded entries (cluster, nebula, BH, NS, exoplanet).
+  // Kind-keyword matches bypass the result cap so category searches
+  // ("exoplanet", "cluster", …) return the full list; name/alias
+  // matches in this pass still respect the cap.
   for (const entry of index) {
     if (!entry.k) continue;
     if (excludeKinds?.has(entry.k)) continue;
-    if (!kindMatch(entry)) continue;
-    if (add(entry)) break;
+    const isKindHit = kindKeywordHit.has(entry.k);
+    if (!isKindHit && !nameOrSysMatch(entry) && !aliasMatch(entry)) continue;
+    if (add(entry, isKindHit)) break;
   }
 
   // Pass 2: star primary name / system match.

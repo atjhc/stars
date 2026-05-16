@@ -14,7 +14,7 @@ import { computeStarScreenMetrics } from "./stars.ts";
 import { starRadiusScene, starGlowCanvas } from "./color.ts";
 import { LABEL_DISC_BUFFER_PX } from "./constants.ts";
 import { shouldHighlightLabel, type HighlightContext } from "./labelVisibility.ts";
-import { pushStarOccluder, clearStarOccluders } from "./labelRegistry.ts";
+import { pushStarOccluder, clearStarOccluders, getHandlerSelectedName } from "./labelRegistry.ts";
 import { updateCanvasLabel, hideCanvasLabel, getCanvasLabelIdForMesh, markCanvasCollisionDirty, setCanvasLabelsVisible } from "./labelCanvas.ts";
 import {
   getSelectedMesh, getSelectedSystem, getSelectedSubset, getHoveredSystem,
@@ -117,6 +117,12 @@ export function updateLabels(
   const hoveredSystem = getHoveredSystem();
   const selectedMesh = getSelectedMesh();
   const lastHoveredMesh = getLastHoveredMesh();
+  // When an overlay handler (exoplanet, constellation) owns the active
+  // selection, the host star is still the underlying selectedMesh but
+  // the overlay's label is the one the user is focused on. Letting the
+  // host star pin its label here would double up against the overlay's
+  // pinned label since pinned labels skip collision.
+  const hasOverlaySelection = getHandlerSelectedName(true) !== null;
 
   const hlCtx: HighlightContext = {
     meshToSystem,
@@ -402,15 +408,19 @@ export function updateLabels(
         if (selectedMesh) subtitleDist = target.position.distanceTo(selectedMesh.position);
         else if (selectedSystem) subtitleDist = target.position.distanceTo(selectedSystem.centroid);
       }
+      // Yield pinning to an active overlay (e.g. selected exoplanet) so
+      // its label can collide this host star's label out instead of the
+      // two stacking on screen (pinned labels skip collision).
+      const yieldToOverlay = hasOverlaySelection && isSelectedTarget;
       target.visible = true;
       const glow = starGlowCanvas(star.ci);
       updateCanvasLabel(canvasId, {
         opacityTarget: nearFade,
-        pinned: true,
+        pinned: !yieldToOverlay,
         hidden: false,
         rank: 500,
         marginTop: margin,
-        subtitles: [formatAstroDistance(subtitleDist)],
+        subtitles: yieldToOverlay ? [] : [formatAstroDistance(subtitleDist)],
         shadowColor: glow.color,
         shadowBlur: isSystemMemberHighlighted ? glow.blur + 4 : glow.blur,
       });

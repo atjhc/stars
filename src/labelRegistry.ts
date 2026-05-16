@@ -149,8 +149,12 @@ export function clearHoverExcept(exceptType: string | null): void {
 }
 
 // Return the name of whichever handler has an active selection, or null.
-export function getHandlerSelectedName(): string | null {
+// `overlayOnly` restricts the scan to overlay handlers (exoplanet,
+// constellation) — those layer over the star/system focus, so their
+// selection is the topmost UI state.
+export function getHandlerSelectedName(overlayOnly = false): string | null {
   for (const h of handlers) {
+    if (overlayOnly && !h.overlay) continue;
     const name = h.getSelectedName();
     if (name) return name;
   }

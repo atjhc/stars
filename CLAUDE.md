@@ -165,6 +165,7 @@ Sources and licences:
 - `src/blackholes.ts` — Black hole labels + point rendering, registered via labelRegistry
 - `src/neutronstars.ts` — Neutron star / pulsar labels + marker-disc rendering + GR lensing on close zoom
 - `src/planets.ts` — Solar System planet/moon labels + textured sun-lit globe rendering + elliptical orbit rings + Saturn rings, registered via labelRegistry. Positions propagated from JPL Keplerian elements via `src/keplerian.ts` to current date on page load. Bodies with a `parent` field (e.g. Luna) use geocentric elements and offset from the parent's heliocentric position. Surface maps lazy-loaded per body from `dist/tiles/planets/`.
+- `src/exoplanets.ts` — Confirmed exoplanet rendering for non-Sol host stars. Lazy-loads `dist/tiles/exoplanets.json` on demand, mounts a sun-lit body + orbit-ellipse group at the focused host's scene position, exposes a detail-panel section + click navigation. See `docs/exoplanets.md`.
 - `src/keplerian.ts` — Pure helper for JPL Approximate Positions: roll elements forward, solve Kepler, return heliocentric ecliptic Cartesian.
 - `src/dust.ts` — 3D dust volume ray marcher (Edenhofer 2024 data + hot-star illumination)
 - `src/skybox.ts` — Galactic-coordinate Milky Way panorama backdrop (ESO/Brunier eso0932a, CC-BY 4.0). Equirectangular sphere with custom shader; samples via the inverse of `src/dust.ts`'s `GAL_TO_SCENE` so the panorama plane lines up with the dust volume.
@@ -185,6 +186,7 @@ Sources and licences:
 - `scripts/fetch-hunt2023-astro.py` — Downloads RA/Dec/parallax/photometry from VizieR for Hunt & Reffert cluster members
 - `scripts/fetch-planet-textures.py` — Downloads Solar System Scope equirectangular surface maps into `dist/tiles/planets/`
 - `scripts/fetch-skybox.py` — Downloads ESO/Brunier Milky Way panorama (eso0932a, CC-BY 4.0) from Wikimedia and downsamples to 4096×2048 JPEG at `dist/tiles/skybox.jpg`
+- `scripts/fetch-exoplanets.py` — Queries the NASA Exoplanet Archive `pscomppars` view for confirmed planets with radius + semi-major axis, joins to AT-HYG by Gaia DR3 ID, and writes the runtime data to `dist/tiles/exoplanets.json`. Re-run after the Archive updates.
 - `scripts/merge-augmentations.py` — Merges research-batch JSON files into `data/augmentations.json`, preserving existing fields
 - `data/augmentations.json` — Hand-curated overrides: Wikipedia links, names, notes, aliases, system groupings, synthetic companions. Keyable by Gliese ID / HIP / "Sol" OR by IAU proper name; both entries merge with proper-name winning on conflict.
 - `data/clusters.json` — Star cluster definitions: name, aliases, seed stars, wikipedia, notes
@@ -208,6 +210,7 @@ Sources and licences:
 - `docs/blackholes.md` — Black hole rendering: gravitational lensing, selection, deep zoom
 - `docs/neutronstars.md` — Neutron star rendering: billboard shader, bloom pipeline, scene routing, lensing
 - `docs/planets.md` — Solar System planets: data, ecliptic→equatorial transform, sun-lit globe shader, label gating
+- `docs/exoplanets.md` — Confirmed exoplanets: NASA Archive fetch + Gaia DR3 join, render pipeline, composition classes, navigation
 - `docs/nebulae.md` — Nebula/ISM rendering: 3D dust volume with hot-star illumination, accuracy breakdown
 - `docs/constellations.md` — Constellation system: 88 IAU constellations, Stellarium data source, Sol-distance fading, overlay selection, label priority, embedded star positions
 - `docs/data-corrections.md` — Corrections applied on top of AT-HYG source data

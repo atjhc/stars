@@ -19,7 +19,7 @@ import {
   initCatalog, getMeta, getNotable, getSystems, getTileLabels,
   loadTileLabels, evictTileLabels,
   onTileLabelsLoaded, onTileLabelsEvicted,
-  type LabelRow, type TileMeta,
+  type LabelRow, type TileMeta, type SearchEntry,
 } from "./catalog.ts";
 import { kick, registerKeepFrame } from "./renderLoop.ts";
 
@@ -156,6 +156,12 @@ let tileEntries: [string, TileMeta][] = [];
 // are lightweight Object3Ds without geometry — all visuals render from
 // the instanced mesh; labels are painted on the canvas overlay.
 export const notableObjects: THREE.Object3D[] = [];
+// Set mirror — lensflare checks per-frame whether the selected mesh is
+// already in notableObjects; the array scan would be O(n) across ~270.
+const notableObjectsSet = new WeakSet<THREE.Object3D>();
+export function isNotableObject(o: THREE.Object3D): boolean {
+  return notableObjectsSet.has(o);
+}
 
 // Per-anchor canvas label id, for tier-1 despawn cleanup.
 const tier1CanvasIds = new WeakMap<THREE.Object3D, string>();
@@ -216,6 +222,7 @@ function spawnNotableAnchors() {
     linkMeshToCanvasLabel(anchor, id);
     anchorsGroup.add(anchor);
     notableObjects.push(anchor);
+    notableObjectsSet.add(anchor);
     allInteractiveStars.push(anchor);
     anchorByRef.set(refKey(n.tile, n.i), anchor);
   }
@@ -275,7 +282,13 @@ function spawnTileLabels(path: string, labels: LabelRow[]) {
   }
 
   if (pendingSelection && pendingSelection.tile === path) {
-    const anchor = anchorByRef.get(refKey(path, pendingSelection.i));
+    let anchor = anchorByRef.get(refKey(path, pendingSelection.i));
+    if (!anchor && pendingSelection.fallback) {
+      // Tier-2 augmented star (in search index, no label row). Spawn
+      // an anchor from the binary tile data + search-entry metadata
+      // so URL-restore / search-select can target it.
+      anchor = spawnTier2AugmentedAnchor(path, pendingSelection.i, pendingSelection.fallback);
+    }
     if (anchor) {
       const resolve = pendingSelection.onResolved;
       pendingSelection = null;
@@ -283,6 +296,42 @@ function spawnTileLabels(path: string, labels: LabelRow[]) {
       resolve(anchor);
     }
   }
+}
+
+// build-catalog only emits label rows for tier-0/1; tier-2 augmented
+// stars (faint but with wikipedia/notes — e.g. exoplanet hosts like
+// Gl 876) appear in the search index without a label row, so the
+// normal tile-load anchor spawn skips them. Synthesize from binary
+// tile data + search entry. ci defaults to Sol-like since the binary
+// doesn't store color index; `tier: 1` is just LabelRow's type cap
+// (0 | 1) — runtime treats this anchor identically to a tier-1.
+function spawnTier2AugmentedAnchor(tile: string, i: number, entry: SearchEntry): THREE.Object3D | undefined {
+  const t = loadedTiles.get(tile);
+  if (!t) return undefined;
+  const sx = t.worldPositions[i * 3] ?? 0;
+  const sy = t.worldPositions[i * 3 + 1] ?? 0;
+  const sz = t.worldPositions[i * 3 + 2] ?? 0;
+  const absmag = entry.M;
+  const lum = Math.pow(10, (4.83 - absmag) / 2.5);
+  const star: Star = {
+    i,
+    tier: 1,
+    name: entry.n,
+    spect: entry.sp ?? "",
+    mag: entry.mg,
+    absmag,
+    ci: 0.65,
+    lum,
+    dist: entry.d,
+    aliases: entry.a,
+    system: entry.sy,
+    tile,
+  };
+  const anchor = createStarAnchor(star, sx, sy, sz);
+  anchorsGroup.add(anchor);
+  anchorByRef.set(refKey(tile, i), anchor);
+  allInteractiveStars.push(anchor);
+  return anchor;
 }
 
 function despawnTileLabels(path: string) {
@@ -434,18 +483,37 @@ const forcedTiles = new Set<string>();
 function isTileForced(path: string): boolean {
   return forcedTiles.has(path) || path === getPinnedTile();
 }
-type PendingSelection = { tile: string; i: number; onResolved: (mesh: THREE.Object3D) => void };
+type PendingSelection = {
+  tile: string;
+  i: number;
+  onResolved: (mesh: THREE.Object3D) => void;
+  // Search-entry fallback for tier-2 augmented stars: the tile's
+  // labels.json only lists tier-0/tier-1 rows, so spawnTileLabels
+  // won't create an anchor for an exoplanet host that's tier-2 (faint
+  // but augmented with wikipedia/notes). Carrying the entry here lets
+  // us synthesize an anchor from the binary tile data + entry metadata
+  // after the tile loads.
+  fallback?: SearchEntry;
+};
 let pendingSelection: PendingSelection | null = null;
 
 export function requestTileFocus(
   tile: string,
   i: number,
   onResolved: (mesh: THREE.Object3D) => void,
+  fallback?: SearchEntry,
 ) {
   const existing = anchorByRef.get(refKey(tile, i));
   if (existing) { onResolved(existing); return; }
+  // If the tile already streamed (e.g. eagerly loaded near Sol) but
+  // the streaming-path spawn skipped this index, the post-load
+  // spawnTileLabels callback won't fire again — synthesize now.
+  if (loadedTiles.has(tile) && fallback) {
+    const anchor = spawnTier2AugmentedAnchor(tile, i, fallback);
+    if (anchor) { onResolved(anchor); return; }
+  }
   forcedTiles.add(tile);
-  pendingSelection = { tile, i, onResolved };
+  pendingSelection = { tile, i, onResolved, fallback };
   // Kick off the load directly. Without this, the load would wait for
   // the next updateStarfield sweep, which only runs from the render
   // loop — so URL focus restore couldn't await the focused tile
