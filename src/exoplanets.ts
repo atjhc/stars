@@ -11,7 +11,7 @@
 import * as THREE from "three";
 import {
   scene, camera, animateTo, setMinOrbitOverride,
-  distanceFromCamera, projectToLabelScreen,
+  distanceFromCamera, projectToLabelScreen, target,
 } from "./scene.ts";
 import {
   KM_PER_PC, SCALE, SCENE_PER_AU, TILE_BASE_URL, formatAstroDistance,
@@ -19,6 +19,7 @@ import {
 import { kick } from "./renderLoop.ts";
 import { getSelectedMesh } from "./systemStore.ts";
 import { whenSearchIndexReady, type SearchEntry } from "./catalog.ts";
+import { isFavorite } from "./favorites.ts";
 import { pushFrameOccluder } from "./labelRegistry.ts";
 import { starLabelMargin } from "./labels.ts";
 import type { Star } from "./types.ts";
@@ -27,25 +28,28 @@ import {
 } from "./labelCanvas.ts";
 import { registerLabelType, type LabelTypeHandler } from "./labelRegistry.ts";
 import { createPlanetMesh, makeFallbackTexture } from "./planets.ts";
-import { buildOrbitTrail } from "./orbitLine.ts";
+import { buildPrecisionOrbitLine } from "./orbitLine.ts";
 
 const EARTH_RADIUS_KM = 6378;
 const RE_TO_SCENE = (EARTH_RADIUS_KM / KM_PER_PC) * SCALE;
 
-// Loose mass-radius bin tints — matched to scripts/fetch-exoplanets.py
-// composition_class(). Earth-tone rocky, water-world blue-grey, pale
-// Neptune blue, warm Jovian for gas giants.
+// Tints follow scripts/fetch-exoplanets.py composition_class(). Only
+// classes confidently inferable from radius + density get a colour;
+// the ambiguous middle (sub-Neptune / mini-Neptune / water world)
+// renders as neutral gray so we don't claim a composition we can't
+// support.
 const CLASS_TINT: Record<string, [number, number, number]> = {
   rocky: [0.55, 0.35, 0.25],
-  superEarth: [0.40, 0.45, 0.55],
   neptune: [0.45, 0.55, 0.75],
   gasGiant: [0.85, 0.75, 0.55],
+  unknown: [0.50, 0.48, 0.50],
 };
 
 export interface ExoPlanet {
   name: string;
   radius_re: number;
   mass_me: number | null;
+  density_gcm3: number | null;
   a_au: number;
   e: number | null;
   period_days: number | null;
@@ -99,11 +103,19 @@ let currentEntry: SystemEntry | null = null;
 const mountedByHost = new Map<string, MountedPlanet[]>();
 const mountResolvers = new Map<string, Array<() => void>>();
 
+// Host position relative to the camera target, refreshed each frame in
+// updateExoplanets(). Drives the orbit-line shader's view-space math —
+// see buildPrecisionOrbitLine().
+const hostFromTargetUniform: THREE.IUniform<THREE.Vector3> = {
+  value: new THREE.Vector3(),
+};
+
 // Currently selected exoplanet (clicked via label / search / detail row).
 // Overlay-mode selection: distinct from the host-star focus, lives only
 // here. Active state drives label pinning + subtitle, and gives the
 // detail panel something to render in place of the host's panel.
 let selectedExoplanet: MountedPlanet | null = null;
+let hoveredExoplanet: MountedPlanet | null = null;
 
 function canvasIdFor(name: string): string { return `exoplanet:${name}`; }
 
@@ -127,6 +139,7 @@ function teardown(): void {
   currentPlanets = [];
   currentEntry = null;
   selectedExoplanet = null;
+  hoveredExoplanet = null;
 }
 
 // Match docs/planets.md: Sol fades planet labels out over the
@@ -146,6 +159,10 @@ export function updateExoplanets(): void {
     return;
   }
   if (currentPlanets.length === 0 || !currentGroup) return;
+  // Float64 host - target; orbit-line shader divides by view-z so any
+  // Float32-pipeline noise here is amplified to many pixels of wobble
+  // for the orbit vertex closest to the camera.
+  hostFromTargetUniform.value.copy(currentGroup.position).sub(target);
   const camDistAu = camera.position.distanceTo(currentGroup.position) / SCENE_PER_AU;
   const fade = 1 - THREE.MathUtils.smoothstep(camDistAu, LABEL_FADE_NEAR_AU, LABEL_FADE_FAR_AU);
   const halfTan = Math.tan((camera.fov * Math.PI) / 360);
@@ -248,6 +265,8 @@ function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
       text: p.name,
       font: EXO_LABEL_FONT,
       color: EXO_LABEL_COLOR,
+      shadowColor: EXO_CANVAS_SHADOW.color,
+      shadowBlur: EXO_CANVAS_SHADOW.blur,
       // Same band that Sol's planets occupy. Higher than BH/NS; lower
       // than Sol planets (we're never on screen with them — Sol's
       // planets only render inside Sol's system).
@@ -262,6 +281,22 @@ function buildSystem(entry: SystemEntry, hostPos: THREE.Vector3): THREE.Group {
 
 const EXO_LABEL_FONT = `12px "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const EXO_LABEL_COLOR = "rgba(170,200,235,0.9)";
+const EXO_CANVAS_SHADOW = { color: "rgba(80,100,140,0.7)", blur: 6 };
+const EXO_CANVAS_GLOW = { color: "rgba(170,200,235,1.0)", blur: 12 };
+
+function applyGlow(name: string) {
+  updateCanvasLabel(canvasIdFor(name), {
+    shadowColor: EXO_CANVAS_GLOW.color,
+    shadowBlur: EXO_CANVAS_GLOW.blur,
+  });
+}
+
+function removeGlow(name: string) {
+  updateCanvasLabel(canvasIdFor(name), {
+    shadowColor: EXO_CANVAS_SHADOW.color,
+    shadowBlur: EXO_CANVAS_SHADOW.blur,
+  });
+}
 
 // Per-planet tilt from the shared system plane. σ ≈ 2.5° matches the
 // Solar System's invariable-plane dispersion (Mercury 7°, others 1-3°),
@@ -328,9 +363,9 @@ function buildOrbitLine(p: ExoPlanet, q: THREE.Quaternion, phase: number): THREE
   // tip and the planet line up; the alpha then fades back along the
   // direction of orbital motion. Phase is the same seeded value used
   // for the body's position, so the two stay synced.
-  return buildOrbitTrail((nu, out) => {
+  return buildPrecisionOrbitLine((nu, out) => {
     orbitPositionAt(p, q, nu, out);
-  }, phase);
+  }, phase, hostFromTargetUniform);
 }
 
 // Per-class 1×1 tinted textures, reused across every planet of that
@@ -386,9 +421,9 @@ export function exoplanetsForStar(star: Star): ExoPlanet[] | null {
 
 const CLASS_LABEL: Record<string, string> = {
   rocky: "Rocky",
-  superEarth: "Super-Earth",
-  neptune: "Neptune-like",
+  neptune: "Ice giant",
   gasGiant: "Gas giant",
+  unknown: "Composition unclear",
 };
 
 export function exoplanetsDetailHtml(star: Star): string {
@@ -418,12 +453,22 @@ export function exoplanetsDetailHtml(star: Star): string {
 export function focusExoplanetByName(name: string): boolean {
   const planet = currentPlanets.find((p) => p.name === name);
   if (!planet) return false;
+  if (selectedExoplanet && selectedExoplanet !== planet) removeGlow(selectedExoplanet.name);
   selectedExoplanet = planet;
+  applyGlow(planet.name);
   // Min 3R fills ~70% of FOV (matches planetHandler); arrive at 6R.
   setMinOrbitOverride(planet.radius * 3);
   animateTo(planet.worldPos, planet.radius * 6);
   kick();
   return true;
+}
+
+// World position of the currently-selected exoplanet, if any. Used by
+// URL restore to anchor the camera target on the planet after the
+// async mount completes, so the saved r/phi/theta apply around the
+// planet rather than the host star.
+export function getSelectedExoplanetPos(): THREE.Vector3 | null {
+  return selectedExoplanet ? selectedExoplanet.worldPos : null;
 }
 
 function buildPlanetDetailHtml(p: ExoPlanet, hostName: string): string {
@@ -432,6 +477,9 @@ function buildPlanetDetailHtml(p: ExoPlanet, hostName: string): string {
   const r = `${p.radius_re.toFixed(2)} R⊕`;
   const massRow = p.mass_me !== null
     ? `<br>Mass: ${p.mass_me.toFixed(p.mass_me < 1 ? 3 : 2)} M⊕`
+    : "";
+  const densityRow = p.density_gcm3 !== null
+    ? `<br>Density: ${p.density_gcm3.toFixed(2)} g/cm³`
     : "";
   const periodRow = p.period_days !== null
     ? `<br>Period: ${formatPeriod(p.period_days)}`
@@ -445,13 +493,16 @@ function buildPlanetDetailHtml(p: ExoPlanet, hostName: string): string {
   const discRow = p.disc_year !== null
     ? `<br>Discovered: ${p.disc_year}${p.disc_method ? ` (${p.disc_method})` : ""}`
     : "";
+  const favIcon = isFavorite(p.name) ? "★" : "☆";
+  const escapedName = p.name.replace(/"/g, "&quot;");
   return `
+    <span class="favorite-toggle" data-name="${escapedName}">${favIcon}</span>
     <div class="star-name">${p.name}</div>
     <div class="star-aliases">Exoplanet · orbits ${hostName}</div>
     <div class="detail-body">
       <div class="star-detail">
         Class: ${cls}<br>
-        Radius: ${r}${massRow}<br>
+        Radius: ${r}${massRow}${densityRow}<br>
         Semi-major axis: ${a}${periodRow}${eccRow}${eqtRow}${discRow}
       </div>
     </div>`;
@@ -483,12 +534,23 @@ const exoplanetHandler: LabelTypeHandler = {
   selectByName(name) { return focusExoplanetByName(name); },
   clearSelection() {
     if (selectedExoplanet) {
+      removeGlow(selectedExoplanet.name);
       selectedExoplanet = null;
       setMinOrbitOverride(null);
     }
+    if (hoveredExoplanet) {
+      removeGlow(hoveredExoplanet.name);
+      hoveredExoplanet = null;
+    }
   },
   getSelectedName() { return selectedExoplanet?.name ?? null; },
-  setHoverByName() { /* no hover state in v1 */ },
+  setHoverByName(name) {
+    const next = name ? currentPlanets.find((p) => p.name === name) ?? null : null;
+    if (hoveredExoplanet === next) return;
+    if (hoveredExoplanet && hoveredExoplanet !== selectedExoplanet) removeGlow(hoveredExoplanet.name);
+    hoveredExoplanet = next;
+    if (next && next !== selectedExoplanet) applyGlow(next.name);
+  },
   handleClick(div) {
     const name = div.getAttribute("data-label-name");
     return name ? focusExoplanetByName(name) : false;
@@ -504,8 +566,18 @@ registerLabelType(exoplanetHandler);
 // entry is in the search index. The host's position (and magnitudes /
 // distance) doubles as the planet's search position — at search-select
 // time we navigate to the host first, then to the planet after mount.
+let searchEntriesReady: () => void = () => {};
+const searchEntriesReadyPromise = new Promise<void>((r) => { searchEntriesReady = r; });
+
+// Resolves once exoplanet rows have been pushed onto the shared search
+// index (or once load failed and there's nothing to push). URL restore
+// awaits this so ?focus=<planet> can resolve on a cold load.
+export function whenExoplanetSearchEntriesReady(): Promise<void> {
+  return searchEntriesReadyPromise;
+}
+
 void loadData().then(async (d) => {
-  if (!d) return;
+  if (!d) { searchEntriesReady(); return; }
   const index = await whenSearchIndexReady();
   // Invert d.aliases (name → gaia) into gaia → names[]; index lookup by
   // any alias the catalog might surface as a star's primary `n`.
@@ -543,4 +615,5 @@ void loadData().then(async (d) => {
     }
   }
   if (added > 0) console.log(`Exoplanets: +${added} search entries`);
+  searchEntriesReady();
 });

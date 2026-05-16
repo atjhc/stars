@@ -34,7 +34,7 @@ OUTPUT = REPO / "dist/tiles/exoplanets.json"
 # per planet, populated with the discovery team's preferred values).
 ARCHIVE_COLUMNS = [
     "pl_name", "hostname", "gaia_dr3_id",
-    "pl_rade", "pl_bmasse",
+    "pl_rade", "pl_bmasse", "pl_dens",
     "pl_orbsmax", "pl_orbeccen", "pl_orbper", "pl_orbincl", "pl_orblper",
     "pl_eqt",
     "disc_year", "discoverymethod",
@@ -115,17 +115,49 @@ ATHYG_PARTS_FIELDNAMES = [
 ]
 
 
-def composition_class(radius_re: float) -> str:
-    """Loose mass-radius bin used to pick colour + render style.
-    Boundaries follow the conventional Fulton-gap / Neptune-desert cuts
-    rather than anything atmospheric-spectrum based."""
+EARTH_DENSITY_GCM3 = 5.513
+
+# Deuterium-burning limit: 13 M_jup in Earth-masses. IAU 2003 definition
+# of "planet" caps mass at this — above it the object can fuse deuterium
+# and is a brown dwarf. The Archive's pscomppars view includes a long
+# tail of substellar companions (HN Peg b, nu Oph b/c, HR 8799 e, …)
+# above this threshold; filter them so we render only actual planets.
+PLANET_MASS_MAX_ME = 13.0 * 317.8
+
+
+def derive_density(mass_me: float | None, radius_re: float) -> float | None:
+    """ρ = M / R³ × ρ⊕ — Archive density (pl_dens) is often missing
+    even when mass is present, so reconstruct it from mass + radius."""
+    if mass_me is None or radius_re <= 0:
+        return None
+    return mass_me / (radius_re ** 3) * EARTH_DENSITY_GCM3
+
+
+def composition_class(radius_re: float, density: float | None) -> str:
+    """Honest classification: confident only when radius or density
+    forces a single interpretation. Returns "unknown" for the
+    Fulton-gap / sub-Neptune ambiguity where radius alone can't
+    distinguish dense rocky from water world from mini-gas-envelope.
+
+    - radius < 1.6 R⊕                → rocky (below Fulton gap)
+    - radius ≥ 8 R⊕                  → gasGiant (only H/He envelopes get this big)
+    - density ≥ 4 g/cm³              → rocky (Earth-like bulk)
+    - density < 1 g/cm³ AND radius ≥ 3.5 → gasGiant (puffy H/He envelope)
+    - 1 ≤ density < 4, 3.5 ≤ radius < 8 → neptune (genuine ice giant range)
+    - everything else                → unknown
+    """
     if radius_re < 1.6:
         return "rocky"
-    if radius_re < 3.5:
-        return "superEarth"
-    if radius_re < 8.0:
-        return "neptune"
-    return "gasGiant"
+    if radius_re >= 8.0:
+        return "gasGiant"
+    if density is not None:
+        if density >= 4.0:
+            return "rocky"
+        if density < 1.0 and radius_re >= 3.5:
+            return "gasGiant"
+        if 1.0 <= density < 4.0 and 3.5 <= radius_re < 8.0:
+            return "neptune"
+    return "unknown"
 
 
 def to_float(s: str) -> float | None:
@@ -165,17 +197,27 @@ def main() -> None:
         radius_re = to_float(r["pl_rade"])
         if radius_re is None:
             continue
+        mass_me = to_float(r["pl_bmasse"])
+        if mass_me is not None and mass_me > PLANET_MASS_MAX_ME:
+            continue  # brown dwarf, not a planet
+        # Archive's pl_dens preferred when present (matches the team's
+        # reported uncertainties); fall back to mass+radius reconstruction.
+        # Explicit `is None` check rather than `or`: a literal pl_dens=0
+        # would falsy-collapse to the derived value.
+        archive_density = to_float(r["pl_dens"])
+        density = archive_density if archive_density is not None else derive_density(mass_me, radius_re)
         planet = {
             "name": r["pl_name"],
             "radius_re": radius_re,
-            "mass_me": to_float(r["pl_bmasse"]),
+            "mass_me": mass_me,
+            "density_gcm3": round(density, 3) if density is not None else None,
             "a_au": to_float(r["pl_orbsmax"]),
             "e": to_float(r["pl_orbeccen"]),
             "period_days": to_float(r["pl_orbper"]),
             "incl_deg": to_float(r["pl_orbincl"]),
             "lper_deg": to_float(r["pl_orblper"]),
             "eqt_k": to_float(r["pl_eqt"]),
-            "class": composition_class(radius_re),
+            "class": composition_class(radius_re, density),
             "disc_year": to_int(r["disc_year"]),
             "disc_method": (r["discoverymethod"] or "").strip() or None,
         }

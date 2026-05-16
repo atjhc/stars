@@ -73,7 +73,7 @@ import { focusTarget } from "./systemDispatch.ts";
 import { startRenderLoop, bumpInput, setAlwaysOn } from "./renderLoop.ts";
 import { initGpuTimer, gpuPhase, drainGpuQueries, wrapComposerPasses } from "./gpuTimer.ts";
 import { lensFlarePass, updateLensFlares } from "./lensflare.ts";
-import { updateExoplanets, whenExoplanetMounted } from "./exoplanets.ts";
+import { updateExoplanets, whenExoplanetMounted, whenExoplanetSearchEntriesReady, getSelectedExoplanetPos } from "./exoplanets.ts";
 
 // Append AFTER bloom + crop + lensing so the flare renders in sRGB
 // against the already-bloomed scene. Pre-bloom placement caused the
@@ -429,7 +429,7 @@ window.addEventListener("keydown", (e) => {
     toggleSkybox();
     scheduleUrlWrite();
   } else if (e.key === "f") {
-    const name = getSelectedSystem()?.name ?? (getSelectedMesh()?.userData as Star | undefined)?.name ?? getHandlerSelectedName();
+    const name = currentFocusName();
     if (name) {
       toggleFavorite(name);
       setLabelsDirty(true);
@@ -488,7 +488,14 @@ function handleSearchSelect(entry: SearchEntry): Promise<void> {
     const hostEntry = getSearchIndex().find((e) => e.n === entry.sy);
     if (!hostEntry) return Promise.resolve();
     return handleSearchSelect(hostEntry)
-      .then(() => whenExoplanetMounted(entry.sy!))
+      .then(() => {
+        // Manually kick the exoplanet update so mountFor() runs even
+        // when the render loop hasn't started yet (URL restore awaits
+        // this chain before startRenderLoop). On the live render path
+        // it's a no-op idempotent call — mountFor checks currentMesh.
+        updateExoplanets();
+        return whenExoplanetMounted(entry.sy!);
+      })
       .then(() => { selectByType("exoplanet", entry.n); scheduleUrlWrite(); });
   }
   // Constellations span the sky — no meaningful point to fly to.
@@ -530,7 +537,7 @@ function handleSearchSelect(entry: SearchEntry): Promise<void> {
         rebaseForStar(mesh);
         scheduleUrlWrite();
         resolve();
-      });
+      }, entry);
     });
   }
   return Promise.resolve();
@@ -608,8 +615,11 @@ setupLayersControl([
 
   if (focusName) {
     // Names of dim tier-1 stars only resolve through the search index;
-    // wait for it before attempting lookup.
+    // wait for it before attempting lookup. Also await exoplanet search
+    // entries so ?focus=<planet> can resolve on a cold load (exoplanets
+    // are loaded asynchronously and pushed onto the same index).
     await whenSearchIndexReady();
+    await whenExoplanetSearchEntriesReady();
     // Sub-group syntax: "Rigil Kentaurus,Toliman" → find the system
     // they belong to and select just those members.
     if (focusName.includes(",")) {
@@ -649,10 +659,23 @@ setupLayersControl([
         ?? getSearchIndex().find((e) => e.sy === focusName);
       if (entry) {
         const focusReady = handleSearchSelect(entry);
-        // setTargetImmediate cancels the animateTo that handleSearchSelect
-        // queued; URL restore wants a hard cut, not a flyby on page load.
-        setTargetImmediate(new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]));
+        // First cut cancels any animation that handleSearchSelect queued
+        // synchronously; URL restore is a hard cut, not a flyby.
+        const entryPos = new THREE.Vector3(entry.p[0], entry.p[1], entry.p[2]);
+        setTargetImmediate(entryPos);
         await focusReady;
+        // When the URL carries an orbit, override the post-await
+        // animateTo (queued by streaming-resolved selections or by the
+        // exoplanet mount chain) so its radius doesn't overwrite the
+        // saved orbit below. Without a URL orbit we want that animation
+        // to play out — its `toRadius` is the body's natural arrival
+        // distance, far better than the default 0.5.
+        if (urlState.orbit) {
+          const finalPos = entry.k === "ep"
+            ? getSelectedExoplanetPos() ?? entryPos
+            : entryPos;
+          setTargetImmediate(finalPos);
+        }
       }
     }
   } else {
@@ -683,6 +706,8 @@ setupLayersControl([
 nebulaeInit.then(() => doUpdateLabelVisibility()).catch(() => {});
 
 function currentFocusName(): string | undefined {
+  const overlayName = getHandlerSelectedName(true);
+  if (overlayName) return overlayName;
   // Star systems and individual stars are managed outside the handler
   // registry (through interaction.ts / systemStore.ts), so check first.
   const sys = getSelectedSystem();
