@@ -224,6 +224,16 @@ TEXTURES = [
     ("iapetus",     "jpg",
         "https://astrogeology.usgs.gov/ckan/dataset/6ac8ecfb-36e7-4113-8d16-c92ba857c3d7"
         "/resource/141c2d1e-aa01-4e2f-969a-e46a581db4b9/download/full.jpg",       None),
+    # Cassini Phoebe cylindrical mosaic PIA07775 (PD-NASA). Wikimedia
+    # hosts a pre-cropped 2048×1024 variant with the title strip and
+    # most of the NASA caption already trimmed off (only a thin
+    # residual band remains below −90° latitude, never sampled by
+    # the spherical UV wrap). Hyperion has no equivalent published
+    # cylindrical map — its real spacecraft mesh carries the visual
+    # signature, so it stays untextured (flat grey fallback).
+    ("phoebe",      "jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/d/d0/Phoebe_map_PIA07775_cropped.jpg",
+        None),
     # Titan NASA Photojournal PIA22770 (2018) photometrically-
     # corrected ISS surface mosaic, downsampled and tinted with the
     # natural-colour orange sampled from Cassini PIA06230. The

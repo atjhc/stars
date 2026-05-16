@@ -141,6 +141,10 @@ Sources and licences:
   (CC-BY 4.0); no real-data maps exist since no spacecraft has visited
   these bodies
 - **Eros** — no published global map; stays flat grey at runtime
+- **Phoebe** — [Cassini PIA07775 cylindrical mosaic, pre-cropped Wikimedia variant](https://commons.wikimedia.org/wiki/File:Phoebe_map_PIA07775_cropped.jpg)
+  (Public Domain). Already 2048×1024; no post-process needed.
+- **Hyperion** — no published cylindrical map; stays flat grey at
+  runtime. The real spacecraft mesh carries the visual signature.
 
 ### Source modules
 

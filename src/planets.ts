@@ -116,7 +116,7 @@ const TEXTURED_BODIES: Record<string, "jpg" | "png"> = {
   Eros: "png", Phobos: "png", Deimos: "png",
   Io: "jpg", Europa: "jpg", Ganymede: "png", Callisto: "png",
   Mimas: "jpg", Enceladus: "jpg", Tethys: "jpg", Dione: "jpg",
-  Rhea: "jpg", Titan: "jpg", Iapetus: "jpg",
+  Rhea: "jpg", Titan: "jpg", Iapetus: "jpg", Phoebe: "jpg",
   Miranda: "jpg", Ariel: "jpg", Umbriel: "jpg", Titania: "jpg", Oberon: "jpg",
   Triton: "jpg", Charon: "jpg",
 };
@@ -124,9 +124,8 @@ const TEXTURED_BODIES: Record<string, "jpg" | "png"> = {
 // Bodies with a real spacecraft-derived shape model. Loaded lazily as
 // a Drake binary mesh ('DSHP') and used in place of the triaxial
 // ellipsoid baked from `axes_km`. See scripts/fetch-planet-meshes.py
-// for sources (PDS Gaskell for Eros/Phobos, Thomas for Deimos — all
-// public domain).
-const MESHED_BODIES = new Set(["Eros", "Phobos", "Deimos"]);
+// for sources (all public domain).
+const MESHED_BODIES = new Set(["Eros", "Phobos", "Deimos", "Hyperion", "Phoebe"]);
 const SHAPE_MAGIC = 0x50485344; // 'DSHP'
 
 const textureLoader = new THREE.TextureLoader();

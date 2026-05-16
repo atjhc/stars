@@ -488,27 +488,27 @@
     "radius_km": 198.2,
     "elements": {
       "a_au": [
-        0.001243,
+        0.00124358,
         0.0
       ],
       "e": [
-        0.0202,
+        0.021756,
         0.0
       ],
       "i_deg": [
-        26.73,
+        27.0027,
         0.0
       ],
       "L_deg": [
-        141.9,
-        13953338.0
+        318.1804,
+        13877990.0
       ],
       "long_peri_deg": [
-        226.6,
+        280.7823,
         0.0
       ],
       "long_node_deg": [
-        66.2,
+        172.0569,
         0.0
       ]
     },
@@ -530,27 +530,27 @@
     "radius_km": 252.1,
     "elements": {
       "a_au": [
-        0.001594,
+        0.00159374,
         0.0
       ],
       "e": [
-        0.0047,
+        0.006352,
         0.0
       ],
       "i_deg": [
-        26.73,
+        28.052,
         0.0
       ],
       "L_deg": [
-        176.5,
-        9597326.0
+        311.943,
+        9565579.8
       ],
       "long_peri_deg": [
-        119.5,
+        304.9896,
         0.0
       ],
       "long_node_deg": [
-        0.0,
+        169.5066,
         0.0
       ]
     },
@@ -572,27 +572,27 @@
     "radius_km": 533.0,
     "elements": {
       "a_au": [
-        0.001972,
+        0.00197182,
         0.0
       ],
       "e": [
-        0.0001,
+        0.00097,
         0.0
       ],
       "i_deg": [
-        26.73,
+        27.2207,
         0.0
       ],
       "L_deg": [
-        248.3,
-        6966742.0
+        316.4376,
+        6950815.3
       ],
       "long_peri_deg": [
-        248.3,
+        326.0548,
         0.0
       ],
       "long_node_deg": [
-        273.0,
+        167.9977,
         0.0
       ]
     },
@@ -614,27 +614,27 @@
     "radius_km": 561.4,
     "elements": {
       "a_au": [
-        0.002525,
+        0.00252445,
         0.0
       ],
       "e": [
-        0.0022,
+        0.002928,
         0.0
       ],
       "i_deg": [
-        26.73,
+        28.0414,
         0.0
       ],
       "L_deg": [
-        328.0,
-        4804789.0
+        306.4622,
+        4798299.5
       ],
       "long_peri_deg": [
-        116.0,
+        334.4056,
         0.0
       ],
       "long_node_deg": [
-        0.0,
+        169.4702,
         0.0
       ]
     },
@@ -656,27 +656,27 @@
     "radius_km": 763.8,
     "elements": {
       "a_au": [
-        0.003524,
+        0.00352428,
         0.0
       ],
       "e": [
-        0.0013,
+        0.0008,
         0.0
       ],
       "i_deg": [
-        26.73,
+        28.2414,
         0.0
       ],
       "L_deg": [
-        209.5,
-        2910529.0
+        181.6681,
+        2908918.2
       ],
       "long_peri_deg": [
-        178.0,
+        334.766,
         0.0
       ],
       "long_node_deg": [
-        133.7,
+        168.9842,
         0.0
       ]
     },
@@ -704,27 +704,27 @@
     ],
     "elements": {
       "a_au": [
-        0.008168,
+        0.00816813,
         0.0
       ],
       "e": [
-        0.0288,
+        0.028601,
         0.0
       ],
       "i_deg": [
-        26.73,
+        27.7183,
         0.0
       ],
       "L_deg": [
-        168.6,
-        824624.0
+        137.0845,
+        824525.8
       ],
       "long_peri_deg": [
-        156.9,
+        333.6483,
         0.0
       ],
       "long_node_deg": [
-        78.6,
+        169.2392,
         0.0
       ]
     },
@@ -737,6 +737,48 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Titan_(moon)",
     "notes": "Second-largest moon in the Solar System and the only one with a substantial atmosphere \u2014 ~1.45 bar of nitrogen and methane. Liquid hydrocarbon lakes (mostly methane and ethane) at the poles. Huygens probe landed in 2005."
   },
+  "Hyperion": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": [
+      "Saturn VII"
+    ],
+    "radius_km": 135.0,
+    "elements": {
+      "a_au": [
+        0.00992702,
+        0.0
+      ],
+      "e": [
+        0.126731,
+        0.0
+      ],
+      "i_deg": [
+        27.209,
+        0.0
+      ],
+      "L_deg": [
+        67.6021,
+        615330.8
+      ],
+      "long_peri_deg": [
+        356.9983,
+        0.0
+      ],
+      "long_node_deg": [
+        168.305,
+        0.0
+      ]
+    },
+    "rotation": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Hyperion_(moon)",
+    "notes": "Irregular, sponge-like body (~360\u00d7266\u00d7205 km) with a porous, deeply pitted surface. Famous for chaotic rotation \u2014 its tumbling axis drifts unpredictably due to its elongated shape and 4:3 orbital resonance with Titan, so no stable spin period can be assigned."
+  },
   "Iapetus": {
     "kind": "moon",
     "parent": "Saturn",
@@ -746,27 +788,27 @@
     "radius_km": 734.5,
     "elements": {
       "a_au": [
-        0.023808,
+        0.02381429,
         0.0
       ],
       "e": [
-        0.0276,
+        0.027862,
         0.0
       ],
       "i_deg": [
-        17.28,
+        17.2382,
         0.0
       ],
       "L_deg": [
-        55.8,
-        165754.3
+        217.3677,
+        165607.9
       ],
       "long_peri_deg": [
-        341.0,
+        9.3502,
         0.0
       ],
       "long_node_deg": [
-        86.5,
+        139.6918,
         0.0
       ]
     },
@@ -778,6 +820,48 @@
     ],
     "wikipedia": "https://en.wikipedia.org/wiki/Iapetus_(moon)",
     "notes": "Stark two-tone moon: leading hemisphere coated in dark Cassini Regio (likely Phoebe-derived dust), trailing hemisphere bright ice. A 20-km-high equatorial ridge runs ~75% of the way around \u2014 origin still debated."
+  },
+  "Phoebe": {
+    "kind": "moon",
+    "parent": "Saturn",
+    "aliases": [
+      "Saturn IX"
+    ],
+    "radius_km": 106.5,
+    "elements": {
+      "a_au": [
+        0.08652386,
+        0.0
+      ],
+      "e": [
+        0.165405,
+        0.0
+      ],
+      "i_deg": [
+        173.2587,
+        0.0
+      ],
+      "L_deg": [
+        315.5781,
+        23912.9
+      ],
+      "long_peri_deg": [
+        256.929,
+        0.0
+      ],
+      "long_node_deg": [
+        263.199,
+        0.0
+      ]
+    },
+    "rotation": [
+      356.9,
+      77.8,
+      178.58,
+      931.79
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Phoebe_(moon)",
+    "notes": "Outermost large moon, on a retrograde, eccentric, highly inclined orbit \u2014 almost certainly a captured Centaur / Kuiper Belt body. Dark, carbon-rich surface; the source of the dust that paints Iapetus's leading hemisphere. Visited by Cassini in 2004."
   },
   "Uranus": {
     "aliases": [],

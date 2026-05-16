@@ -124,22 +124,35 @@ scene size — only its surface detail changes.
 
 ### Shape models
 
-Three irregular bodies ship with real spacecraft-derived shape models:
+Five irregular bodies ship with real spacecraft-derived shape models:
 
 - **433 Eros** — Gaskell (2008) NEAR MSI stereophotoclinometric model,
   `ver64q` resolution (25,350 vertices / 49,152 facets). PDS bundle
   `urn:nasa:pds:gaskell.ast-eros.shape-model` (CC0 / Public Domain).
 - **Phobos** — Gaskell (2011) Viking + Phobos-2 model, `ver64q`
   (25,350 / 49,152). PDS `gaskell.phobos.shape-model` (Public Domain).
+- **Phoebe** — Gaskell (2013) Cassini ISS stereophotoclinometric
+  model, `ver64q` (25,350 / 49,152). PDS
+  `gaskell.phoebe.shape-model` (Public Domain). The Phoebe file omits
+  the face count from the header (just `nv`); `parse_gaskell` derives
+  `nf` from the remaining line total.
 - **Deimos** — Thomas (2000) Viking limb/control-point lat/lon/r grid
   on a 5° lattice (2,701 vertices / 5,184 triangles). PDS
   `ast-sat.thomas.shape-models` (Public Domain).
+- **Hyperion** — Thomas (2007) Cassini-derived plate model OBJ
+  published by PSI's small-bodies-node (14,636 vertices / 29,267
+  facets, ~5× the underlying 5° lat/lon grid). Wavefront OBJ via
+  `sbn-psi/shape-models`, GitHub-LFS backed, fetched from
+  `media.githubusercontent.com` (the `raw.githubusercontent.com`
+  path returns the LFS pointer rather than the file). Public Domain.
+  Body frame is principal-axis (longest = X) since Hyperion's
+  rotation is chaotic and no IAU pole is defined.
 
-`scripts/fetch-planet-meshes.py` downloads the source `.tab` files,
-parses the Gaskell vertex/facet format and the Thomas lat/lon/radius
-grid, and emits a tiny Drake-specific binary (`'DSHP'` magic) with
-just `[positions in km] + [uint32 triangle indices]`. Total ship
-weight: ~1.85 MB across the three (~570 KB gzipped).
+`scripts/fetch-planet-meshes.py` downloads the source files, parses
+the Gaskell vertex/facet format, the Thomas lat/lon/radius grid, and
+the Wavefront OBJ for Hyperion, and emits a tiny Drake-specific
+binary (`'DSHP'` magic) with just `[positions in km] + [uint32
+triangle indices]`. Total ship weight: ~3.3 MB across the five.
 
 The runtime loader (`loadShapeMesh` in `src/planets.ts`) fetches the
 binary, normalises positions to mean radius (so `mesh.scale` stays
